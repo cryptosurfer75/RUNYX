@@ -7622,114 +7622,77 @@ function updateStravaUI(connected){
 }
 
 // Synchroniser les activités depuis Strava
+var _stravaActivitiesQueue=[];
+
 async function syncStravaActivities(){
   if(!currentUser||!window.__stravaToken){showToast('⚠️ Connecte Strava d\'abord');return;}
-  // Rafraîchir le token si nécessaire
   var tokenOk=await refreshStravaToken();
   if(!tokenOk&&!window.__stravaToken){showToast('⚠️ Token expiré, reconnecte Strava');return;}
   showToast('🔄 Import des activités…');
-  // Récupérer les activités récentes (30 derniers jours)
-  var after=Math.floor((Date.now()-30*86400000)/1000);
+  // Récupérer les activités depuis la date d'inscription
+  var {data:meData}=await supabaseClient.from('players').select('created_at').eq('id',currentUser.id).single();
+  var inscriptionDate=meData&&meData.created_at?new Date(meData.created_at):new Date();
+  var after=Math.floor(inscriptionDate.getTime()/1000);
   try{
     var resp=await window.fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30&after='+after,{
       headers:{'Authorization':'Bearer '+window.__stravaToken}
     });
     var activities=await resp.json();
     if(!Array.isArray(activities)){showToast('⚠️ Erreur Strava : '+(activities.message||'?'));return;}
-    var imported=0;
-    var newLands=[];
+    // Filtrer les nouvelles activités (pas encore importées)
+    var newActivities=[];
     var resultsHtml='';
     for(var i=0;i<activities.length;i++){
       var a=activities[i];
-      // Filtrer : seulement Run, Walk, Trail
       if(!['Run','Walk','TrailRun','Hike'].includes(a.type)) continue;
       var km=a.distance/1000;
       var timeMin=a.moving_time/60;
       var spd=timeMin>0?(km/(timeMin/60)):0;
       var elv=a.total_elevation_gain||0;
-      var runDate=a.start_date?a.start_date.substring(0,10):getParisTodayStr();
-      // Vérifier si cette activité existe déjà (par strava_id)
-      // On utilise la date comme approximation
-      var {data:existingRun}=await supabaseClient.from('runs').select('id').eq('player_id',currentUser.id).eq('run_date',runDate+'T'+a.start_date.substring(11)).maybeSingle();
-      if(existingRun) continue; // déjà importée
+      // Vérifier si déjà importée
+      var runDateFull=a.start_date||'';
+      var {data:existingRun}=await supabaseClient.from('runs').select('id').eq('player_id',currentUser.id).eq('run_date',runDateFull).maybeSingle();
+      if(existingRun) continue;
       // Calculer les points
       var hasBoost=isBoostActive();
       var pts=Math.round(computePts(km,spd,elv,hasBoost));
       // Insérer la course
-      await supabaseClient.from('runs').insert({
-        player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,
-        time:Math.round(timeMin),elevation:Math.round(elv)
+      await window.fetch(supabaseUrl+'/rest/v1/runs',{
+        method:'POST',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull})
       });
-      imported++;
-      resultsHtml+='<div style="display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem">'
-        +'<span style="color:var(--text)">'+a.name+'</span>'
-        +'<span style="color:var(--gold);font-family:Space Mono,monospace">'+pts+' pts</span>'
-      +'</div>';
-      // GPS → Lands : décoder la polyline en hexagones H3
+      // Décoder GPS en hexagones
+      var hexes=[];
       var polyline=a.map?a.map.summary_polyline:null;
       if(polyline&&typeof h3!=='undefined'){
         var decoded=decodePolyline(polyline);
         var hexSet=new Set();
-        decoded.forEach(function(pt){
-          var hex=h3.latLngToCell(pt[0],pt[1],H3_RESOLUTION);
-          hexSet.add(hex);
-        });
-        hexSet.forEach(function(hexId){
-          newLands.push(hexId);
-          // Créer la land si elle n'existe pas (via XHR direct pour contourner RLS)
-          window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
-            method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-          }).then(function(r){return r.json();}).then(function(res){
-            if(!res||!res.length){
-              var ll=h3.cellToLatLng(hexId);
-              window.fetch(supabaseUrl+'/rest/v1/lands',{
-                method:'POST',
-                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-                body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
-              });
-            }
-          });
-          // Enregistrer le passage (via XHR direct)
-          var today=getParisTodayStr();
-          window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today,{
-            method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-          }).then(function(r){return r.json();}).then(function(res2){
-            if(!res2||!res2.length){
-              window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
-                method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-              }).then(function(r){return r.json();}).then(function(res3){
-                var landData=(res3&&res3[0])?res3[0]:null;
-                var rpcEarned=[3,6,9,12][(landData?landData.stars:0)||0];
-                window.fetch(supabaseUrl+'/rest/v1/land_passages',{
-                  method:'POST',
-                  headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-                  body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
-                });
-                var landOwner=landData?(landData.owner_id||landData.tenant_id):null;
-                if(landOwner&&landOwner!==currentUser.id){
-                  walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
-                }
-              });
-            }
-          });
-        });
+        decoded.forEach(function(pt){hexSet.add(h3.latLngToCell(pt[0],pt[1],H3_RESOLUTION));});
+        hexes=Array.from(hexSet);
       }
+      newActivities.push({name:a.name,pts:pts,km:km,hexes:hexes,lat:a.start_latlng?a.start_latlng[0]:0,lng:a.start_latlng?a.start_latlng[1]:0});
+      resultsHtml+='<div onclick="processStravaLands('+newActivities.length+')" style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;cursor:pointer;border-radius:4px" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'transparent\'">'
+        +'<span style="color:var(--text)">'+a.name+' <span style="color:var(--muted2)">'+Math.round(km*10)/10+'km</span></span>'
+        +'<span style="display:flex;align-items:center;gap:.4rem"><span style="color:var(--gold);font-family:Space Mono,monospace">'+pts+' pts</span>'
+        +(hexes.length?'<span style="color:var(--cyan);font-size:.6rem">'+hexes.length+' lands</span>':'')
+        +'</span>'
+      +'</div>';
     }
+    // Sauvegarder la queue
+    _stravaActivitiesQueue=newActivities;
     // Mise à jour last_sync
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
       method:'PATCH',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
       body:JSON.stringify({last_sync_at:new Date().toISOString()})
     });
-    // Afficher les résultats
-    if(imported>0){
+    if(newActivities.length>0){
       var resultsDiv=document.getElementById('sync-results');
       var listDiv=document.getElementById('sync-results-list');
       if(resultsDiv) resultsDiv.style.display='block';
-      if(listDiv) listDiv.innerHTML=resultsHtml;
-      showToast('✓ '+imported+' activité'+(imported>1?'s':'')+' importée'+(imported>1?'s':''));
-      // Les lands sont créées en DB directement — pas de pending pour Strava
-      // Le joueur les verra sur la carte Lands
+      if(listDiv) listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">Clique sur une course pour explorer ses Lands</div>'+resultsHtml;
+      showToast('✓ '+newActivities.length+' activité'+(newActivities.length>1?'s':'')+' importée'+(newActivities.length>1?'s':''));
       // Rafraîchir
       if(typeof renderHistory==='function') renderHistory();
       if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
@@ -7745,6 +7708,78 @@ async function syncStravaActivities(){
 }
 
 // Décoder une polyline Google en tableau de [lat, lng]
+// Traiter les lands d'UNE course Strava
+async function processStravaLands(index){
+  var activity=_stravaActivitiesQueue[index-1];
+  if(!activity||!activity.hexes.length){showToast('Pas de tracé GPS pour cette course');return;}
+  closeModal('sync-modal');
+  // Créer les lands free en DB (par batch)
+  showToast('🗺️ Création de '+activity.hexes.length+' lands…');
+  for(var i=0;i<activity.hexes.length;i++){
+    var hexId=activity.hexes[i];
+    // Vérifier si existe déjà
+    var checkResp=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+      method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+    });
+    var checkData=await checkResp.json();
+    if(!checkData||!checkData.length){
+      var ll=h3.cellToLatLng(hexId);
+      await window.fetch(supabaseUrl+'/rest/v1/lands',{
+        method:'POST',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
+      });
+    }
+    // Enregistrer le passage
+    var today=getParisTodayStr();
+    var passCheck=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today,{
+      method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+    });
+    var passData=await passCheck.json();
+    if(!passData||!passData.length){
+      var landCheck=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+        method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+      });
+      var landData=await landCheck.json();
+      var ld=(landData&&landData[0])?landData[0]:null;
+      var rpcEarned=[3,6,9,12][(ld?ld.stars:0)||0];
+      await window.fetch(supabaseUrl+'/rest/v1/land_passages',{
+        method:'POST',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
+      });
+      var landOwner=ld?(ld.owner_id||ld.tenant_id):null;
+      if(landOwner&&landOwner!==currentUser.id){
+        walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
+      }
+    }
+  }
+  // Afficher sur la carte
+  _lastExploredHexes=activity.hexes;
+  nav('lands');
+  setTimeout(function(){
+    if(_landsMap){
+      if(activity.lat&&activity.lng) _landsMap.setView([activity.lat,activity.lng],15);
+      _landsMap.invalidateSize();
+      loadLandsOnMap();
+    }
+    renderMyLands();
+    var finBtn=document.getElementById('lands-finish-btn');
+    if(finBtn) finBtn.style.display='block';
+  },300);
+  // Modal félicitations
+  document.getElementById('lm-title').textContent='🗺️ Félicitations !';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML='<div style="text-align:center;padding:.5rem 0">'
+    +'<div style="font-size:2.5rem;margin-bottom:.5rem">🏃</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--gold);margin-bottom:.3rem">Tu as exploré '+activity.hexes.length+' Lands !</div>'
+    +'<div style="font-size:.78rem;color:var(--muted2);margin-bottom:.3rem">'+activity.name+' · '+Math.round(activity.km*10)/10+' km · '+activity.pts+' pts</div>'
+    +'<div style="font-size:.75rem;color:var(--muted2);margin-bottom:.75rem">Clique sur les hexagones pour louer celles que tu désires. Sois stratégique pour former ton territoire.</div>'
+    +'<button onclick="closeModal(\'land-modal\')" style="padding:.45rem 1.5rem;border-radius:7px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.85rem;cursor:pointer">Explorer la carte →</button>'
+  +'</div>';
+  openModal('land-modal');
+}
+
 function decodePolyline(encoded){
   var points=[];
   var index=0,lat=0,lng=0;
