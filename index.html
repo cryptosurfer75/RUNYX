@@ -7676,23 +7676,35 @@ async function syncStravaActivities(){
         });
         hexSet.forEach(function(hexId){
           newLands.push(hexId);
-          // Créer la land si elle n'existe pas
-          supabaseClient.from('lands').select('id').eq('id',hexId).maybeSingle().then(function(res){
-            if(!res.data){
+          // Créer la land si elle n'existe pas (via XHR direct pour contourner RLS)
+          window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+            method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          }).then(function(r){return r.json();}).then(function(res){
+            if(!res||!res.length){
               var ll=h3.cellToLatLng(hexId);
-              supabaseClient.from('lands').insert({
-                id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0
+              window.fetch(supabaseUrl+'/rest/v1/lands',{
+                method:'POST',
+                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+                body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
               });
             }
           });
-          // Enregistrer le passage
+          // Enregistrer le passage (via XHR direct)
           var today=getParisTodayStr();
-          supabaseClient.from('land_passages').select('id').eq('land_id',hexId).eq('player_id',currentUser.id).eq('passage_date',today).maybeSingle().then(function(res2){
-            if(!res2.data){
-              supabaseClient.from('lands').select('stars,tenant_id,owner_id').eq('id',hexId).single().then(function(res3){
-                var landData=res3.data;
+          window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today,{
+            method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          }).then(function(r){return r.json();}).then(function(res2){
+            if(!res2||!res2.length){
+              window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+                method:'GET',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+              }).then(function(r){return r.json();}).then(function(res3){
+                var landData=(res3&&res3[0])?res3[0]:null;
                 var rpcEarned=[3,6,9,12][(landData?landData.stars:0)||0];
-                supabaseClient.from('land_passages').insert({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned});
+                window.fetch(supabaseUrl+'/rest/v1/land_passages',{
+                  method:'POST',
+                  headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+                  body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
+                });
                 var landOwner=landData?(landData.owner_id||landData.tenant_id):null;
                 if(landOwner&&landOwner!==currentUser.id){
                   walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
@@ -7716,16 +7728,8 @@ async function syncStravaActivities(){
       if(resultsDiv) resultsDiv.style.display='block';
       if(listDiv) listDiv.innerHTML=resultsHtml;
       showToast('✓ '+imported+' activité'+(imported>1?'s':'')+' importée'+(imported>1?'s':''));
-      // Stocker les lands en pending pour exploration
-      if(newLands.length){
-        _lastExploredHexes=newLands;
-        var pendingData=JSON.stringify({hexes:newLands,lat:0,lng:0});
-        await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
-          method:'PATCH',
-          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-          body:JSON.stringify({pending_exploration:pendingData})
-        });
-      }
+      // Les lands sont créées en DB directement — pas de pending pour Strava
+      // Le joueur les verra sur la carte Lands
       // Rafraîchir
       if(typeof renderHistory==='function') renderHistory();
       if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
