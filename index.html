@@ -1753,10 +1753,17 @@ select option{background:#040c1c}
 
 <!-- Modal sélection avatar -->
 <div class="modal" id="avatar-picker-modal">
-  <div class="modal-box" style="max-width:520px;max-height:80vh">
+  <div class="modal-box" style="max-width:400px;max-height:85vh;overflow-y:auto">
     <button class="modal-close" onclick="closeModal('avatar-picker-modal')">✕</button>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:3px;color:var(--gold);text-align:center;margin-bottom:.75rem">Choisis ton avatar</div>
-    <div id="avatar-picker-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;overflow-y:auto;max-height:58vh;padding:6px"></div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:3px;color:var(--gold);text-align:center;margin-bottom:.5rem">Crée ton avatar</div>
+    <!-- Preview -->
+    <div style="text-align:center;margin-bottom:.75rem">
+      <img id="avatar-builder-preview" style="width:120px;height:120px;border-radius:14px;border:2px solid var(--gold);background:rgba(4,12,28,.5)" src="">
+    </div>
+    <!-- Options -->
+    <div id="avatar-builder-options" style="display:flex;flex-direction:column;gap:.6rem"></div>
+    <!-- Valider -->
+    <button onclick="validateAvatarBuilder()" style="width:100%;margin-top:.75rem;padding:.5rem;border-radius:8px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer">VALIDER</button>
   </div>
 </div>
 
@@ -3513,37 +3520,98 @@ function renderDashboard(){
   }
 
   // ── Sélecteur d'avatar (bibliothèque) ──
+  // ── Avatar Builder (créateur d'avatar DiceBear) ──
+  var _avatarOpts={
+    skinColor:['fdbcb4','edb98a','d08b5b','ae5d29','614335','f8d25c'],
+    top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froAndBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle','hat','winterHat01','winterHat03','hijab','turban'],
+    hairColor:['a55728','2c1b18','b58143','d6b370','724133','4a312c','c93305','e8e1e1','f59797'],
+    clothing:['blazerAndShirt','blazerAndSweater','collarAndSweater','graphicShirt','hoodie','overall','shirtCrewNeck','shirtScoopNeck','shirtVNeck'],
+    clothesColor:['3c4f5c','65c9ff','5199e4','25557c','e6e6e6','929598','a7ffc4','ffdeb5','ffafb9','ff488e','262e33','ff5c5c'],
+    eyes:['default','happy','squint','surprised','wink','side','hearts','closed'],
+    mouth:['default','smile','twinkle','serious','tongue','grimace'],
+    facialHair:['blank','beardLight','beardMedium','beardMajestic','moustacheFancy','moustacheMagnum']
+  };
+  var _avatarLabels={skinColor:'Peau',top:'Cheveux',hairColor:'Couleur cheveux',clothing:'Vêtement',clothesColor:'Couleur vêtement',eyes:'Yeux',mouth:'Bouche',facialHair:'Barbe'};
+  var _avatarCurrent={skinColor:0,top:0,hairColor:0,clothing:0,clothesColor:0,eyes:0,mouth:0,facialHair:0};
+
+  function buildAvatarUrl(){
+    var url='https://api.dicebear.com/9.x/avataaars/svg?seed=custom';
+    for(var k in _avatarCurrent){
+      var val=_avatarOpts[k][_avatarCurrent[k]];
+      if(k==='facialHair'){
+        if(val==='blank'){url+='&facialHairProbability=0';}
+        else{url+='&facialHair='+val+'&facialHairProbability=100';}
+      } else {
+        url+='&'+k+'='+val;
+      }
+    }
+    return url;
+  }
+
+  function updateAvatarPreview(){
+    var img=document.getElementById('avatar-builder-preview');
+    if(img) img.src=buildAvatarUrl();
+  }
+
   window.openAvatarPicker=function(mode){
-    // mode: 'register' (inscription) ou 'change' (PC)
     window._avatarPickerMode=mode||'change';
-    var grid=document.getElementById('avatar-picker-grid');
-    if(!grid)return;
-    grid.innerHTML='';
-    AVATAR_LIBRARY.forEach(function(url,i){
-      var selected=(window.__myPlayer&&window.__myPlayer.avatar===url)||
-        (window._regAvatar&&window._regAvatar===url);
-      var div=document.createElement('div');
-      div.style.cssText='width:100%;aspect-ratio:1;border-radius:12px;border:2.5px solid '+(selected?'var(--gold)':'rgba(74,144,255,.15)')+';overflow:hidden;cursor:pointer;transition:all .15s;background:rgba(8,14,30,.8);padding:4px';
-      div.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:contain;border-radius:8px" loading="lazy">';
-      div.onmouseover=function(){this.style.borderColor='var(--gold)';this.style.transform='scale(1.05)';};
-      div.onmouseout=function(){if(!this.dataset.sel)this.style.borderColor='rgba(74,144,255,.2)';this.style.transform='';};
-      div.onclick=function(){selectAvatar(url);};
-      if(selected)div.dataset.sel='1';
-      grid.appendChild(div);
-    });
+    // Randomiser les options au départ
+    for(var k in _avatarCurrent){
+      _avatarCurrent[k]=Math.floor(Math.random()*_avatarOpts[k].length);
+    }
+    // Construire les sélecteurs
+    var el=document.getElementById('avatar-builder-options');
+    if(!el) return;
+    el.innerHTML='';
+    for(var key in _avatarOpts){
+      var label=_avatarLabels[key]||key;
+      var total=_avatarOpts[key].length;
+      if(key==='skinColor'||key==='hairColor'||key==='clothesColor'){
+        // Palette de couleurs cliquables
+        var dots=_avatarOpts[key].map(function(c,i){
+          return '<div onclick="avatarSetOpt(\''+key+'\','+i+')" style="width:22px;height:22px;border-radius:50%;background:#'+c+';cursor:pointer;border:2px solid '+(i===_avatarCurrent[key]?'var(--gold)':'transparent')+'" id="av-'+key+'-'+i+'"></div>';
+        }).join('');
+        el.innerHTML+='<div><div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem">'+label+'</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+dots+'</div></div>';
+      } else {
+        // Flèches gauche/droite
+        el.innerHTML+='<div style="display:flex;align-items:center;justify-content:space-between">'
+          +'<div style="font-size:.7rem;color:var(--muted2)">'+label+'</div>'
+          +'<div style="display:flex;align-items:center;gap:.5rem">'
+          +'<button onclick="avatarNav(\''+key+'\',-1)" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(74,144,255,.2);background:transparent;color:var(--text);font-size:.8rem;cursor:pointer">◀</button>'
+          +'<span id="av-'+key+'-label" style="font-size:.65rem;color:var(--text);min-width:40px;text-align:center">'+(_avatarCurrent[key]+1)+'/'+total+'</span>'
+          +'<button onclick="avatarNav(\''+key+'\',1)" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(74,144,255,.2);background:transparent;color:var(--text);font-size:.8rem;cursor:pointer">▶</button>'
+          +'</div></div>';
+      }
+    }
+    updateAvatarPreview();
     openModal('avatar-picker-modal');
   };
 
-  window.selectAvatar=function(url){
+  window.avatarNav=function(key,dir){
+    var len=_avatarOpts[key].length;
+    _avatarCurrent[key]=(_avatarCurrent[key]+dir+len)%len;
+    var lbl=document.getElementById('av-'+key+'-label');
+    if(lbl) lbl.textContent=(_avatarCurrent[key]+1)+'/'+len;
+    updateAvatarPreview();
+  };
+
+  window.avatarSetOpt=function(key,idx){
+    _avatarCurrent[key]=idx;
+    // Mettre à jour les bordures des dots
+    _avatarOpts[key].forEach(function(_,i){
+      var dot=document.getElementById('av-'+key+'-'+i);
+      if(dot) dot.style.borderColor=i===idx?'var(--gold)':'transparent';
+    });
+    updateAvatarPreview();
+  };
+
+  window.validateAvatarBuilder=function(){
+    var url=buildAvatarUrl();
     if(window._avatarPickerMode==='register'){
-      // Mode inscription : stocker pour l'enregistrement
       window._regAvatar=url;
-      var preview=document.getElementById('reg-avatar-preview');
-      if(preview) preview.src=url;
       closeModal('avatar-picker-modal');
       return;
     }
-    // Mode changement PC
     if(currentUser){
       window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
         method:'PATCH',
@@ -3552,7 +3620,6 @@ function renderDashboard(){
       });
     }
     if(window.__myPlayer) window.__myPlayer.avatar=url;
-    // Mettre à jour l'affichage PC
     var imgEl=document.getElementById('pc-avatar-img');
     var cv=document.getElementById('pc-avatar-canvas');
     if(imgEl){imgEl.src=url;imgEl.style.display='block';}
@@ -8278,7 +8345,7 @@ var _leagueOnboardingSlides=[
   {
     emoji:'⚡',
     title:'Synchronise tes courses',
-    text:'Connecte <strong style="color:#fc4c02">Strava</strong> ou <strong style="color:var(--cyan)">Garmin</strong> depuis ta <strong style="color:var(--gold)">Player Card</strong>.<br><br>Le bouton <strong style="color:var(--gold)">⚡ Sync Strava / Garmin</strong> en haut de la page te permet d\'importer automatiquement tes courses.'
+    text:'Connecte <strong style="color:#fc4c02">Strava</strong> ou <strong style="color:var(--cyan)">Garmin</strong> depuis ta <strong style="color:var(--gold)">Player Card</strong>.<br><br>Le bouton <strong style="color:var(--gold)">⚡ Sync Strava / Garmin</strong> en haut de la page <strong style="color:var(--gold)">Player Card</strong> te permet d\'importer automatiquement tes courses.'
   },
   {
     emoji:'🏆',
