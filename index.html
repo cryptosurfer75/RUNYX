@@ -3523,28 +3523,45 @@ function renderDashboard(){
   // ── Avatar Builder (créateur d'avatar DiceBear) ──
   var _avatarOpts={
     skinColor:['fdbcb4','edb98a','d08b5b','ae5d29','614335','f8d25c'],
-    top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froAndBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle','hat','winterHat01','winterHat03','hijab','turban'],
+    top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froAndBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
     hairColor:['a55728','2c1b18','b58143','d6b370','724133','4a312c','c93305','e8e1e1','f59797'],
+    hatColor:['none','hat','winterHat01','winterHat02','winterHat03','winterHat04','hijab','turban'],
+    accessories:['blank','kurt','prescription01','prescription02','round','sunglasses','wayfarers'],
     clothing:['blazerAndShirt','blazerAndSweater','collarAndSweater','graphicShirt','hoodie','overall','shirtCrewNeck','shirtScoopNeck','shirtVNeck'],
     clothesColor:['3c4f5c','65c9ff','5199e4','25557c','e6e6e6','929598','a7ffc4','ffdeb5','ffafb9','ff488e','262e33','ff5c5c'],
     eyes:['default','happy','squint','surprised','wink','side','hearts','closed'],
+    eyebrows:['default','defaultNatural','raisedExcited','upDown','flatNatural','angryNatural','unibrowNatural'],
     mouth:['default','smile','twinkle','serious','tongue','grimace'],
     facialHair:['blank','beardLight','beardMedium','beardMajestic','moustacheFancy','moustacheMagnum']
   };
-  var _avatarLabels={skinColor:'Peau',top:'Cheveux',hairColor:'Couleur cheveux',clothing:'Vêtement',clothesColor:'Couleur vêtement',eyes:'Yeux',mouth:'Bouche',facialHair:'Barbe'};
-  var _avatarCurrent={skinColor:0,top:0,hairColor:0,clothing:0,clothesColor:0,eyes:0,mouth:0,facialHair:0};
+  var _avatarLabels={skinColor:'Peau',top:'Cheveux',hairColor:'Couleur cheveux',hatColor:'Chapeau',accessories:'Lunettes',clothing:'Vêtement',clothesColor:'Couleur vêtement',eyes:'Yeux',eyebrows:'Sourcils',mouth:'Bouche',facialHair:'Barbe'};
+  var _avatarCurrent={skinColor:0,top:0,hairColor:0,hatColor:0,accessories:0,clothing:0,clothesColor:0,eyes:0,eyebrows:0,mouth:0,facialHair:0};
 
   function buildAvatarUrl(){
     var url='https://api.dicebear.com/9.x/avataaars/svg?seed=custom';
-    for(var k in _avatarCurrent){
-      var val=_avatarOpts[k][_avatarCurrent[k]];
-      if(k==='facialHair'){
-        if(val==='blank'){url+='&facialHairProbability=0';}
-        else{url+='&facialHair='+val+'&facialHairProbability=100';}
-      } else {
-        url+='&'+k+'='+val;
-      }
+    var hatVal=_avatarOpts.hatColor[_avatarCurrent.hatColor];
+    var useHat=(hatVal&&hatVal!=='none');
+    // Cheveux ou chapeau
+    if(useHat){
+      url+='&top='+hatVal;
+    } else {
+      url+='&top='+_avatarOpts.top[_avatarCurrent.top];
     }
+    url+='&skinColor='+_avatarOpts.skinColor[_avatarCurrent.skinColor];
+    url+='&hairColor='+_avatarOpts.hairColor[_avatarCurrent.hairColor];
+    url+='&clothing='+_avatarOpts.clothing[_avatarCurrent.clothing];
+    url+='&clothesColor='+_avatarOpts.clothesColor[_avatarCurrent.clothesColor];
+    url+='&eyes='+_avatarOpts.eyes[_avatarCurrent.eyes];
+    url+='&eyebrows='+_avatarOpts.eyebrows[_avatarCurrent.eyebrows];
+    url+='&mouth='+_avatarOpts.mouth[_avatarCurrent.mouth];
+    // Lunettes
+    var accVal=_avatarOpts.accessories[_avatarCurrent.accessories];
+    if(accVal==='blank'){url+='&accessoriesProbability=0';}
+    else{url+='&accessories='+accVal+'&accessoriesProbability=100';}
+    // Barbe
+    var fbVal=_avatarOpts.facialHair[_avatarCurrent.facialHair];
+    if(fbVal==='blank'){url+='&facialHairProbability=0';}
+    else{url+='&facialHair='+fbVal+'&facialHairProbability=100';}
     return url;
   }
 
