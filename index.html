@@ -1564,6 +1564,11 @@ select option{background:#040c1c}
         <div style="font-size:.78rem;color:var(--muted2);margin-top:.1rem">Activités des RP</div>
       </div>
     </div>
+    <!-- Filtre Tous / Amis -->
+    <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:8px;overflow:hidden;border:1px solid rgba(74,144,255,.2)">
+      <button id="feed-tab-all" onclick="switchFeedTab('all')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:rgba(245,200,66,.15);color:var(--gold)">Tous les RP</button>
+      <button id="feed-tab-friends" onclick="switchFeedTab('friends')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:transparent;color:var(--muted2)">Mes amis</button>
+    </div>
     <!-- Feed -->
     <div id="social-feed" style="display:flex;flex-direction:column;gap:1rem">
       <div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Chargement…</div>
@@ -6409,19 +6414,71 @@ async function adminSetPeriodEnd(minutes){
 /* ============================================================
    SOCIAL FEED
 ============================================================ */
+var _feedMode='all';
+var _myFollowing=[];
+
+function switchFeedTab(mode){
+  _feedMode=mode;
+  var tabAll=document.getElementById('feed-tab-all');
+  var tabFriends=document.getElementById('feed-tab-friends');
+  if(tabAll){tabAll.style.background=mode==='all'?'rgba(245,200,66,.15)':'transparent';tabAll.style.color=mode==='all'?'var(--gold)':'var(--muted2)';}
+  if(tabFriends){tabFriends.style.background=mode==='friends'?'rgba(245,200,66,.15)':'transparent';tabFriends.style.color=mode==='friends'?'var(--gold)':'var(--muted2)';}
+  renderSocialFeed();
+}
+
+async function toggleFollow(playerId){
+  if(!currentUser||playerId===currentUser.id) return;
+  var idx=_myFollowing.indexOf(playerId);
+  if(idx>=0){
+    // Unfollow
+    await window.fetch(supabaseUrl+'/rest/v1/follows?follower_id=eq.'+encodeURIComponent(currentUser.id)+'&following_id=eq.'+encodeURIComponent(playerId),{
+      method:'DELETE',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
+    });
+    _myFollowing.splice(idx,1);
+  } else {
+    // Follow
+    await window.fetch(supabaseUrl+'/rest/v1/follows',{
+      method:'POST',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({follower_id:currentUser.id,following_id:playerId})
+    });
+    _myFollowing.push(playerId);
+  }
+  renderSocialFeed();
+}
+
+async function loadMyFollowing(){
+  if(!currentUser) return;
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/follows?follower_id=eq.'+encodeURIComponent(currentUser.id)+'&select=following_id',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var data=await resp.json();
+  _myFollowing=(data||[]).map(function(f){return f.following_id;});
+}
+
 async function renderSocialFeed(){
   var feed=document.getElementById('social-feed');
   if(!feed) return;
   if(!currentUser){feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir le fil social</div>';return;}
   feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Chargement…</div>';
+  // Charger les follows
+  await loadMyFollowing();
   // Charger les 30 dernières courses de tous les joueurs (période en cours)
   var {data:runs}=await supabaseClient.from('runs')
     .select('id,player_id,points,distance,time,elevation,run_date,description,photo,period')
     .eq('period',0)
     .order('run_date',{ascending:false})
-    .limit(30);
+    .limit(50);
+  // Filtrer par amis si mode friends
+  if(_feedMode==='friends'&&runs){
+    runs=runs.filter(function(r){return r.player_id===currentUser.id||_myFollowing.indexOf(r.player_id)>=0;});
+  }
   if(!runs||!runs.length){
-    feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Aucune activité pour le moment.<br>Synchronise Strava pour poster ta première course !</div>';
+    var emptyMsg=_feedMode==='friends'
+      ?'Aucune activité de tes amis.<br>Suis des RP depuis le fil "Tous les RP" !'
+      :'Aucune activité pour le moment.<br>Synchronise Strava pour poster ta première course !';
+    feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">'+emptyMsg+'</div>';
     return;
   }
   // Charger les joueurs
@@ -6488,7 +6545,9 @@ async function renderSocialFeed(){
     var comms=commMap[r.id]||[];
     var commsHtml=comms.map(function(c){
       var cp=pMap[c.player_id]||{username:'?'};
-      return '<div style="display:flex;gap:.4rem;padding:.3rem 0;border-top:1px solid rgba(30,37,53,.5)"><span style="font-weight:700;font-size:.7rem;color:var(--text);flex-shrink:0">'+cp.username+'</span><span style="font-size:.7rem;color:var(--muted2)">'+c.content+'</span></div>';
+      var isMine=c.player_id===currentUser.id;
+      var delBtn=isMine?'<span onclick="deleteComment(\''+c.id+'\')" style="margin-left:auto;color:#ff4444;cursor:pointer;font-size:.65rem;flex-shrink:0;padding:0 .2rem" title="Supprimer">✕</span>':'';
+      return '<div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-top:1px solid rgba(30,37,53,.5)"><span style="font-weight:700;font-size:.7rem;color:var(--text);flex-shrink:0">'+cp.username+'</span><span style="font-size:.7rem;color:var(--muted2);flex:1">'+c.content+'</span>'+delBtn+'</div>';
     }).join('');
 
     return '<div class="block" style="border-color:rgba(74,144,255,.15)">'
@@ -6497,7 +6556,9 @@ async function renderSocialFeed(){
       +'<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">'
       +avatarHtml
       +'<div style="flex:1;min-width:0">'
-      +'<div style="font-weight:700;font-size:.85rem;color:var(--text)">'+p.username+' '+natFlagHtml(p.nat)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.4rem"><div style="font-weight:700;font-size:.85rem;color:var(--text)">'+p.username+'</div>'+natFlagHtml(p.nat)
+      +(r.player_id!==currentUser.id?'<button onclick="event.stopPropagation();toggleFollow(\''+r.player_id+'\')" style="font-size:.55rem;padding:.12rem .4rem;border-radius:4px;border:1px solid '+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.4)':'rgba(45,219,128,.4)')+';background:'+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.08)':'rgba(45,219,128,.08)')+';color:'+(_myFollowing.indexOf(r.player_id)>=0?'#ff6060':'var(--green)')+';cursor:pointer;font-weight:700">'+(_myFollowing.indexOf(r.player_id)>=0?'✕ Retirer':'+ Suivre')+'</button>':'')
+      +'</div>'
       +'<div style="font-size:.62rem;color:var(--muted)">'+dateStr+'</div>'
       +'</div>'
       +'<div style="font-family:Space Mono,monospace;font-size:.9rem;font-weight:700;color:var(--gold)">'+pts.toLocaleString('fr')+' pts</div>'
@@ -6744,6 +6805,15 @@ async function toggleReaction(runId,type){
       body:JSON.stringify({run_id:runId,player_id:currentUser.id,type:type})
     });
   }
+  renderSocialFeed();
+}
+
+async function deleteComment(commentId){
+  if(!currentUser) return;
+  await window.fetch(supabaseUrl+'/rest/v1/run_comments?id=eq.'+encodeURIComponent(commentId)+'&player_id=eq.'+encodeURIComponent(currentUser.id),{
+    method:'DELETE',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
+  });
   renderSocialFeed();
 }
 
