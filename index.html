@@ -6800,7 +6800,7 @@ async function renderSocialFeed(){
       +'<div style="font-size:.75rem;color:var(--muted2)">⏱ '+timeMin+' min</div>'
       +'</div>'
       +descHtml
-      +(r.polyline?'<canvas id="map-'+r.id+'" width="400" height="180" style="width:100%;height:auto;border-radius:8px;margin:.4rem 0;border:1px solid rgba(74,144,255,.1)"></canvas>':'')
+      +''
       +photoHtml
       // Réactions
       +'<div style="display:flex;gap:.4rem;margin-top:.4rem">'
@@ -6819,8 +6819,6 @@ async function renderSocialFeed(){
       +'</div>'
       +'</div></div>';
   }).join('');
-  // Dessiner les mini-cartes des tracés GPS
-  setTimeout(function(){drawFeedMaps(runs);},100);
 }
 
 function publishRunDesc(runId){
@@ -6966,6 +6964,7 @@ async function shareRunCard(runId){
   cx.fillStyle='#ffffff';
   cx.fillText('LEAGUE',startX+rlW,38);
   // Slogan sous le titre
+  cx.textAlign='center';
   cx.font='400 12px sans-serif';cx.fillStyle='#4a90ff';
   cx.fillText('— L\'effort devient un jeu —',300,56);
 
