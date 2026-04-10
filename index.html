@@ -1573,7 +1573,10 @@ select option{background:#040c1c}
     </div>
     <!-- Recherche RP -->
     <div style="margin-bottom:.75rem">
-      <input id="feed-search" type="text" placeholder="🔍 Rechercher un RP…" maxlength="30" oninput="filterFeedByName(this.value)" style="width:100%;box-sizing:border-box;padding:.45rem .7rem;border-radius:8px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none;font-family:'Space Mono',monospace" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='rgba(74,144,255,.15)'">
+      <div style="position:relative">
+        <input id="feed-search" type="text" placeholder="🔍 Rechercher un RP…" maxlength="30" oninput="searchPlayers(this.value)" style="width:100%;box-sizing:border-box;padding:.45rem .7rem;border-radius:8px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none;font-family:'Space Mono',monospace" onfocus="this.style.borderColor='var(--gold)'" onblur="setTimeout(function(){document.getElementById('search-results').style.display='none';},200);this.style.borderColor='rgba(74,144,255,.15)'">
+        <div id="search-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#080e1e;border:1px solid rgba(74,144,255,.2);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.5)"></div>
+      </div>
     </div>
     <!-- Feed -->
     <div id="social-feed" style="display:flex;flex-direction:column;gap:1rem">
@@ -6607,14 +6610,38 @@ async function deleteTeamMessage(msgId){
 var _feedMode='all';
 var _myFollowing=[];
 
-function filterFeedByName(query){
-  var cards=document.querySelectorAll('#social-feed > .block');
-  var q=query.toLowerCase().trim();
-  cards.forEach(function(card){
-    if(!q){card.style.display='';return;}
-    var name=card.textContent.toLowerCase();
-    card.style.display=name.indexOf(q)>=0?'':'none';
-  });
+var _searchTimeout=null;
+function searchPlayers(query){
+  var el=document.getElementById('search-results');
+  if(!el) return;
+  var q=query.trim();
+  if(q.length<2){el.style.display='none';return;}
+  clearTimeout(_searchTimeout);
+  _searchTimeout=setTimeout(async function(){
+    var resp=await window.fetch(supabaseUrl+'/rest/v1/players?username=ilike.*'+encodeURIComponent(q)+'*&select=id,username,nat,avatar,grade&limit=8',{
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+    });
+    var players=await resp.json();
+    if(!players||!players.length){
+      el.innerHTML='<div style="padding:.6rem;font-size:.72rem;color:var(--muted2);text-align:center">Aucun RP trouvé</div>';
+      el.style.display='block';
+      return;
+    }
+    var isFollowing=_myFollowing||[];
+    el.innerHTML=players.map(function(p){
+      var gc=GRADE_COLORS[p.grade]||'#8090b0';
+      var isMe=currentUser&&p.id===currentUser.id;
+      var followed=isFollowing.indexOf(p.id)>=0;
+      return '<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;cursor:pointer;border-bottom:1px solid rgba(30,37,53,.4);transition:background .1s" onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'transparent\'">'
+        +(p.avatar?'<img src="'+p.avatar+'" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1.5px solid '+gc+'">':'<div style="width:28px;height:28px;border-radius:6px;border:1.5px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:'+gc+'">'+p.username.charAt(0).toUpperCase()+'</div>')
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.78rem;font-weight:700;color:var(--text)">'+p.username+' '+natFlagHtml(p.nat)+'</div>'
+        +'</div>'
+        +(!isMe?'<button onclick="event.stopPropagation();toggleFollow(\''+p.id+'\');searchPlayers(document.getElementById(\'feed-search\').value)" style="font-size:.55rem;padding:.12rem .4rem;border-radius:4px;border:1px solid '+(followed?'rgba(255,68,68,.4)':'rgba(45,219,128,.4)')+';background:'+(followed?'rgba(255,68,68,.08)':'rgba(45,219,128,.08)')+';color:'+(followed?'#ff6060':'var(--green)')+';cursor:pointer;font-weight:700">'+(followed?'✕ Retirer':'+ Suivre')+'</button>':'')
+        +'</div>';
+    }).join('');
+    el.style.display='block';
+  },300);
 }
 
 function switchFeedTab(mode){
@@ -6960,22 +6987,22 @@ async function shareRunCard(runId){
   var fullW=cx.measureText('RUNYX LEAGUE').width;
   var startX=300-fullW/2;
   cx.textAlign='left';
-  cx.fillText('RUNYX ',startX,38);
+  cx.fillText('RUNYX ',startX,35);
   cx.fillStyle='#ffffff';
-  cx.fillText('LEAGUE',startX+rlW,38);
+  cx.fillText('LEAGUE',startX+rlW,35);
   // Slogan sous le titre
   cx.textAlign='center';
-  cx.font='400 12px sans-serif';cx.fillStyle='#4a90ff';
-  cx.fillText('— L\'effort devient un jeu —',300,56);
+  cx.font='400 11px sans-serif';cx.fillStyle='#4a90ff';
+  cx.fillText('— L\'effort devient un jeu —',300,55);
 
   // Ligne dorée
   cx.strokeStyle='rgba(245,200,66,.3)';cx.lineWidth=1;
-  cx.beginPath();cx.moveTo(100,66);cx.lineTo(500,66);cx.stroke();
+  cx.beginPath();cx.moveTo(80,68);cx.lineTo(520,68);cx.stroke();
 
   // Avatar (cercle)
   var gc=GRADE_COLORS[player.grade]||'#8090b0';
   cx.save();
-  cx.beginPath();cx.arc(90,120,32,0,Math.PI*2);cx.clip();
+  cx.beginPath();cx.arc(90,130,32,0,Math.PI*2);cx.clip();
   if(player.avatar){
     try{
       var img=new Image();
@@ -6984,30 +7011,30 @@ async function shareRunCard(runId){
         img.onload=resolve;img.onerror=resolve;
         img.src=player.avatar;
       });
-      cx.drawImage(img,58,88,64,64);
+      cx.drawImage(img,58,98,64,64);
     }catch(e){
-      cx.fillStyle=gc+'44';cx.fillRect(58,88,64,64);
+      cx.fillStyle=gc+'44';cx.fillRect(58,98,64,64);
     }
   } else {
-    cx.fillStyle=gc+'44';cx.fillRect(58,88,64,64);
+    cx.fillStyle=gc+'44';cx.fillRect(58,98,64,64);
     cx.restore();cx.save();
     cx.font='700 24px sans-serif';cx.fillStyle=gc;cx.textAlign='center';
-    cx.fillText(player.username.charAt(0).toUpperCase(),90,128);
+    cx.fillText(player.username.charAt(0).toUpperCase(),90,138);
   }
   cx.restore();
 
   // Bordure avatar
   cx.strokeStyle=gc;cx.lineWidth=2.5;
-  cx.beginPath();cx.arc(90,120,32,0,Math.PI*2);cx.stroke();
+  cx.beginPath();cx.arc(90,130,32,0,Math.PI*2);cx.stroke();
 
   // Nom + drapeau + ID
   cx.textAlign='left';
   cx.font='700 22px sans-serif';cx.fillStyle='#ffffff';
-  cx.fillText(player.username,138,112);
+  cx.fillText(player.username,138,122);
   cx.font='400 13px monospace';cx.fillStyle='#8aaccc';
-  cx.fillText('#RL-'+(player.rtw_id||'?????')+'  '+player.nat,138,132);
+  cx.fillText('#RL-'+(player.rtw_id||'?????')+'  '+player.nat,138,142);
   cx.font='400 12px sans-serif';cx.fillStyle='#5a6080';
-  cx.fillText(dateStr,138,150);
+  cx.fillText(dateStr,138,160);
 
   // Stats — 4 blocs
   var stats=[
@@ -7019,33 +7046,34 @@ async function shareRunCard(runId){
   var sx=40;
   stats.forEach(function(s,i){
     var bx=sx+i*138;
-    // Bloc fond
     cx.fillStyle='rgba(30,37,53,.6)';
-    cx.beginPath();
-    cx.roundRect(bx,185,125,70,8);cx.fill();
+    cx.beginPath();cx.roundRect(bx,195,125,70,8);cx.fill();
     cx.strokeStyle='rgba(74,144,255,.2)';cx.lineWidth=1;
-    cx.beginPath();cx.roundRect(bx,185,125,70,8);cx.stroke();
-    // Label
+    cx.beginPath();cx.roundRect(bx,195,125,70,8);cx.stroke();
     cx.font='600 9px sans-serif';cx.fillStyle='#5a6080';cx.textAlign='center';
-    cx.fillText(s.label,bx+62,203);
-    // Value
+    cx.fillText(s.label,bx+62,213);
     cx.font='700 20px monospace';cx.fillStyle=s.color;
-    cx.fillText(s.value,bx+62,235);
+    cx.fillText(s.value,bx+62,245);
   });
 
   // Description si présente
   if(run.description){
     cx.font='400 14px sans-serif';cx.fillStyle='#c0c8d8';cx.textAlign='left';
     var desc=run.description.length>80?run.description.substring(0,80)+'…':run.description;
-    cx.fillText('"'+desc+'"',45,295);
+    cx.fillText('"'+desc+'"',45,305);
   }
 
+  // Icônes réseaux sociaux
+  cx.textAlign='center';
+  cx.font='400 11px sans-serif';cx.fillStyle='#5a6080';
+  cx.fillText('📘 Facebook  ·  📸 Instagram  ·  🐦 Twitter  ·  💬 WhatsApp',300,335);
+
   // Footer
-  cx.font='700 18px sans-serif';cx.fillStyle='#ffffff';cx.textAlign='center';
-  cx.fillText('runyxleague.com',300,348);
+  cx.font='700 18px sans-serif';cx.fillStyle='#ffffff';
+  cx.fillText('runyxleague.com',300,358);
   // Code parrainage
   cx.font='700 14px monospace';cx.fillStyle='#f5c842';
-  cx.fillText('Rejoins-moi : code RL-'+(player.rtw_id||'?????'),300,370);
+  cx.fillText('Rejoins-moi : code RL-'+(player.rtw_id||'?????'),300,378);
 
   // Partager ou télécharger
   cv.toBlob(async function(blob){
@@ -9024,69 +9052,6 @@ async function syncStravaActivities(){
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*100)/100,time:Math.round(timeMin*10)/10,elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null,polyline:polyline||null})
       });
-      // Générer la mini-carte du parcours comme photo auto
-      if(polyline){
-        var _pts=decodePolyline(polyline);
-        if(_pts.length>2){
-          var _cv=document.createElement('canvas');
-          _cv.width=400;_cv.height=250;
-          var _cx=_cv.getContext('2d');
-          // Fond sombre
-          _cx.fillStyle='#080e1e';_cx.fillRect(0,0,400,250);
-          // Grille subtile
-          _cx.strokeStyle='rgba(74,144,255,.06)';_cx.lineWidth=0.5;
-          for(var _gi=0;_gi<400;_gi+=20){_cx.beginPath();_cx.moveTo(_gi,0);_cx.lineTo(_gi,250);_cx.stroke();}
-          for(var _gj=0;_gj<250;_gj+=20){_cx.beginPath();_cx.moveTo(0,_gj);_cx.lineTo(400,_gj);_cx.stroke();}
-          // Calculer les bornes
-          var _minLat=Infinity,_maxLat=-Infinity,_minLng=Infinity,_maxLng=-Infinity;
-          _pts.forEach(function(p){
-            if(p[0]<_minLat)_minLat=p[0];if(p[0]>_maxLat)_maxLat=p[0];
-            if(p[1]<_minLng)_minLng=p[1];if(p[1]>_maxLng)_maxLng=p[1];
-          });
-          var _pad=20;var _w=400-_pad*2;var _h=250-_pad*2;
-          var _dLat=_maxLat-_minLat||0.001;var _dLng=_maxLng-_minLng||0.001;
-          var _scale=Math.min(_w/_dLng,_h/_dLat);
-          var _ox=_pad+((_w-_dLng*_scale)/2);var _oy=_pad+((_h-_dLat*_scale)/2);
-          // Dessiner le tracé
-          _cx.beginPath();
-          _pts.forEach(function(p,i){
-            var x=_ox+(p[1]-_minLng)*_scale;
-            var y=250-(_oy+(p[0]-_minLat)*_scale);
-            if(i===0)_cx.moveTo(x,y);else _cx.lineTo(x,y);
-          });
-          _cx.strokeStyle='#20d0e0';_cx.lineWidth=2.5;_cx.lineCap='round';_cx.lineJoin='round';_cx.stroke();
-          // Glow
-          _cx.strokeStyle='rgba(32,208,224,.3)';_cx.lineWidth=6;_cx.stroke();
-          // Point départ (vert)
-          var _sx=_ox+(_pts[0][1]-_minLng)*_scale;var _sy=250-(_oy+(_pts[0][0]-_minLat)*_scale);
-          _cx.fillStyle='#2ddb80';_cx.beginPath();_cx.arc(_sx,_sy,5,0,Math.PI*2);_cx.fill();
-          // Point arrivée (rouge)
-          var _ex=_ox+(_pts[_pts.length-1][1]-_minLng)*_scale;var _ey=250-(_oy+(_pts[_pts.length-1][0]-_minLat)*_scale);
-          _cx.fillStyle='#ff4444';_cx.beginPath();_cx.arc(_ex,_ey,5,0,Math.PI*2);_cx.fill();
-          // Sauvegarder comme photo
-          var _mapB64=_cv.toDataURL('image/jpeg',0.7);
-          window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runDateFull)+'&player_id=eq.'+encodeURIComponent(currentUser.id),{
-            method:'GET',
-            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-          });
-          // On stocke la carte comme première photo via un PATCH sur la course qu'on vient d'insérer
-          // Il faut retrouver l'ID de la course - on utilise run_date + player_id
-          window.fetch(supabaseUrl+'/rest/v1/runs?player_id=eq.'+encodeURIComponent(currentUser.id)+'&run_date=eq.'+encodeURIComponent(runDateFull)+'&select=id,photo',{
-            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-          }).then(function(r){return r.json();}).then(function(d){
-            if(d&&d[0]){
-              var photos=[];
-              if(d[0].photo){try{photos=JSON.parse(d[0].photo);}catch(x){photos=[d[0].photo];}}
-              photos.unshift(_mapB64);
-              window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(d[0].id),{
-                method:'PATCH',
-                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-                body:JSON.stringify({photo:JSON.stringify(photos)})
-              });
-            }
-          });
-        }
-      }
       // Décoder GPS en hexagones
       var hexes=[];
       if(polyline&&typeof h3!=='undefined'){
