@@ -5046,13 +5046,15 @@ async function loadLandsOnMap(){
   }
   window._rpColorMap=rpColorMap;
 
-  // Charger mes passages pour afficher les lands visitées
-  if(myId){
+  // Charger mes passages pour afficher les lands visitées (sauf si exploration terminée)
+  if(myId&&!window._hidePassages){
     var passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?player_id=eq.'+encodeURIComponent(myId)+'&select=land_id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
     });
     var passData=await passResp.json();
     window._myPassageLandIds=(passData||[]).map(function(p){return p.land_id;});
+  } else if(window._hidePassages){
+    window._myPassageLandIds=[];
   }
 
   lands.forEach(function(land){
@@ -5930,11 +5932,12 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
-  // Vider les tracés blancs (ne plus afficher les lands free visitées)
+  // Flag pour ne plus afficher les passages sur la carte
+  window._hidePassages=true;
   _lastExploredHexes=[];
   window._recentExploredHexes=[];
   window._myPassageLandIds=[];
-  // Recharger la carte (les lands free ne s'afficheront plus)
+  // Recharger la carte
   loadLandsOnMap();
   renderMyLands();
   showToast('✓ Exploration terminée — tes locations sont enregistrées');
@@ -9149,6 +9152,7 @@ async function syncStravaActivities(){
         }
         // Stocker les hexes explorés pour affichage sur la carte
         if(!window._recentExploredHexes) window._recentExploredHexes=[];
+        window._hidePassages=false;
         window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
       }
       resultsHtml+='<div style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;border-radius:4px">'
