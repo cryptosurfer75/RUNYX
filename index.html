@@ -8190,6 +8190,13 @@ function onboardingNav(dir){
   renderOnboardingStep();
 }
 
+
+function getBlasonIdx(team){
+  if(team&&typeof team.blason_index==='number'&&team.blason_index>=0) return team.blason_index;
+  if(team&&team.name){var i=AVAILABLE_TEAMS.findIndex(function(at){return at.name===team.name;});if(i>=0)return i;}
+  return -1;
+}
+
 var _rtwMenuLock=false;
 function navMenu(page){
   nav(page);
@@ -9203,6 +9210,7 @@ function selectAvailTeam2(idx){
   document.getElementById('t-name').value=t.name;
   document.getElementById('t-emoji').value=t.emoji||'🏃';
   document.getElementById('t-color').value=t.color||'#4a90ff';
+  window._selectedBlasonIdx=idx;
   document.getElementById('t-private').value='true';
   var banner=document.getElementById('selected-team-banner2');
   banner.style.display='flex';
@@ -9375,9 +9383,10 @@ async function createTeam(){
     return l+'-'+d;
   }
   var inviteCode=isPrivate?genInviteCode():null;
+  var bIdx=typeof window._selectedBlasonIdx==='number'?window._selectedBlasonIdx:null;
   var {data:team,error:errT}=await supabaseClient.from('teams').insert({
     name:n, city:city, emoji:emoji, color:color, bonus:0, private:isPrivate,
-    invite_code:inviteCode, created_by:currentUser.id
+    invite_code:inviteCode, created_by:currentUser.id, blason_index:bIdx
   }).select().single();
   if(errT){showToast('⚠️ '+(errT.message.includes('unique')?'Ce nom est déjà pris':errT.message));return;}
   // Ajouter le créateur comme capitaine
@@ -9516,7 +9525,7 @@ async function renderTeams(){
         var subLine=isOpen
           ?nb+' membre'+(nb>1?'s':'')+' / 20'+bonusLabel
           :'📍 '+t.city+' · '+nb+' membre'+(nb>1?'s':'')+' / 20'+bonusLabel;
-        var _bIdx=AVAILABLE_TEAMS.findIndex(function(at){return at.name===t.name;});
+        var _bIdx=getBlasonIdx(t);
         var emblemHtml=(_bIdx>=0&&AVAIL_BLASON_SMALL[_bIdx])
           ?'<div class="tmb-blason" data-bidx="'+_bIdx+'" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="cursor:pointer;flex-shrink:0;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><img src="'+AVAIL_BLASON_SMALL[_bIdx]+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1.5px solid '+teamColor+'55;display:block;pointer-events:none"></div>'
           :'<div class="tmb-blason" data-bidx="-1" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="width:38px;height:38px;border-radius:6px;border:1.5px solid '+teamColor+'55;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;cursor:pointer">'+teamEmoji+'</div>';
@@ -9577,7 +9586,7 @@ async function renderTeams(){
       if(_pe) _pe.textContent=(_myTeamData._score||0).toLocaleString('fr')+' pts';
       if(_re) _re.textContent='#'+_rank+' au classement';
       if(_lw){
-        var _bi=AVAILABLE_TEAMS.findIndex(function(at){return at.name===_myTeamData.name;});
+        var _bi=getBlasonIdx(_myTeamData);
         if(_bi>=0 && AVAIL_BLASON_SMALL[_bi]){
           _lw.innerHTML='<img src="'+AVAIL_BLASON_SMALL[_bi]+'" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:6px">';
         } else {
@@ -9611,7 +9620,7 @@ async function renderTeams(){
     if(_pcFrame&&_pcImg){
       if(_pcTeamData){
         // Chercher le blason dans AVAILABLE_TEAMS
-        var _blasonIdx=AVAILABLE_TEAMS.findIndex(function(at){return at.name===_pcTeamData.name;});
+        var _blasonIdx=getBlasonIdx(_pcTeamData);
         if(_blasonIdx>=0 && AVAIL_BLASON_SMALL[_blasonIdx]){
           _pcImg.src=AVAIL_BLASON_SMALL[_blasonIdx];
         } else {
@@ -9663,7 +9672,7 @@ async function renderTeams(){
         _mthc.innerHTML=''
           +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">'
             +'<div style="display:flex;align-items:center;gap:.75rem">'
-              +(function(){var _bi2=AVAILABLE_TEAMS.findIndex(function(at){return at.name===_myTeamData.name;});return _bi2>=0&&AVAIL_BLASON_SMALL[_bi2]?'<img src="'+AVAIL_BLASON_SMALL[_bi2]+'" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1.5px solid '+_tc+'55;flex-shrink:0">':'<div style="width:48px;height:48px;border-radius:8px;border:1.5px solid '+_tc+'55;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;background:'+_tc+'11">'+(_myTeamData.emoji||'🏃')+'</div>';})()
+              +(function(){var _bi2=getBlasonIdx(_myTeamData);return _bi2>=0&&AVAIL_BLASON_SMALL[_bi2]?'<img src="'+AVAIL_BLASON_SMALL[_bi2]+'" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1.5px solid '+_tc+'55;flex-shrink:0">':'<div style="width:48px;height:48px;border-radius:8px;border:1.5px solid '+_tc+'55;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;background:'+_tc+'11">'+(_myTeamData.emoji||'🏃')+'</div>';})()
               +'<div>'
                 +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--text)">'+(_myTeamData.name||'—')+'</div>'
                 +'<div style="font-size:.68rem;color:var(--muted2)">📍 '+(_myTeamData.city||'—')+' · '+(_myTeamData._nb||0)+' RP / 20'
