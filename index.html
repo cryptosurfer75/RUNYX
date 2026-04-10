@@ -4123,7 +4123,7 @@ async function renderHistory(){
   // Charger toutes les courses pour les stats
   var {data:allRuns,error}=await supabaseClient
     .from('runs')
-    .select('distance,time,elevation,points,run_date')
+    .select('id,distance,time,elevation,points,run_date,name,avg_hr,max_hr,calories,avg_cadence')
     .eq('player_id',currentUser.id)
     .eq('period',0)
     .order('run_date',{ascending:false});
@@ -4147,6 +4147,8 @@ async function renderHistory(){
       +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--orange)">'+(avgSpd>0?avgSpd+' km/h':'—')+'</div><div class="stat-tile-lbl">Vitesse moy.</div></div>'
       +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--green)">'+(totalElv>0?totalElv.toLocaleString('fr')+' m':'—')+'</div><div class="stat-tile-lbl">Dénivelé total</div></div>';
   }
+  window._historyRuns={};
+  runs.forEach(function(r){window._historyRuns[r.id]=r;});
   tb.innerHTML=runs.map(function(r){
     var km=r.distance||0;
     var timeMin=r.time||0;
@@ -4166,8 +4168,50 @@ async function renderHistory(){
       +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(elv>0?'↑ '+elv+' m':'—')+'</td>'
       +'<td>'+boostCell+'</td>'
       +'<td style="text-align:right"><strong style="color:var(--gold);font-family:Space Mono,monospace">'+pts.toLocaleString('fr')+'</strong></td>'
+      +'<td style="text-align:center"><span onclick="showRunDetails(\''+r.id+'\')" style="cursor:pointer;font-size:.8rem" title="Détails">ℹ️</span></td>'
     +'</tr>';
   }).join('');
+}
+
+function showRunDetails(runId){
+  var r=window._historyRuns&&window._historyRuns[runId];
+  if(!r) return;
+  var km=r.distance||0;
+  var timeMin=r.time||0;
+  var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
+  var pace=spd>0?Math.round(60/spd*10)/10:0;
+  var elv=r.elevation||0;
+  var pts=r.points||0;
+  var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+
+  function row(icon,label,val,color){
+    if(!val) return '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid rgba(30,37,53,.5)">'
+      +'<span style="font-size:.78rem;color:var(--muted2)">'+icon+' '+label+'</span>'
+      +'<span style="font-family:Space Mono,monospace;font-size:.82rem;font-weight:700;color:'+(color||'var(--text)')+'">'+val+'</span></div>';
+  }
+
+  var html='<div style="text-align:center;margin-bottom:.5rem">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--gold)">'+(r.name||'Course')+'</div>'
+    +'<div style="font-size:.65rem;color:var(--muted)">'+date+'</div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column">'
+    +row('🏃','Distance',km+' km','#20d0e0')
+    +row('⚡','Vitesse moyenne',spd+' km/h','#2ddb80')
+    +row('🏁','Allure',pace+' min/km','var(--text)')
+    +row('⏱','Durée',timeMin+' min','var(--text)')
+    +row('⛰️','Dénivelé positif',elv>0?elv+' m':null,'#ff8040')
+    +row('❤️','FC moyenne',r.avg_hr?r.avg_hr+' bpm':null,'#ff6060')
+    +row('💓','FC max',r.max_hr?r.max_hr+' bpm':null,'#ff4444')
+    +row('🔥','Calories',r.calories?r.calories+' kcal':null,'#ff8040')
+    +row('👟','Cadence',r.avg_cadence?Math.round(r.avg_cadence*2)+' pas/min':null,'var(--text)')
+    +row('🏆','Points',pts.toLocaleString('fr'),'#f5c842')
+    +'</div>';
+
+  document.getElementById('lm-title').textContent='📋 Détails de la course';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML=html;
+  openModal('land-modal');
 }
 
 /* ============================================================
@@ -6546,7 +6590,8 @@ async function renderSocialFeed(){
     var commsHtml=comms.map(function(c){
       var cp=pMap[c.player_id]||{username:'?'};
       var isMine=c.player_id===currentUser.id;
-      var delBtn=isMine?'<span onclick="deleteComment(\''+c.id+'\')" style="margin-left:auto;color:#ff4444;cursor:pointer;font-size:.65rem;flex-shrink:0;padding:0 .2rem" title="Supprimer">✕</span>':'';
+      var canDelete=isMine||isAdmin();
+      var delBtn=canDelete?'<span onclick="deleteComment(\''+c.id+'\')" style="margin-left:auto;color:#ff4444;cursor:pointer;font-size:.65rem;flex-shrink:0;padding:0 .2rem" title="Supprimer">✕</span>':'';
       return '<div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-top:1px solid rgba(30,37,53,.5)"><span style="font-weight:700;font-size:.7rem;color:var(--text);flex-shrink:0">'+cp.username+'</span><span style="font-size:.7rem;color:var(--muted2);flex:1">'+c.content+'</span>'+delBtn+'</div>';
     }).join('');
 
@@ -6810,7 +6855,9 @@ async function toggleReaction(runId,type){
 
 async function deleteComment(commentId){
   if(!currentUser) return;
-  await window.fetch(supabaseUrl+'/rest/v1/run_comments?id=eq.'+encodeURIComponent(commentId)+'&player_id=eq.'+encodeURIComponent(currentUser.id),{
+  // Admin peut supprimer n'importe quel commentaire, sinon seulement les siens
+  var filter=isAdmin()?'id=eq.'+encodeURIComponent(commentId):'id=eq.'+encodeURIComponent(commentId)+'&player_id=eq.'+encodeURIComponent(currentUser.id);
+  await window.fetch(supabaseUrl+'/rest/v1/run_comments?'+filter,{
     method:'DELETE',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
   });
@@ -8371,7 +8418,7 @@ async function syncStravaActivities(){
       await window.fetch(supabaseUrl+'/rest/v1/runs',{
         method:'POST',
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull,period:0})
+        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null})
       });
       // Décoder GPS en hexagones
       var hexes=[];
