@@ -2475,8 +2475,11 @@ async function onLoginSuccess(user, isNew){
     // Générer RL ID séquentiel (par ordre d'inscription)
     var rtwId=pd.rtw_id;
     if(!rtwId){
-      // Trouver le plus grand rtw_id existant
-      var {data:maxData}=await supabaseClient.from('players').select('rtw_id').not('rtw_id','is',null).order('rtw_id',{ascending:false}).limit(1);
+      // Trouver le plus grand rtw_id existant (XHR direct pour RLS)
+      var maxResp=await window.fetch(supabaseUrl+'/rest/v1/players?rtw_id=not.is.null&select=rtw_id&order=rtw_id.desc&limit=1',{
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+      });
+      var maxData=await maxResp.json();
       var lastNum=0;
       if(maxData&&maxData.length&&maxData[0].rtw_id){
         lastNum=parseInt(maxData[0].rtw_id,10)||0;
@@ -2569,7 +2572,7 @@ async function loadPlayersFromSupabase(){
   // 1. Charger tous les joueurs
   const { data: playersData, error: playersErr } = await supabaseClient
     .from('players')
-    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen');
+    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id');
 
   if(playersErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur players : ' + playersErr.message + '</div>';
@@ -2631,6 +2634,7 @@ async function loadPlayersFromSupabase(){
       competitive: p.competitive || false,
       buyin_debt: p.buyin_debt || false,
       frozen: p.frozen || false,
+      rtwId: p.rtw_id || null,
     };
   });
 
@@ -3309,7 +3313,8 @@ function renderDashboard(){
     var set=function(id,val){var el=document.getElementById(id);if(el)el.textContent=val;};
     // Identité
     set('pc-name', p.name||'Joueur');
-    set('pc-rtw-id', '#RL-'+(p.rtwId||p.id||'00000'));
+    var _rid=p.rtwId||p.id||'00000';
+    set('pc-rtw-id', '#RL-'+String(_rid).padStart(5,'0'));
     var flagEl=document.getElementById('pc-flag');
     if(flagEl){var _f=natFlag(p.nat);var _sq=SQUARE_FLAGS.indexOf(_f)>=0;flagEl.innerHTML='<span style="font-size:2.8rem;line-height:1;'+(_sq?'transform:scale(1.35);display:inline-block':'')+'">'+_f+'</span>';}
     // Badge grade — charger le vrai grade depuis la DB pour le joueur affiché
