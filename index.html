@@ -8199,6 +8199,26 @@ function nav(page){
         var finBtn=document.getElementById('lands-finish-btn');
         if(finBtn) finBtn.style.display='block';
       }
+      // Popup lands explorées depuis la dernière sync
+      if(window._recentExploredHexes&&window._recentExploredHexes.length>0){
+        var nb=window._recentExploredHexes.length;
+        document.getElementById('lm-title').textContent='🗺️ Exploration !';
+        document.getElementById('lm-sub').textContent='';
+        document.getElementById('lm-body').innerHTML='<div style="text-align:center;padding:.5rem 0">'
+          +'<div style="font-size:2.5rem;margin-bottom:.5rem">🏃</div>'
+          +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--gold);margin-bottom:.3rem">Tu as exploré '+nb+' Land'+(nb>1?'s':'')+'!</div>'
+          +'<div style="font-size:.75rem;color:var(--muted2);margin-bottom:.75rem">Tes passages ont été enregistrés automatiquement.<br>Les lands visitées apparaissent sur la carte.</div>'
+          +'<button onclick="closeModal(\'land-modal\')" style="padding:.45rem 1.5rem;border-radius:7px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.85rem;cursor:pointer">Explorer la carte →</button>'
+          +'</div>';
+        openModal('land-modal');
+        // Centrer la carte sur les hexes explorés
+        if(_landsMap&&typeof h3!=='undefined'){
+          var firstHex=window._recentExploredHexes[0];
+          var ll=h3.cellToLatLng(firstHex);
+          _landsMap.setView(ll,15);
+        }
+        window._recentExploredHexes=[];
+      }
     },100);
   }
   if(page==='social'){
@@ -8950,10 +8970,42 @@ function updateStravaUI(connected){
   var syncBtn=document.getElementById('strava-sync-btn');
   var block=document.getElementById('strava-connect-block');
   if(connected){
-    if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✓ Connecté</span>';
+    if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✓ Connecté</span> <span onclick="event.stopPropagation();disconnectStrava()" style="color:#ff6060;font-size:.6rem;cursor:pointer;margin-left:.5rem;text-decoration:underline">Déconnecter</span>';
     if(syncBtn) syncBtn.style.display='block';
     if(block) block.style.borderColor='rgba(45,219,128,.4)';
   }
+}
+
+async function disconnectStrava(){
+  if(!currentUser) return;
+  if(!confirm('Déconnecter Strava ? Tu pourras te reconnecter plus tard.')) return;
+  // Révoquer le token côté Strava
+  if(window.__stravaToken){
+    try{
+      await window.fetch('https://www.strava.com/oauth/deauthorize',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'access_token='+window.__stravaToken
+      });
+    }catch(e){}
+  }
+  // Supprimer les tokens en DB
+  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({strava_id:null,strava_access_token:null,strava_refresh_token:null,strava_token_expires:null})
+  });
+  window.__stravaToken=null;
+  window.__stravaRefresh=null;
+  window.__stravaExpires=null;
+  // Reset UI
+  var statusEl=document.getElementById('strava-status');
+  var syncBtn=document.getElementById('strava-sync-btn');
+  var block=document.getElementById('strava-connect-block');
+  if(statusEl) statusEl.innerHTML='Cliquer pour connecter';
+  if(syncBtn) syncBtn.style.display='none';
+  if(block) block.style.borderColor='rgba(252,76,2,.3)';
+  showToast('✓ Strava déconnecté — place libérée');
 }
 
 // Synchroniser les activités depuis Strava
@@ -9061,7 +9113,44 @@ async function syncStravaActivities(){
         hexes=Array.from(hexSet);
       }
       newActivities.push({name:a.name,pts:pts,km:km,hexes:hexes,lat:a.start_latlng?a.start_latlng[0]:0,lng:a.start_latlng?a.start_latlng[1]:0});
-      resultsHtml+='<div onclick="processStravaLands('+newActivities.length+')" style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;cursor:pointer;border-radius:4px" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'transparent\'">'
+      // Enregistrer les passages automatiquement
+      if(hexes.length>0){
+        var today=getParisTodayStr();
+        for(var hi=0;hi<hexes.length;hi++){
+          var hexId=hexes[hi];
+          // Créer la land si elle n'existe pas
+          var chkR=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=id,stars,owner_id,tenant_id',{
+            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          });
+          var chkD=await chkR.json();
+          if(!chkD||!chkD.length){
+            var ll=typeof h3!=='undefined'?h3.cellToLatLng(hexId):[0,0];
+            await window.fetch(supabaseUrl+'/rest/v1/lands',{
+              method:'POST',
+              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+              body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
+            });
+          }
+          // Enregistrer le passage
+          var passChk=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today+'&select=id',{
+            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          });
+          var passD=await passChk.json();
+          if(!passD||!passD.length){
+            var ld=(chkD&&chkD[0])?chkD[0]:null;
+            var rpcEarned=[3,6,9,12][(ld?ld.stars:0)||0];
+            await window.fetch(supabaseUrl+'/rest/v1/land_passages',{
+              method:'POST',
+              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+              body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
+            });
+          }
+        }
+        // Stocker les hexes explorés pour affichage sur la carte
+        if(!window._recentExploredHexes) window._recentExploredHexes=[];
+        window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
+      }
+      resultsHtml+='<div style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;border-radius:4px">'
         +'<span style="color:var(--text)">'+a.name+' <span style="color:var(--muted2)">'+Math.round(km*10)/10+'km</span></span>'
         +'<span style="display:flex;align-items:center;gap:.4rem"><span style="color:var(--gold);font-family:Space Mono,monospace">'+pts+' pts</span>'
         +(hexes.length?'<span style="color:var(--cyan);font-size:.6rem">'+hexes.length+' lands</span>':'')
@@ -9080,7 +9169,7 @@ async function syncStravaActivities(){
       var resultsDiv=document.getElementById('sync-results');
       var listDiv=document.getElementById('sync-results-list');
       if(resultsDiv) resultsDiv.style.display='block';
-      if(listDiv) listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">Clique sur une course pour explorer ses Lands</div>'+resultsHtml;
+      if(listDiv) listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">Courses importées · Passages Lands enregistrés automatiquement</div>'+resultsHtml;
       showToast('✓ '+newActivities.length+' activité'+(newActivities.length>1?'s':'')+' importée'+(newActivities.length>1?'s':''));
       // Rafraîchir
       if(typeof renderHistory==='function') renderHistory();
