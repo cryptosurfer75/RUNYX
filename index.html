@@ -5959,8 +5959,6 @@ async function addTotems(){
     }).addTo(_totemLayer);
   });
 
-  // Rendre rpColorMap disponible pour addTotems
-  window._rpColorMap=rpColorMap;
 }
 
 async function showExploreSelectModal(hexIds, playerId, playerName){
@@ -6673,13 +6671,20 @@ function uploadRunPhoto(input,runId){
       ctx.drawImage(img,0,0,w,h);
       var b64=cv.toDataURL('image/jpeg',0.6);
       // Sauvegarder en DB
+      console.log('[PHOTO] b64 length:',b64.length,'runId:',runId);
       window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId),{
         method:'PATCH',
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
         body:JSON.stringify({photo:b64})
-      }).then(function(){
-        showToast('📷 Photo ajoutée !');
-        renderSocialFeed();
+      }).then(function(resp){
+        console.log('[PHOTO] PATCH status:',resp.status);
+        if(resp.ok){
+          showToast('📷 Photo ajoutée !');
+          renderSocialFeed();
+        } else {
+          resp.text().then(function(t){console.error('[PHOTO] PATCH error:',t);});
+          showToast('⚠️ Erreur sauvegarde photo');
+        }
       });
     };
     img.src=e.target.result;
