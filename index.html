@@ -2103,6 +2103,16 @@ select option{background:#040c1c}
         <div id="admin-rent-msg" style="font-size:.72rem;min-height:1rem;margin-top:.3rem"></div>
       </div>
     </div>
+
+    <!-- Courses flaggées -->
+    <div class="block" style="margin-top:1rem;border-color:rgba(255,96,32,.3)">
+      <div class="block-header" style="border-color:rgba(255,96,32,.15)">
+        <div class="block-title">🚩 Courses <span class="hl">flaggées</span></div>
+      </div>
+      <div class="block-body-sm">
+        <div id="admin-flagged-list" style="font-size:.75rem;color:var(--muted2)">Chargement…</div>
+      </div>
+    </div>
   </div>
 
 <!-- ==========================================
@@ -6919,6 +6929,60 @@ async function initAdminPanel(){
   });
   // Charger l'historique
   adminLoadHistory();
+  adminLoadFlagged();
+}
+
+async function adminLoadFlagged(){
+  var el=document.getElementById('admin-flagged-list');
+  if(!el) return;
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/runs?flagged=eq.true&select=id,player_id,distance,time,elevation,points,run_date,name,avg_hr,strava_activity_id&order=run_date.desc&limit=20',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var flagged=await resp.json();
+  if(!flagged||!flagged.length){el.innerHTML='<div style="color:var(--green);font-size:.75rem">✓ Aucune course suspecte</div>';return;}
+  // Charger les noms des joueurs
+  var pids=[...new Set(flagged.map(function(r){return r.player_id;}))];
+  var {data:players}=await supabaseClient.from('players').select('id,username').in('id',pids);
+  var pMap={};
+  (players||[]).forEach(function(p){pMap[p.id]=p.username;});
+
+  el.innerHTML=flagged.map(function(r){
+    var name=pMap[r.player_id]||'?';
+    var km=r.distance||0;
+    var timeMin=r.time||0;
+    var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
+    var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'—';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .2rem;border-bottom:1px solid rgba(30,37,53,.5)">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:.72rem"><strong style="color:var(--text)">'+name+'</strong> — '+(r.name||'Course')+' <span style="color:var(--muted)">'+date+'</span></div>'
+      +'<div style="font-size:.65rem;color:var(--muted2)">'+km+' km · '+spd+' km/h · '+r.points+' pts'+(r.avg_hr?' · ❤️'+r.avg_hr:'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:.3rem;flex-shrink:0">'
+      +(r.strava_activity_id?'<a href="https://www.strava.com/activities/'+r.strava_activity_id+'" target="_blank" style="font-size:.6rem;padding:.15rem .35rem;border-radius:4px;border:1px solid rgba(252,76,2,.4);background:rgba(252,76,2,.08);color:#fc4c02;text-decoration:none;font-weight:700" title="Voir sur Strava">🔗</a>':'')
+      +'<button onclick="adminUnflagRun(\''+r.id+'\')" style="font-size:.6rem;padding:.15rem .35rem;border-radius:4px;border:1px solid rgba(45,219,128,.4);background:rgba(45,219,128,.08);color:var(--green);cursor:pointer;font-weight:700" title="Valider la course">✓</button>'
+      +'<button onclick="adminDeleteRun(\''+r.id+'\')" style="font-size:.6rem;padding:.15rem .35rem;border-radius:4px;border:1px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:var(--red);cursor:pointer;font-weight:700" title="Supprimer la course">✕</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+async function adminUnflagRun(runId){
+  await window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({flagged:false})
+  });
+  showToast('✓ Course validée');
+  adminLoadFlagged();
+}
+
+async function adminDeleteRun(runId){
+  await window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId),{
+    method:'DELETE',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
+  });
+  showToast('✕ Course supprimée');
+  adminLoadFlagged();
+  if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
 }
 
 function adminPreviewPts(){
@@ -8294,6 +8358,17 @@ async function handleStravaCallback(){
       window.__stravaRefresh=data.refresh_token;
       window.__stravaExpires=data.expires_at;
       var stravaId=data.athlete?data.athlete.id:null;
+      // Anti-triche : vérifier que ce Strava n'est pas déjà lié à un autre RP
+      if(stravaId&&currentUser){
+        var checkResp=await window.fetch(supabaseUrl+'/rest/v1/players?strava_id=eq.'+stravaId+'&id=neq.'+encodeURIComponent(currentUser.id)+'&select=id,username',{
+          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+        });
+        var checkDup=await checkResp.json();
+        if(checkDup&&checkDup.length>0){
+          showToast('🚫 Ce compte Strava est déjà lié à un autre joueur ('+checkDup[0].username+'). Multi-compte interdit.');
+          return;
+        }
+      }
       // Sauvegarder en DB
       var patchData={
         strava_id:stravaId,
@@ -8407,6 +8482,56 @@ async function syncStravaActivities(){
       var timeMin=a.moving_time/60;
       var spd=timeMin>0?(km/(timeMin/60)):0;
       var elv=a.total_elevation_gain||0;
+      var polyline=a.map?a.map.summary_polyline:null;
+
+      // ── ANTI-TRICHE ──────────────────────────────
+      // 1. Activité manuelle (pas de montre/téléphone) → rejetée
+      if(a.manual){
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Activité manuelle (pas de GPS)</div>';
+        continue;
+      }
+      // 2. Pas de tracé GPS → rejetée
+      if(!polyline){
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Aucun tracé GPS</div>';
+        continue;
+      }
+      // 3. Import GPX (fichier uploadé dans Strava) → rejetée
+      if(a.external_id&&(a.external_id.toLowerCase().endsWith('.gpx')||a.external_id.toLowerCase().endsWith('.tcx')||a.external_id.toLowerCase().endsWith('.fit')===false&&a.upload_id_str&&a.device_name==='')){
+        // Détection simple : si external_id contient .gpx
+        if(a.external_id.toLowerCase().indexOf('.gpx')>=0){
+          resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Import GPX non autorisé</div>';
+          continue;
+        }
+      }
+      // 4. Vitesse moyenne > 20 km/h → rejetée
+      if(spd>20){
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Vitesse trop élevée ('+Math.round(spd)+' km/h)</div>';
+        continue;
+      }
+      // 5. Accélération GPS : vérifier les segments de la polyline
+      var gpsRejected=false;
+      if(polyline&&typeof decodePolyline==='function'){
+        var gpsPoints=decodePolyline(polyline);
+        for(var g=1;g<gpsPoints.length;g++){
+          var dLat=gpsPoints[g][0]-gpsPoints[g-1][0];
+          var dLng=gpsPoints[g][1]-gpsPoints[g-1][1];
+          // Distance approx en km (1° lat ≈ 111km, 1° lng ≈ 111km * cos(lat))
+          var distKm=Math.sqrt(Math.pow(dLat*111,2)+Math.pow(dLng*111*Math.cos(gpsPoints[g][0]*Math.PI/180),2));
+          // Temps estimé entre 2 points (réparti uniformément)
+          var segTime=timeMin/gpsPoints.length;
+          if(segTime>0){
+            var segSpd=distKm/(segTime/60);
+            if(segSpd>25){
+              gpsRejected=true;
+              break;
+            }
+          }
+        }
+      }
+      // Si accélération suspecte : on importe mais on flag
+      var _accelFlag=gpsRejected;
+      // ── FIN ANTI-TRICHE ──────────────────────────
+
       // Vérifier si déjà importée
       var runDateFull=a.start_date||'';
       var {data:existingRun}=await supabaseClient.from('runs').select('id').eq('player_id',currentUser.id).eq('run_date',runDateFull).maybeSingle();
@@ -8418,11 +8543,10 @@ async function syncStravaActivities(){
       await window.fetch(supabaseUrl+'/rest/v1/runs',{
         method:'POST',
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null})
+        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null})
       });
       // Décoder GPS en hexagones
       var hexes=[];
-      var polyline=a.map?a.map.summary_polyline:null;
       if(polyline&&typeof h3!=='undefined'){
         var decoded=decodePolyline(polyline);
         var hexSet=new Set();
