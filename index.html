@@ -8781,7 +8781,12 @@ async function syncStravaActivities(){
           continue;
         }
       }
-      // 4. Vitesse moyenne > 20 km/h → rejetée
+      // 4. Distance < 1 km → rejetée
+      if(km<1){
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Distance trop courte ('+Math.round(km*1000)+' m)</div>';
+        continue;
+      }
+      // 5. Vitesse moyenne > 20 km/h → rejetée
       if(spd>20){
         resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Vitesse trop élevée ('+Math.round(spd)+' km/h)</div>';
         continue;
