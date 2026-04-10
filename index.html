@@ -1435,6 +1435,15 @@ select option{background:#040c1c}
             <tbody id="myteam-tbody"></tbody>
           </table>
         </div>
+        <!-- Chat Team -->
+        <div style="border-top:1px solid rgba(74,144,255,.2);padding:.65rem .85rem">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;color:var(--gold);margin-bottom:.4rem">💬 Chat Team</div>
+          <div id="team-chat-messages" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;margin-bottom:.5rem;scrollbar-width:thin;scrollbar-color:rgba(74,144,255,.2) transparent"></div>
+          <div style="display:flex;gap:.4rem">
+            <input id="team-chat-input" type="text" placeholder="Message…" maxlength="300" style="flex:1;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none" onkeydown="if(event.key==='Enter')sendTeamMessage()">
+            <button onclick="sendTeamMessage()" style="padding:.4rem .7rem;border-radius:6px;border:1px solid rgba(74,144,255,.25);background:rgba(74,144,255,.08);color:#4a90ff;font-size:.75rem;font-weight:700;cursor:pointer">→</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -6464,6 +6473,76 @@ async function adminSetPeriodEnd(minutes){
 //  ADMIN — Import de courses
 // ══════════════════════════════════════════════════════════════════════
 /* ============================================================
+   TEAM CHAT
+============================================================ */
+var _teamChatId=null;
+
+async function loadTeamChat(teamId){
+  _teamChatId=teamId;
+  var el=document.getElementById('team-chat-messages');
+  if(!el||!teamId) return;
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/team_messages?team_id=eq.'+encodeURIComponent(teamId)+'&select=id,player_id,content,created_at&order=created_at.desc&limit=50',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var msgs=await resp.json();
+  if(!msgs||!msgs.length){
+    el.innerHTML='<div style="text-align:center;padding:.75rem;color:var(--muted2);font-size:.7rem">Aucun message. Sois le premier !</div>';
+    return;
+  }
+  // Charger les noms
+  var pids=[...new Set(msgs.map(function(m){return m.player_id;}))];
+  var {data:players}=await supabaseClient.from('players').select('id,username,avatar').in('id',pids);
+  var pMap={};
+  (players||[]).forEach(function(p){pMap[p.id]=p;});
+  // Afficher du plus ancien au plus récent
+  msgs.reverse();
+  el.innerHTML=msgs.map(function(m){
+    var p=pMap[m.player_id]||{username:'?',avatar:null};
+    var isMe=m.player_id===currentUser.id;
+    var canDel=isMe||isAdmin();
+    var time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'}):'';
+    var date=m.created_at?new Date(m.created_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'';
+    return '<div style="display:flex;gap:.4rem;align-items:flex-start'+(isMe?';flex-direction:row-reverse':'')+'">'
+      +(p.avatar?'<img src="'+p.avatar+'" style="width:24px;height:24px;border-radius:6px;object-fit:cover;flex-shrink:0">':'<div style="width:24px;height:24px;border-radius:6px;background:rgba(74,144,255,.15);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:var(--muted2);flex-shrink:0">'+p.username.charAt(0).toUpperCase()+'</div>')
+      +'<div style="max-width:75%;padding:.35rem .55rem;border-radius:8px;background:'+(isMe?'rgba(74,144,255,.12)':'rgba(30,37,53,.6)')+';border:1px solid '+(isMe?'rgba(74,144,255,.2)':'rgba(30,37,53,.8)')+'">'
+      +'<div style="display:flex;align-items:center;gap:.3rem;margin-bottom:.15rem">'
+      +'<span style="font-size:.6rem;font-weight:700;color:'+(isMe?'#4a90ff':'var(--text)')+'">'+p.username+'</span>'
+      +'<span style="font-size:.5rem;color:var(--muted)">'+date+' '+time+'</span>'
+      +(canDel?'<span onclick="deleteTeamMessage(\''+m.id+'\')" style="margin-left:auto;color:#ff4444;cursor:pointer;font-size:.55rem;padding:0 .15rem" title="Supprimer">✕</span>':'')
+      +'</div>'
+      +'<div style="font-size:.72rem;color:var(--text);line-height:1.4;word-break:break-word">'+m.content+'</div>'
+      +'</div></div>';
+  }).join('');
+  // Scroll en bas
+  el.scrollTop=el.scrollHeight;
+}
+
+async function sendTeamMessage(){
+  if(!currentUser||!_teamChatId) return;
+  var input=document.getElementById('team-chat-input');
+  if(!input) return;
+  var content=input.value.trim();
+  if(!content) return;
+  await window.fetch(supabaseUrl+'/rest/v1/team_messages',{
+    method:'POST',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({team_id:_teamChatId,player_id:currentUser.id,content:content})
+  });
+  input.value='';
+  loadTeamChat(_teamChatId);
+}
+
+async function deleteTeamMessage(msgId){
+  if(!currentUser) return;
+  var filter=isAdmin()?'id=eq.'+encodeURIComponent(msgId):'id=eq.'+encodeURIComponent(msgId)+'&player_id=eq.'+encodeURIComponent(currentUser.id);
+  await window.fetch(supabaseUrl+'/rest/v1/team_messages?'+filter,{
+    method:'DELETE',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
+  });
+  loadTeamChat(_teamChatId);
+}
+
+/* ============================================================
    SOCIAL FEED
 ============================================================ */
 var _feedMode='all';
@@ -6599,8 +6678,8 @@ async function renderSocialFeed(){
       photoHtml='<div style="display:flex;gap:6px;margin:.4rem 0;flex-wrap:wrap">';
       photos.forEach(function(ph,pi){
         photoHtml+='<div style="position:relative;display:inline-block">'
-          +'<img src="'+ph+'" style="max-width:140px;max-height:140px;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;object-fit:cover" loading="lazy">'
-          +(isMyRun?'<span onclick="removeRunPhoto(\''+r.id+'\','+pi+')" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.7);color:#ff4444;font-size:.55rem;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</span>':'')
+          +'<img src="'+ph+'" onclick="zoomPhoto(this.src)" style="max-width:140px;max-height:140px;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;object-fit:cover;cursor:pointer" loading="lazy">'
+          +(isMyRun||isAdmin()?'<span onclick="removeRunPhoto(\''+r.id+'\','+pi+')" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.7);color:#ff4444;font-size:.55rem;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</span>':'')
           +'</div>';
       });
       photoHtml+='</div>';
@@ -6702,6 +6781,13 @@ function uploadRunPhoto(input,runId){
   };
   reader.readAsDataURL(file);
   input.value='';
+}
+
+function zoomPhoto(src){
+  document.getElementById('lm-title').textContent='';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML='<div style="text-align:center"><img src="'+src+'" style="max-width:100%;max-height:70vh;border-radius:10px;display:inline-block"></div>';
+  openModal('land-modal');
 }
 
 function removeRunPhoto(runId,index){
@@ -9301,6 +9387,8 @@ async function renderTeams(){
           _mta.innerHTML=actHtml;
           _mta.style.display='flex';
         }
+        // Charger le chat team
+        if(typeof loadTeamChat==='function') loadTeamChat(myTeamId);
       }
     }
 
