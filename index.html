@@ -956,8 +956,9 @@ select option{background:#040c1c}
           width:54px;height:54px;border-radius:10px;
           background:rgba(144,96,240,.1);border:1px solid rgba(144,96,240,.3);
           display:flex;align-items:center;justify-content:center;
-          cursor:pointer;transition:all .15s;
+          cursor:pointer;transition:all .15s;position:relative;
         " title="Fil social — courses, photos &amp; commentaires" onmouseover="this.style.background='rgba(144,96,240,.22)'" onmouseout="this.style.background='rgba(144,96,240,.1)'">
+          <div id="social-notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#ff4444;border:2px solid #020408;font-size:.55rem;font-weight:700;color:#fff;font-family:'Space Mono',monospace;line-height:16px;text-align:center"></div>
           <svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
             <!-- Bulles de dialogue -->
             <ellipse cx="18" cy="14" rx="10" ry="7" fill="#ff8c2a" opacity=".95"/>
@@ -2503,6 +2504,10 @@ async function onLoginSuccess(user, isNew){
   // Loyer mensuel lands — vérifier et débiter le 5 du mois
   if(typeof processMonthlyRent==='function'){
     setTimeout(function(){ processMonthlyRent(); }, 2000);
+  }
+  // Vérifier les notifications sociales
+  if(typeof checkSocialNotifs==='function'){
+    setTimeout(function(){ checkSocialNotifs(); }, 2500);
   }
   if(isNew){
     setTimeout(function(){if(typeof nav==='function') nav('dashboard');},300);
@@ -6553,13 +6558,22 @@ async function shareRunCard(runId){
   cx.strokeRect(8,8,584,384);
 
   // Logo RUNYX LEAGUE en haut
-  cx.font='900 28px sans-serif';cx.fillStyle='#f5c842';cx.letterSpacing='4px';
-  cx.textAlign='center';
-  cx.fillText('RUNYX LEAGUE',300,45);
+  cx.font='900 28px sans-serif';cx.textAlign='center';cx.letterSpacing='4px';
+  cx.fillStyle='#f5c842';
+  var rlW=cx.measureText('RUNYX ').width;
+  var fullW=cx.measureText('RUNYX LEAGUE').width;
+  var startX=300-fullW/2;
+  cx.textAlign='left';
+  cx.fillText('RUNYX ',startX,38);
+  cx.fillStyle='#ffffff';
+  cx.fillText('LEAGUE',startX+rlW,38);
+  // Slogan sous le titre
+  cx.font='400 12px sans-serif';cx.fillStyle='#4a90ff';
+  cx.fillText('— L\'effort devient un jeu —',300,56);
 
   // Ligne dorée
   cx.strokeStyle='rgba(245,200,66,.3)';cx.lineWidth=1;
-  cx.beginPath();cx.moveTo(100,58);cx.lineTo(500,58);cx.stroke();
+  cx.beginPath();cx.moveTo(100,66);cx.lineTo(500,66);cx.stroke();
 
   // Avatar (cercle)
   var gc=GRADE_COLORS[player.grade]||'#8090b0';
@@ -6630,10 +6644,8 @@ async function shareRunCard(runId){
   }
 
   // Footer
-  cx.font='700 14px sans-serif';cx.fillStyle='#ffffff';cx.textAlign='center';
-  cx.fillText('runyxleague.com',300,335);
-  cx.font='400 12px sans-serif';cx.fillStyle='#4a90ff';
-  cx.fillText('— L\'effort devient un jeu —',300,355);
+  cx.font='700 18px sans-serif';cx.fillStyle='#ffffff';cx.textAlign='center';
+  cx.fillText('runyxleague.com',300,348);
   // Code parrainage
   cx.font='700 14px monospace';cx.fillStyle='#f5c842';
   cx.fillText('Rejoins-moi : code RL-'+(player.rtw_id||'?????'),300,370);
@@ -6642,7 +6654,8 @@ async function shareRunCard(runId){
   cv.toBlob(async function(blob){
     var file=new File([blob],'runyx-'+player.username+'-'+km+'km.png',{type:'image/png'});
     // Essayer l'API Web Share (mobile)
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if(isMobile&&navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
       try{
         await navigator.share({
           title:'RUNYX League — '+player.username,
@@ -6665,21 +6678,66 @@ async function shareRunCard(runId){
   },'image/png');
 }
 
+async function checkSocialNotifs(){
+  if(!currentUser) return;
+  // Compter les réactions + commentaires sur MES courses non vues
+  var lastSeen=localStorage.getItem('social-seen-'+currentUser.id)||'2000-01-01';
+  // Mes courses
+  var myRunsResp=await window.fetch(supabaseUrl+'/rest/v1/runs?player_id=eq.'+encodeURIComponent(currentUser.id)+'&period=eq.0&select=id',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var myRuns=await myRunsResp.json();
+  if(!myRuns||!myRuns.length){return;}
+  var ids=myRuns.map(function(r){return r.id;});
+  // Réactions récentes sur mes courses (pas les miennes)
+  var reactResp=await window.fetch(supabaseUrl+'/rest/v1/run_reactions?run_id=in.('+ids.join(',')+')'+'&player_id=neq.'+encodeURIComponent(currentUser.id)+'&created_at=gt.'+encodeURIComponent(lastSeen)+'&select=id',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var reacts=await reactResp.json();
+  // Commentaires récents sur mes courses (pas les miens)
+  var commResp=await window.fetch(supabaseUrl+'/rest/v1/run_comments?run_id=in.('+ids.join(',')+')'+'&player_id=neq.'+encodeURIComponent(currentUser.id)+'&created_at=gt.'+encodeURIComponent(lastSeen)+'&select=id',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var comms=await commResp.json();
+  var total=((reacts&&reacts.length)||0)+((comms&&comms.length)||0);
+  var badge=document.getElementById('social-notif-badge');
+  if(badge){
+    if(total>0){
+      badge.textContent=total>9?'9+':total;
+      badge.style.display='block';
+    } else {
+      badge.style.display='none';
+    }
+  }
+}
+
+// Marquer les notifs comme vues quand on ouvre la page social
+var _origNavSocial=null;
+
 async function toggleReaction(runId,type){
   if(!currentUser) return;
   // Vérifier si déjà réagi (XHR direct)
-  var checkResp=await window.fetch(supabaseUrl+'/rest/v1/run_reactions?run_id=eq.'+encodeURIComponent(runId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&type=eq.'+encodeURIComponent(type)+'&select=id',{
+  // Vérifier si déjà réagi sur cette course (n'importe quel type)
+  var checkResp=await window.fetch(supabaseUrl+'/rest/v1/run_reactions?run_id=eq.'+encodeURIComponent(runId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&select=id,type',{
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
   });
   var checkData=await checkResp.json();
-  if(checkData&&checkData.length>0){
-    // Retirer
-    await window.fetch(supabaseUrl+'/rest/v1/run_reactions?id=eq.'+encodeURIComponent(checkData[0].id),{
+  var existing=checkData&&checkData.length>0?checkData[0]:null;
+  if(existing&&existing.type===type){
+    // Même réaction → retirer
+    await window.fetch(supabaseUrl+'/rest/v1/run_reactions?id=eq.'+encodeURIComponent(existing.id),{
       method:'DELETE',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
     });
+  } else if(existing){
+    // Autre réaction → remplacer
+    await window.fetch(supabaseUrl+'/rest/v1/run_reactions?id=eq.'+encodeURIComponent(existing.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({type:type})
+    });
   } else {
-    // Ajouter
+    // Pas encore réagi → ajouter
     await window.fetch(supabaseUrl+'/rest/v1/run_reactions',{
       method:'POST',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
@@ -7558,6 +7616,10 @@ function nav(page){
   }
   if(page==='social'){
     if(typeof renderSocialFeed==='function') renderSocialFeed();
+    // Marquer les notifs comme vues
+    if(currentUser) localStorage.setItem('social-seen-'+currentUser.id,new Date().toISOString());
+    var badge=document.getElementById('social-notif-badge');
+    if(badge) badge.style.display='none';
   }
 }
 var _rtwMenuLock=false;
