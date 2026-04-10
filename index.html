@@ -906,7 +906,7 @@ select option{background:#040c1c}
         ">
           <img id="pc-avatar-img" style="width:115px;height:115px;object-fit:cover;display:none;border-radius:12px" alt="">
           <canvas id="pc-avatar-canvas" width="115" height="115" style="width:115px;height:115px;display:block"></canvas>
-          <div onclick="openAvatarPicker('change')" style="position:absolute;bottom:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(4,12,28,.85);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.65rem" title="Changer l'avatar">✏️</div>
+          <div id="avatar-edit-btn" onclick="openAvatarPicker('change')" style="display:none;position:absolute;bottom:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(4,12,28,.85);border:1px solid var(--gold);align-items:center;justify-content:center;cursor:pointer;font-size:.65rem" title="Changer l'avatar">✏️</div>
         </div>
         <div style="text-align:center">
           <div id="pc-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:2px;color:#ffffff;line-height:1.1">Lucas Moreau</div>
@@ -3443,6 +3443,11 @@ function renderDashboard(){
   }
 
   // ── Avatar PC ─────────────────────────────────────────────────
+  // Bouton edit avatar : seulement sur sa propre PC
+  var avatarEditBtn=document.getElementById('avatar-edit-btn');
+  if(avatarEditBtn){
+    avatarEditBtn.style.display=isOwn?'flex':'none';
+  }
   setTimeout(function(){
     var avatarUrl=window.__myPlayer?window.__myPlayer.avatar:null;
     var imgEl=document.getElementById('pc-avatar-img');
