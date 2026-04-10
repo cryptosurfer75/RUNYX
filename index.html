@@ -5932,6 +5932,11 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
+  // Supprimer les lands free (non louées/achetées) de la DB
+  await window.fetch(supabaseUrl+'/rest/v1/lands?status=eq.free',{
+    method:'DELETE',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
+  });
   // Flag pour ne plus afficher les passages sur la carte
   window._hidePassages=true;
   _lastExploredHexes=[];
