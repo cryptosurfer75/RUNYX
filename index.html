@@ -8849,6 +8849,16 @@ async function loadStravaToken(){
     window.__stravaRefresh=data.strava_refresh_token;
     window.__stravaExpires=data.strava_token_expires;
     updateStravaUI(true);
+    // Sync auto au login (délai 3s pour laisser le temps au chargement)
+    setTimeout(function(){
+      if(window.__stravaToken) syncStravaActivities();
+    },3000);
+    // Sync auto toutes les 5 minutes
+    if(!window._stravaPollInterval){
+      window._stravaPollInterval=setInterval(function(){
+        if(window.__stravaToken&&currentUser) syncStravaActivities();
+      },5*60*1000);
+    }
   }
 }
 
@@ -8957,7 +8967,7 @@ async function syncStravaActivities(){
       await window.fetch(supabaseUrl+'/rest/v1/runs',{
         method:'POST',
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null})
+        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin*10)/10,elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null})
       });
       // Générer la mini-carte du parcours comme photo auto
       if(polyline){
