@@ -8224,6 +8224,13 @@ function nav(page){
       }
     },100);
   }
+  // Onboarding League (première visite)
+  if(page==='league'&&currentUser&&!localStorage.getItem('league-onboarding-'+currentUser.id)){
+    localStorage.setItem('league-onboarding-'+currentUser.id,'1');
+    setTimeout(function(){
+      showOnboarding(_leagueOnboardingSlides);
+    },500);
+  }
   if(page==='social'){
     if(typeof renderSocialFeed==='function') renderSocialFeed();
     // Marquer les notifs comme vues
@@ -8234,6 +8241,7 @@ function nav(page){
 }
 // ── Onboarding (première connexion) ──
 var _onboardingStep=0;
+// Onboarding PC (première connexion)
 var _onboardingSlides=[
   {
     emoji:'🏃',
@@ -8241,14 +8249,17 @@ var _onboardingSlides=[
     text:'Tu viens de rejoindre la compétition de course à pied la plus fun.<br><br>Chaque course te rapporte des <strong style="color:var(--gold)">points</strong>. Les points déterminent ton classement dans ta <strong style="color:var(--text)">League</strong>.'
   },
   {
-    emoji:'⚡',
-    title:'Synchronise tes courses',
-    text:'Connecte <strong style="color:#fc4c02">Strava</strong> ou <strong style="color:var(--cyan)">Garmin</strong> depuis ta <strong style="color:var(--gold)">Player Card</strong>.<br><br>Le bouton <strong style="color:var(--gold)">⚡ Sync Strava / Garmin</strong> en haut de la page te permet d\'importer automatiquement tes courses.'
-  },
-  {
     emoji:'☰',
     title:'Navigue avec le menu',
     text:'Clique sur le <strong style="color:var(--gold)">logo RUNYX</strong> en haut à gauche pour ouvrir le menu.<br><br>Tu y trouveras toutes les pages : League, Player Card, Teams, Points, Lands, Social…'
+  }
+];
+// Onboarding League (première visite)
+var _leagueOnboardingSlides=[
+  {
+    emoji:'⚡',
+    title:'Synchronise tes courses',
+    text:'Connecte <strong style="color:#fc4c02">Strava</strong> ou <strong style="color:var(--cyan)">Garmin</strong> depuis ta <strong style="color:var(--gold)">Player Card</strong>.<br><br>Le bouton <strong style="color:var(--gold)">⚡ Sync Strava / Garmin</strong> en haut de la page te permet d\'importer automatiquement tes courses.'
   },
   {
     emoji:'🏆',
@@ -8257,7 +8268,8 @@ var _onboardingSlides=[
   }
 ];
 
-function showOnboarding(){
+function showOnboarding(customSlides){
+  if(customSlides) _onboardingSlides=customSlides;
   _onboardingStep=0;
   renderOnboardingStep();
   openModal('onboarding-modal');
@@ -9638,7 +9650,9 @@ async function renderTeams(){
         var teamColor=t.color||'#4a90ff';
         var isOpen=(t.invite_code===OPEN_TEAM_MARKER);
         var bonusLabel=t._bonusPct>0?' · <span style="color:var(--green)">+'+t._bonusPct+'%</span>':'';
-        var typeTag=isOpen?'':(t.private?'<span title="Team privée" style="font-size:.85rem;margin-left:.25rem">🔒</span>':'');
+        var hasMyTeam=!!window.__myTeamId;
+        var requestBtn=(!isOpen&&t.private&&!hasMyTeam&&currentUser)?'<span onclick="event.stopPropagation();requestJoinTeam(\''+t.id+'\',\''+encodeURIComponent(t.name)+'\')" title="Demander à rejoindre" style="font-size:.75rem;margin-left:.3rem;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">📩</span>':'';
+        var typeTag=isOpen?'':(t.private?'<span title="Team privée" style="font-size:.85rem;margin-left:.25rem">🔒</span>'+requestBtn:'');
         var subLine=isOpen
           ?nb+' membre'+(nb>1?'s':'')+' / 20'+bonusLabel
           :'📍 '+t.city+' · '+nb+' membre'+(nb>1?'s':'')+' / 20'+bonusLabel;
@@ -9816,6 +9830,18 @@ async function renderTeams(){
           _mta.innerHTML=actHtml;
           _mta.style.display='flex';
         }
+        // Charger les demandes d'adhésion (capitaine uniquement)
+        if(_isCap2){
+          // Injecter le conteneur s'il n'existe pas
+          if(!document.getElementById('join-requests-section')){
+            var reqSection=document.createElement('div');
+            reqSection.id='join-requests-section';
+            reqSection.style.cssText='border-top:1px solid rgba(245,200,66,.15);padding:.5rem .85rem';
+            reqSection.innerHTML='<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:2px;color:var(--gold);margin-bottom:.3rem">📩 Demandes d\'adhésion</div><div id="join-requests-list"></div>';
+            _mta.parentNode.insertBefore(reqSection,_mta.nextSibling);
+          }
+          loadJoinRequests(myTeamId);
+        }
         // Charger le chat team
         if(typeof loadTeamChat==='function') loadTeamChat(myTeamId);
       }
@@ -9905,6 +9931,72 @@ async function deleteTeamIfEmpty(teamId){
     // Supprimer la team vide
     await supabaseClient.from('teams').delete().eq('id',teamId);
   }
+}
+
+// ── Demandes de rejoindre une team ──
+async function requestJoinTeam(teamId,teamNameEnc){
+  if(!currentUser) return;
+  var teamName=decodeURIComponent(teamNameEnc);
+  // Vérifier si déjà dans une team
+  if(window.__myTeamId){showToast('⚠️ Tu es déjà dans une team');return;}
+  // Vérifier si demande déjà envoyée
+  var chk=await window.fetch(supabaseUrl+'/rest/v1/team_join_requests?team_id=eq.'+encodeURIComponent(teamId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&status=eq.pending&select=id',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var chkData=await chk.json();
+  if(chkData&&chkData.length>0){showToast('📩 Demande déjà envoyée à '+teamName);return;}
+  // Envoyer la demande
+  await window.fetch(supabaseUrl+'/rest/v1/team_join_requests',{
+    method:'POST',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({team_id:teamId,player_id:currentUser.id,status:'pending'})
+  });
+  showToast('📩 Demande envoyée à '+teamName+' — en attente du capitaine');
+}
+
+async function loadJoinRequests(teamId){
+  var el=document.getElementById('join-requests-list');
+  if(!el) return;
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/team_join_requests?team_id=eq.'+encodeURIComponent(teamId)+'&status=eq.pending&select=id,player_id,created_at',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var reqs=await resp.json();
+  if(!reqs||!reqs.length){el.innerHTML='<div style="font-size:.7rem;color:var(--muted2);padding:.3rem 0">Aucune demande en attente</div>';return;}
+  // Charger les noms
+  var pids=reqs.map(function(r){return r.player_id;});
+  var {data:players}=await supabaseClient.from('players').select('id,username,nat').in('id',pids);
+  var pMap={};(players||[]).forEach(function(p){pMap[p.id]=p;});
+  el.innerHTML=reqs.map(function(r){
+    var p=pMap[r.player_id]||{username:'?',nat:'🏳️'};
+    var date=r.created_at?new Date(r.created_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'';
+    return '<div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-bottom:1px solid rgba(30,37,53,.4)">'
+      +'<span style="font-size:.75rem;font-weight:700;color:var(--text);flex:1">'+p.username+' '+natFlagHtml(p.nat)+' <span style="font-size:.55rem;color:var(--muted)">'+date+'</span></span>'
+      +'<button onclick="handleJoinRequest(\''+r.id+'\',\''+r.player_id+'\',\''+teamId+'\',true)" style="font-size:.6rem;padding:.15rem .35rem;border-radius:4px;border:1px solid rgba(45,219,128,.4);background:rgba(45,219,128,.08);color:var(--green);cursor:pointer;font-weight:700" title="Accepter">✓</button>'
+      +'<button onclick="handleJoinRequest(\''+r.id+'\',\''+r.player_id+'\',\''+teamId+'\',false)" style="font-size:.6rem;padding:.15rem .35rem;border-radius:4px;border:1px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:var(--red);cursor:pointer;font-weight:700" title="Refuser">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+async function handleJoinRequest(requestId,playerId,teamId,accept){
+  if(accept){
+    // Ajouter le joueur à la team
+    await window.fetch(supabaseUrl+'/rest/v1/team_members',{
+      method:'POST',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({team_id:teamId,player_id:playerId,role:'membre'})
+    });
+    showToast('✓ Joueur accepté dans la team');
+  } else {
+    showToast('Demande refusée');
+  }
+  // Mettre à jour le statut de la demande
+  await window.fetch(supabaseUrl+'/rest/v1/team_join_requests?id=eq.'+encodeURIComponent(requestId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({status:accept?'accepted':'rejected'})
+  });
+  loadJoinRequests(teamId);
+  renderTeams();
 }
 
 async function leaveTeam(teamId, teamNameEnc){
