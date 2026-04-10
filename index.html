@@ -6542,6 +6542,15 @@ async function adminSetPeriodEnd(minutes){
 ============================================================ */
 var _teamChatId=null;
 
+var _chatPollInterval=null;
+function startChatPoll(teamId){
+  if(_chatPollInterval) clearInterval(_chatPollInterval);
+  if(teamId){
+    _chatPollInterval=setInterval(function(){
+      if(_teamChatId) loadTeamChat(_teamChatId);
+    },3000);
+  }
+}
 async function loadTeamChat(teamId){
   _teamChatId=teamId;
   var el=document.getElementById('team-chat-messages');
@@ -8227,6 +8236,8 @@ function nav(page){
       }
     },100);
   }
+  // Arrêter le polling chat si on quitte Teams
+  if(page!=='teams'&&_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;}
   // Masquer le badge team quand on ouvre Teams
   if(page==='teams'){
     var tbadge=document.getElementById('team-notif-badge');
@@ -9851,7 +9862,7 @@ async function renderTeams(){
           loadJoinRequests(myTeamId);
         }
         // Charger le chat team
-        if(typeof loadTeamChat==='function') loadTeamChat(myTeamId);
+        if(typeof loadTeamChat==='function'){loadTeamChat(myTeamId);startChatPoll(myTeamId);}
       }
     }
 
