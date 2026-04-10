@@ -3388,7 +3388,7 @@ function renderDashboard(){
         var heures=Math.floor(totalTime/60);
         var minutes=totalTime%60;
         set('stat-pts-cum', totalPts>0?totalPts.toLocaleString('fr'):'0');
-        set('stat-km', totalKm>0?(Math.round(totalKm).toLocaleString('fr')+' km'):'0 km');
+        set('stat-km', totalKm>0?(totalKm.toFixed(2)+' km'):'0 km');
         set('stat-elv', totalElv>0?(totalElv.toLocaleString('fr')+' m'):'0 m');
         set('stat-sorties', nbCourses>0?nbCourses:'0');
         set('stat-heures', totalTime>0?(heures+'h'+String(minutes).padStart(2,'0')):'0 h');
@@ -3403,6 +3403,11 @@ function renderDashboard(){
         var currentCounts=(currentLeague!=='starter'&&nbCourses>0)?1:0;
         var activePeriods=pastPeriods.size+currentCounts;
         set('stat-periodes', activePeriods>0?activePeriods:'0');
+        // Lands locataire / propriétaire
+        var {data:myLandsLoc}=await supabaseClient.from('lands').select('id').eq('tenant_id',_statUid).eq('status','rented');
+        var {data:myLandsProp}=await supabaseClient.from('lands').select('id').eq('owner_id',_statUid).eq('status','owned');
+        set('stat-lands-loc',(myLandsLoc?myLandsLoc.length:0));
+        set('stat-lands-prop',(myLandsProp?myLandsProp.length:0));
       })();
     }
     // Streak
@@ -4208,12 +4213,12 @@ async function renderHistory(){
       totalPts+=(r.points||0);
       totalTime+=(r.time||0);
     });
-    var avgSpd=totalTime>0?Math.round(totalKm/(totalTime/60)*10)/10:0;
+    var avgSpd=totalTime>0?Math.round(totalKm/(totalTime/60)*100)/100:0;
     statsRow.innerHTML=''
       +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--cyan)">'+nbRuns+'</div><div class="stat-tile-lbl">Courses</div></div>'
-      +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--blue)">'+Math.round(totalKm).toLocaleString('fr')+' km</div><div class="stat-tile-lbl">Distance</div></div>'
+      +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--blue)">'+totalKm.toFixed(2)+' km</div><div class="stat-tile-lbl">Distance</div></div>'
       +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--gold)">'+totalPts.toLocaleString('fr')+'</div><div class="stat-tile-lbl">Points</div></div>'
-      +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--orange)">'+(avgSpd>0?avgSpd+' km/h':'—')+'</div><div class="stat-tile-lbl">Vitesse moy.</div></div>'
+      +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--orange)">'+(avgSpd>0?avgSpd.toFixed(2)+' km/h':'—')+'</div><div class="stat-tile-lbl">Vitesse moy.</div></div>'
       +'<div class="stat-tile"><div class="stat-tile-val" style="color:var(--green)">'+(totalElv>0?totalElv.toLocaleString('fr')+' m':'—')+'</div><div class="stat-tile-lbl">Dénivelé total</div></div>';
   }
   window._historyRuns={};
@@ -4221,7 +4226,7 @@ async function renderHistory(){
   tb.innerHTML=runs.map(function(r){
     var km=r.distance||0;
     var timeMin=r.time||0;
-    var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
+    var spd=timeMin>0?Math.round(km/(timeMin/60)*100)/100:0;
     var elv=r.elevation||0;
     var pts=r.points||0;
     var ptsBase=km>0?Math.round(computePts(km,spd,elv,false)):pts;
@@ -4232,8 +4237,8 @@ async function renderHistory(){
       :'<span style="color:var(--muted);font-size:.75rem">—</span>';
     return '<tr>'
       +'<td style="color:var(--muted2);font-family:Space Mono,monospace;font-size:.75rem">'+date+'</td>'
-      +'<td style="font-weight:600">'+(km>0?km+' km':'—')+'</td>'
-      +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(spd>0?spd+' km/h':'—')+'</td>'
+      +'<td style="font-weight:600">'+(km>0?km.toFixed(2)+' km':'—')+'</td>'
+      +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(spd>0?spd.toFixed(2)+' km/h':'—')+'</td>'
       +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(elv>0?'↑ '+elv+' m':'—')+'</td>'
       +'<td>'+boostCell+'</td>'
       +'<td style="text-align:right"><strong style="color:var(--gold);font-family:Space Mono,monospace">'+pts.toLocaleString('fr')+'</strong></td>'
@@ -4248,7 +4253,11 @@ function showRunDetails(runId){
   var km=r.distance||0;
   var timeMin=r.time||0;
   var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
-  var pace=spd>0?Math.round(60/spd*10)/10:0;
+  var paceTotal=spd>0?60/spd:0;
+  var paceMin=Math.floor(paceTotal);
+  var paceSec=Math.round((paceTotal-paceMin)*60);
+  if(paceSec===60){paceMin++;paceSec=0;}
+  var pace=paceTotal>0?paceMin+':'+(paceSec<10?'0':'')+paceSec:null;
   var elv=r.elevation||0;
   var pts=r.points||0;
   var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -6657,7 +6666,7 @@ async function renderSocialFeed(){
   await loadMyFollowing();
   // Charger les 30 dernières courses de tous les joueurs (période en cours)
   var {data:runs}=await supabaseClient.from('runs')
-    .select('id,player_id,points,distance,time,elevation,run_date,description,photo,period')
+    .select('id,player_id,points,distance,time,elevation,run_date,description,photo,period,polyline')
     .eq('period',0)
     .order('run_date',{ascending:false})
     .limit(50);
@@ -6716,7 +6725,7 @@ async function renderSocialFeed(){
     var gc=GRADE_COLORS[p.grade]||'#8090b0';
     var km=r.distance||0;
     var timeMin=r.time||0;
-    var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
+    var spd=timeMin>0?Math.round(km/(timeMin/60)*100)/100:0;
     var elv=r.elevation||0;
     var pts=r.points||0;
     var dateStr=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
@@ -6791,6 +6800,7 @@ async function renderSocialFeed(){
       +'<div style="font-size:.75rem;color:var(--muted2)">⏱ '+timeMin+' min</div>'
       +'</div>'
       +descHtml
+      +(r.polyline?'<canvas id="map-'+r.id+'" width="400" height="180" style="width:100%;height:auto;border-radius:8px;margin:.4rem 0;border:1px solid rgba(74,144,255,.1)"></canvas>':'')
       +photoHtml
       // Réactions
       +'<div style="display:flex;gap:.4rem;margin-top:.4rem">'
@@ -6809,6 +6819,8 @@ async function renderSocialFeed(){
       +'</div>'
       +'</div></div>';
   }).join('');
+  // Dessiner les mini-cartes des tracés GPS
+  setTimeout(function(){drawFeedMaps(runs);},100);
 }
 
 function publishRunDesc(runId){
@@ -7064,6 +7076,50 @@ async function shareRunCard(runId){
   },'image/png');
 }
 
+// Dessiner les mini-cartes polyline dans le feed
+function drawFeedMaps(runs){
+  runs.forEach(function(r){
+    if(!r.polyline) return;
+    var cv=document.getElementById('map-'+r.id);
+    if(!cv) return;
+    var cx=cv.getContext('2d');
+    var pts=decodePolyline(r.polyline);
+    if(pts.length<2) return;
+    var W=400,H=180;
+    // Fond sombre
+    cx.fillStyle='#080e1e';cx.fillRect(0,0,W,H);
+    // Grille
+    cx.strokeStyle='rgba(74,144,255,.05)';cx.lineWidth=0.5;
+    for(var i=0;i<W;i+=25){cx.beginPath();cx.moveTo(i,0);cx.lineTo(i,H);cx.stroke();}
+    for(var j=0;j<H;j+=25){cx.beginPath();cx.moveTo(0,j);cx.lineTo(W,j);cx.stroke();}
+    // Bornes
+    var minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+    pts.forEach(function(p){
+      if(p[0]<minLat)minLat=p[0];if(p[0]>maxLat)maxLat=p[0];
+      if(p[1]<minLng)minLng=p[1];if(p[1]>maxLng)maxLng=p[1];
+    });
+    var pad=15;var w=W-pad*2;var h=H-pad*2;
+    var dLat=maxLat-minLat||0.001;var dLng=maxLng-minLng||0.001;
+    var scale=Math.min(w/dLng,h/dLat);
+    var ox=pad+((w-dLng*scale)/2);var oy=pad+((h-dLat*scale)/2);
+    // Tracé
+    cx.beginPath();
+    pts.forEach(function(p,i){
+      var x=ox+(p[1]-minLng)*scale;
+      var y=H-(oy+(p[0]-minLat)*scale);
+      if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y);
+    });
+    cx.strokeStyle='rgba(32,208,224,.3)';cx.lineWidth=6;cx.lineCap='round';cx.lineJoin='round';cx.stroke();
+    cx.strokeStyle='#20d0e0';cx.lineWidth=2.5;cx.stroke();
+    // Départ (vert)
+    var sx=ox+(pts[0][1]-minLng)*scale;var sy=H-(oy+(pts[0][0]-minLat)*scale);
+    cx.fillStyle='#2ddb80';cx.beginPath();cx.arc(sx,sy,4,0,Math.PI*2);cx.fill();
+    // Arrivée (rouge)
+    var ex=ox+(pts[pts.length-1][1]-minLng)*scale;var ey=H-(oy+(pts[pts.length-1][0]-minLat)*scale);
+    cx.fillStyle='#ff4444';cx.beginPath();cx.arc(ex,ey,4,0,Math.PI*2);cx.fill();
+  });
+}
+
 async function checkSocialNotifs(){
   if(!currentUser) return;
   // Compter les réactions + commentaires sur MES courses non vues
@@ -7273,7 +7329,7 @@ async function adminLoadFlagged(){
     var name=pMap[r.player_id]||'?';
     var km=r.distance||0;
     var timeMin=r.time||0;
-    var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
+    var spd=timeMin>0?Math.round(km/(timeMin/60)*100)/100:0;
     var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'—';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .2rem;border-bottom:1px solid rgba(30,37,53,.5)">'
       +'<div style="flex:1;min-width:0">'
@@ -8967,7 +9023,7 @@ async function syncStravaActivities(){
       await window.fetch(supabaseUrl+'/rest/v1/runs',{
         method:'POST',
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin*10)/10,elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null})
+        body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*100)/100,time:Math.round(timeMin*10)/10,elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null,polyline:polyline||null})
       });
       // Générer la mini-carte du parcours comme photo auto
       if(polyline){
