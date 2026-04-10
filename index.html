@@ -8823,6 +8823,69 @@ async function syncStravaActivities(){
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*10)/10,time:Math.round(timeMin),elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null})
       });
+      // Générer la mini-carte du parcours comme photo auto
+      if(polyline){
+        var _pts=decodePolyline(polyline);
+        if(_pts.length>2){
+          var _cv=document.createElement('canvas');
+          _cv.width=400;_cv.height=250;
+          var _cx=_cv.getContext('2d');
+          // Fond sombre
+          _cx.fillStyle='#080e1e';_cx.fillRect(0,0,400,250);
+          // Grille subtile
+          _cx.strokeStyle='rgba(74,144,255,.06)';_cx.lineWidth=0.5;
+          for(var _gi=0;_gi<400;_gi+=20){_cx.beginPath();_cx.moveTo(_gi,0);_cx.lineTo(_gi,250);_cx.stroke();}
+          for(var _gj=0;_gj<250;_gj+=20){_cx.beginPath();_cx.moveTo(0,_gj);_cx.lineTo(400,_gj);_cx.stroke();}
+          // Calculer les bornes
+          var _minLat=Infinity,_maxLat=-Infinity,_minLng=Infinity,_maxLng=-Infinity;
+          _pts.forEach(function(p){
+            if(p[0]<_minLat)_minLat=p[0];if(p[0]>_maxLat)_maxLat=p[0];
+            if(p[1]<_minLng)_minLng=p[1];if(p[1]>_maxLng)_maxLng=p[1];
+          });
+          var _pad=20;var _w=400-_pad*2;var _h=250-_pad*2;
+          var _dLat=_maxLat-_minLat||0.001;var _dLng=_maxLng-_minLng||0.001;
+          var _scale=Math.min(_w/_dLng,_h/_dLat);
+          var _ox=_pad+((_w-_dLng*_scale)/2);var _oy=_pad+((_h-_dLat*_scale)/2);
+          // Dessiner le tracé
+          _cx.beginPath();
+          _pts.forEach(function(p,i){
+            var x=_ox+(p[1]-_minLng)*_scale;
+            var y=250-(_oy+(p[0]-_minLat)*_scale);
+            if(i===0)_cx.moveTo(x,y);else _cx.lineTo(x,y);
+          });
+          _cx.strokeStyle='#20d0e0';_cx.lineWidth=2.5;_cx.lineCap='round';_cx.lineJoin='round';_cx.stroke();
+          // Glow
+          _cx.strokeStyle='rgba(32,208,224,.3)';_cx.lineWidth=6;_cx.stroke();
+          // Point départ (vert)
+          var _sx=_ox+(_pts[0][1]-_minLng)*_scale;var _sy=250-(_oy+(_pts[0][0]-_minLat)*_scale);
+          _cx.fillStyle='#2ddb80';_cx.beginPath();_cx.arc(_sx,_sy,5,0,Math.PI*2);_cx.fill();
+          // Point arrivée (rouge)
+          var _ex=_ox+(_pts[_pts.length-1][1]-_minLng)*_scale;var _ey=250-(_oy+(_pts[_pts.length-1][0]-_minLat)*_scale);
+          _cx.fillStyle='#ff4444';_cx.beginPath();_cx.arc(_ex,_ey,5,0,Math.PI*2);_cx.fill();
+          // Sauvegarder comme photo
+          var _mapB64=_cv.toDataURL('image/jpeg',0.7);
+          window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runDateFull)+'&player_id=eq.'+encodeURIComponent(currentUser.id),{
+            method:'GET',
+            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          });
+          // On stocke la carte comme première photo via un PATCH sur la course qu'on vient d'insérer
+          // Il faut retrouver l'ID de la course - on utilise run_date + player_id
+          window.fetch(supabaseUrl+'/rest/v1/runs?player_id=eq.'+encodeURIComponent(currentUser.id)+'&run_date=eq.'+encodeURIComponent(runDateFull)+'&select=id,photo',{
+            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          }).then(function(r){return r.json();}).then(function(d){
+            if(d&&d[0]){
+              var photos=[];
+              if(d[0].photo){try{photos=JSON.parse(d[0].photo);}catch(x){photos=[d[0].photo];}}
+              photos.unshift(_mapB64);
+              window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(d[0].id),{
+                method:'PATCH',
+                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+                body:JSON.stringify({photo:JSON.stringify(photos)})
+              });
+            }
+          });
+        }
+      }
       // Décoder GPS en hexagones
       var hexes=[];
       if(polyline&&typeof h3!=='undefined'){
