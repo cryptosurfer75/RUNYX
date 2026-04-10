@@ -5046,19 +5046,34 @@ async function loadLandsOnMap(){
   }
   window._rpColorMap=rpColorMap;
 
+  // Charger mes passages pour afficher les lands visitées
+  if(myId){
+    var passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?player_id=eq.'+encodeURIComponent(myId)+'&select=land_id',{
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+    });
+    var passData=await passResp.json();
+    window._myPassageLandIds=(passData||[]).map(function(p){return p.land_id;});
+  }
+
   lands.forEach(function(land){
     try{
       var boundary=h3.cellToBoundary(land.id);
       var latlngs=boundary.map(function(c){return [c[0],c[1]];});
       var isMineOwned=(land.owner_id===myId);
       var isMineRented=(land.tenant_id===myId);
-      var isNewExplored=(_lastExploredHexes.indexOf(land.id)>=0&&land.status==='free');
-      // Ne pas afficher les lands free qui ne sont pas dans mon exploration en cours
-      if(land.status==='free'&&!isNewExplored) return;
+      var allExplored=(_lastExploredHexes||[]).concat(window._recentExploredHexes||[]);
+      var isNewExplored=(allExplored.indexOf(land.id)>=0&&land.status==='free');
+      // Afficher aussi les lands free où j'ai un passage récent
+      var isMyPassage=false;
+      if(land.status==='free'&&!isNewExplored&&myId){
+        // On vérifie si cette land a un passage de moi (chargé en cache)
+        if(window._myPassageLandIds&&window._myPassageLandIds.indexOf(land.id)>=0) isMyPassage=true;
+      }
+      if(land.status==='free'&&!isNewExplored&&!isMyPassage) return;
       var otherPid=land.owner_id||land.tenant_id;
       var otherColor=(otherPid&&rpColorMap[otherPid])?rpColorMap[otherPid]:'#555';
-      var color=isNewExplored?'#ffffff':isMineOwned?_myMapColor:isMineRented?_myMapColor:(land.status!=='free'?otherColor:'#555');
-      var fillOpacity=isNewExplored?0.08:isMineOwned?0.95:(land.status==='owned'?0.85:isMineRented?0.3:land.status!=='free'?0.25:0.08);
+      var color=(isNewExplored||isMyPassage)?'#ffffff':isMineOwned?_myMapColor:isMineRented?_myMapColor:(land.status!=='free'?otherColor:'#555');
+      var fillOpacity=(isNewExplored||isMyPassage)?0.12:isMineOwned?0.95:(land.status==='owned'?0.85:isMineRented?0.3:land.status!=='free'?0.25:0.08);
       var weight=isNewExplored?2:1;
       var borderCol=color;
       var poly=L.polygon(latlngs,{
