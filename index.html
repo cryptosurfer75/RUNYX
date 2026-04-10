@@ -1979,7 +1979,7 @@ select option{background:#040c1c}
     </div>
 
     <!-- Import de course -->
-    <div class="block" style="margin-bottom:1rem;border-color:rgba(74,144,255,.3)">
+    <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.3)">
       <div class="block-header" style="border-color:rgba(74,144,255,.15)">
         <div class="block-title">🏃 Ajouter une <span class="hl">Course</span></div>
       </div>
@@ -2013,7 +2013,7 @@ select option{background:#040c1c}
     </div>
 
     <!-- Historique rapide des dernières courses ajoutées -->
-    <div class="block" style="border-color:rgba(74,144,255,.3)">
+    <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.3)">
       <div class="block-header" style="border-color:rgba(74,144,255,.15)">
         <div class="block-title">📋 Dernières <span class="hl">courses</span> ajoutées</div>
       </div>
@@ -2120,6 +2120,21 @@ select option{background:#040c1c}
       </div>
       <div class="block-body-sm">
         <div id="admin-flagged-list" style="font-size:.75rem;color:var(--muted2)">Chargement…</div>
+      </div>
+    </div>
+
+    <!-- Modération chats teams -->
+    <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.3)">
+      <div class="block-header" style="border-color:rgba(74,144,255,.15)">
+        <div class="block-title">💬 Modération <span class="hl">Chats Teams</span></div>
+      </div>
+      <div class="block-body-sm">
+        <div style="margin-bottom:.5rem">
+          <select id="admin-chat-team" onchange="adminLoadTeamChat(this.value)" style="width:100%;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.82rem;outline:none">
+            <option value="">— Choisir une team —</option>
+          </select>
+        </div>
+        <div id="admin-chat-messages" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;scrollbar-width:thin;scrollbar-color:rgba(74,144,255,.2) transparent"></div>
       </div>
     </div>
   </div>
@@ -6686,7 +6701,20 @@ async function renderSocialFeed(){
     }
     var canAddPhoto=isMyRun&&photos.length<4;
     var uploadBtn=canAddPhoto?'<button onclick="document.getElementById(\'photo-'+r.id+'\').click()" style="font-size:.6rem;padding:.15rem .4rem;border-radius:4px;border:1px solid rgba(144,96,240,.3);background:rgba(144,96,240,.08);color:#9060f0;cursor:pointer;font-weight:600">📷 Photo'+(photos.length>0?' ('+(4-photos.length)+')':'')+'</button><input type="file" id="photo-'+r.id+'" accept="image/*" style="display:none" onchange="uploadRunPhoto(this,\''+r.id+'\')">':'';
-    var descHtml=r.description?'<div style="font-size:.8rem;color:var(--text);margin:.4rem 0;line-height:1.5">'+r.description+'</div>':'';
+    var descHtml='';
+    if(r.description){
+      descHtml='<div style="position:relative;background:rgba(144,96,240,.06);border:1px solid rgba(144,96,240,.15);border-radius:8px;padding:.5rem .65rem;margin:.4rem 0">'
+        +'<div style="font-size:.8rem;color:var(--text);line-height:1.5">'+r.description+'</div>'
+        +(isMyRun?'<span onclick="removeRunDesc(\''+r.id+'\')" style="position:absolute;top:4px;right:4px;color:#ff4444;cursor:pointer;font-size:.55rem" title="Supprimer">✕</span>':'')
+        +(isAdmin()&&!isMyRun?'<span onclick="removeRunDesc(\''+r.id+'\')" style="position:absolute;top:4px;right:4px;color:#ff4444;cursor:pointer;font-size:.55rem" title="Supprimer (admin)">✕</span>':'')
+        +'</div>';
+    } else if(isMyRun){
+      descHtml='<div style="margin:.4rem 0">'
+        +'<div id="desc-wrap-'+r.id+'" style="display:flex;gap:.4rem">'
+        +'<input id="desc-'+r.id+'" type="text" placeholder="Exprime-toi sur ta course…" maxlength="300" style="flex:1;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(144,96,240,.2);background:rgba(144,96,240,.05);color:var(--text);font-size:.75rem;outline:none" onkeydown="if(event.key===\'Enter\')publishRunDesc(\''+r.id+'\')">'
+        +'<button onclick="publishRunDesc(\''+r.id+'\')" style="padding:.4rem .65rem;border-radius:6px;border:1px solid rgba(144,96,240,.3);background:rgba(144,96,240,.1);color:#9060f0;font-size:.7rem;font-weight:700;cursor:pointer">Publier</button>'
+        +'</div></div>';
+    }
     // Commentaires
     var comms=commMap[r.id]||[];
     var commsHtml=comms.map(function(c){
@@ -6736,6 +6764,36 @@ async function renderSocialFeed(){
       +'</div>'
       +'</div></div>';
   }).join('');
+}
+
+function publishRunDesc(runId){
+  if(!currentUser) return;
+  var input=document.getElementById('desc-'+runId);
+  if(!input) return;
+  var text=input.value.trim();
+  if(!text) return;
+  window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({description:text})
+  }).then(function(resp){
+    if(resp.ok){
+      showToast('✓ Message publié');
+      renderSocialFeed();
+    }
+  });
+}
+
+function removeRunDesc(runId){
+  if(!currentUser) return;
+  window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({description:null})
+  }).then(function(){
+    showToast('Message supprimé');
+    renderSocialFeed();
+  });
 }
 
 function uploadRunPhoto(input,runId){
@@ -7097,6 +7155,59 @@ async function initAdminPanel(){
   // Charger l'historique
   adminLoadHistory();
   adminLoadFlagged();
+  adminLoadTeamList();
+}
+
+async function adminLoadTeamList(){
+  var sel=document.getElementById('admin-chat-team');
+  if(!sel) return;
+  var {data:teams}=await supabaseClient.from('teams').select('id,name').order('name');
+  if(teams){
+    sel.innerHTML='<option value="">— Choisir une team —</option>';
+    teams.forEach(function(t){
+      sel.innerHTML+='<option value="'+t.id+'">'+t.name+'</option>';
+    });
+  }
+}
+
+async function adminLoadTeamChat(teamId){
+  var el=document.getElementById('admin-chat-messages');
+  if(!el) return;
+  if(!teamId){el.innerHTML='';return;}
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/team_messages?team_id=eq.'+encodeURIComponent(teamId)+'&select=id,player_id,content,created_at&order=created_at.desc&limit=50',{
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+  });
+  var msgs=await resp.json();
+  if(!msgs||!msgs.length){
+    el.innerHTML='<div style="text-align:center;padding:.75rem;color:var(--muted2);font-size:.7rem">Aucun message dans ce chat</div>';
+    return;
+  }
+  var pids=[...new Set(msgs.map(function(m){return m.player_id;}))];
+  var {data:players}=await supabaseClient.from('players').select('id,username').in('id',pids);
+  var pMap={};
+  (players||[]).forEach(function(p){pMap[p.id]=p.username;});
+  msgs.reverse();
+  el.innerHTML=msgs.map(function(m){
+    var name=pMap[m.player_id]||'?';
+    var time=m.created_at?new Date(m.created_at).toLocaleString('fr',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    return '<div style="display:flex;align-items:flex-start;gap:.4rem;padding:.25rem 0;border-bottom:1px solid rgba(30,37,53,.4)">'
+      +'<div style="flex:1;min-width:0">'
+      +'<span style="font-size:.65rem;font-weight:700;color:var(--text)">'+name+'</span> '
+      +'<span style="font-size:.55rem;color:var(--muted)">'+time+'</span>'
+      +'<div style="font-size:.7rem;color:var(--muted2);word-break:break-word">'+m.content+'</div>'
+      +'</div>'
+      +'<span onclick="adminDeleteTeamMsg(\''+m.id+'\',\''+teamId+'\')" style="color:#ff4444;cursor:pointer;font-size:.6rem;flex-shrink:0;padding:.1rem" title="Supprimer">✕</span>'
+      +'</div>';
+  }).join('');
+}
+
+async function adminDeleteTeamMsg(msgId,teamId){
+  await window.fetch(supabaseUrl+'/rest/v1/team_messages?id=eq.'+encodeURIComponent(msgId),{
+    method:'DELETE',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
+  });
+  showToast('Message supprimé');
+  adminLoadTeamChat(teamId);
 }
 
 async function adminLoadFlagged(){
