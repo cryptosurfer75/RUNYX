@@ -5930,33 +5930,14 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
-  // Nettoyer la DB
-  if(currentUser){
-    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
-      method:'PATCH',
-      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-      body:JSON.stringify({pending_exploration:null})
-    });
-  }
-  // Supprimer les lands libres non louées via XHR direct (contourne RLS)
-  if(_lastExploredHexes.length){
-    for(var i=0;i<_lastExploredHexes.length;i++){
-      var hexId=_lastExploredHexes[i];
-      // Supprimer les passages associés
-      await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId),{
-        method:'DELETE',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
-      });
-      // Supprimer la land libre
-      await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&status=eq.free',{
-        method:'DELETE',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
-      });
-    }
-  }
+  // Vider les tracés blancs (ne plus afficher les lands free visitées)
   _lastExploredHexes=[];
-  // Recharger la carte
+  window._recentExploredHexes=[];
+  window._myPassageLandIds=[];
+  // Recharger la carte (les lands free ne s'afficheront plus)
   loadLandsOnMap();
   renderMyLands();
-  showToast('✓ Exploration terminée');
+  showToast('✓ Exploration terminée — tes locations sont enregistrées');
 }
 
 async function addTotems(){
@@ -8213,6 +8194,11 @@ function nav(page){
       if(_lastExploredHexes.length>0){
         var finBtn=document.getElementById('lands-finish-btn');
         if(finBtn) finBtn.style.display='block';
+      }
+      // Afficher le bouton Terminer si des lands free sont visibles
+      if(window._myPassageLandIds&&window._myPassageLandIds.length>0){
+        var finBtn=document.getElementById('lands-finish-btn');
+        if(finBtn){finBtn.style.display='block';finBtn.textContent='✓ Terminer l\'exploration';}
       }
       // Popup lands explorées depuis la dernière sync
       if(window._recentExploredHexes&&window._recentExploredHexes.length>0){
