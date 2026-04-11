@@ -4157,8 +4157,10 @@ function renderLeaguePanel(){
   }
 
   // Compute number of paid places from distribution
-  var ppPool=Math.round(players.length*(league?league.buyin:0)*0.7);
-  var ppDist=getPrizeDistribution(players.length,ppPool,activeLeagueKey);
+  // Ne compter que les RP compétitifs pour le prize pool (exclure calibrage)
+  var competitivePlayers=players.filter(function(p){return p.competitive!==false;});
+  var ppPool=Math.round(competitivePlayers.length*(league?league.buyin:0)*0.7);
+  var ppDist=getPrizeDistribution(competitivePlayers.length,ppPool,activeLeagueKey);
   var paidCount=0;
   ppDist.forEach(function(row){
     var m=row.r.match(/(\d+)[–\-](\d+)/);
@@ -4515,7 +4517,8 @@ function renderLeaguePP(){
     if(capEl2) capEl2.innerHTML='';
     return;
   }
-  const count=PLAYERS.filter(p=>p.leagueKey===activeLeagueKey).length;
+  // Ne compter que les RP compétitifs pour le prize pool (exclure calibrage)
+  const count=PLAYERS.filter(p=>p.leagueKey===activeLeagueKey&&p.competitive!==false).length;
   const pool=Math.round(count*(leagueObj?leagueObj.buyin:0)*0.7);
   const pp=getPrizeDistribution(count,pool,activeLeagueKey);
   const sideLabel=document.getElementById('pp-buyin-label');
@@ -8055,9 +8058,15 @@ function showPlayerCard(playerId){
     return;
   }
   window.__viewedPlayer=p;
+  // Naviguer AVANT de setter __viewedPlayer serait écrasé par nav(),
+  // donc on navigue manuellement sans passer par nav() qui reset __viewedPlayer
+  document.querySelectorAll('.page').forEach(function(pg){pg.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  var dashPage=document.getElementById('page-dashboard');
+  if(dashPage) dashPage.classList.add('active');
+  window.scrollTo(0,0);
   renderDashboard();
   renderTeams();
-  nav('dashboard');
 }
 async function showTerritoireRanking(){
   var medals=['🥇','🥈','🥉'];
