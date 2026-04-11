@@ -3584,7 +3584,7 @@ function renderDashboard(){
     skinColor:['fdbcb4','edb98a','d08b5b','ae5d29','614335','f8d25c'],
     top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froAndBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
     hairColor:['a55728','2c1b18','b58143','d6b370','724133','4a312c','c93305','e8e1e1','f59797'],
-    hatColor:['none','hat','winterHat01','winterHat03','winterHat04','hijab','turban'],
+    hatColor:['none','hat','winterHat01','winterHat04','hijab','turban'],
     accessories:['blank','kurt','prescription01','prescription02','round','sunglasses','wayfarers'],
     clothing:['blazerAndShirt','blazerAndSweater','collarAndSweater','graphicShirt','hoodie','overall','shirtCrewNeck','shirtScoopNeck','shirtVNeck'],
     clothesColor:['3c4f5c','65c9ff','5199e4','25557c','e6e6e6','929598','a7ffc4','ffdeb5','ffafb9','ff488e','262e33','ff5c5c'],
@@ -8582,9 +8582,19 @@ function nav(page){
   document.getElementById('page-'+page).classList.add('active');
   window.scrollTo(0,0);
   // Reset la vue PC quand on navigue vers dashboard via le menu
-  if(page==='dashboard'&&window.__viewedPlayer){
-    window.__viewedPlayer=null;
+  if(page==='dashboard'){
+    if(window.__viewedPlayer) window.__viewedPlayer=null;
     if(typeof renderDashboard==='function') renderDashboard();
+  }
+  // Rafraîchir les données selon la page
+  if(page==='league'){
+    if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
+  }
+  if(page==='teams'){
+    if(typeof renderTeams==='function') renderTeams();
+  }
+  if(page==='points'){
+    if(typeof renderHistory==='function') renderHistory();
   }
   const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','admin'];
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
