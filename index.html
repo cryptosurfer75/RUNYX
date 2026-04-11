@@ -758,7 +758,7 @@ select option{background:#040c1c}
       <div onclick="event.stopPropagation();navMenu('points')"     class="rtw-item">🏃 Races</div>
       <div onclick="event.stopPropagation();navMenu('social')"     class="rtw-item">📸 Feed</div>
       <div onclick="event.stopPropagation();navMenu('economy')"    class="rtw-item">💰 Market</div>
-      <div onclick="event.stopPropagation();navMenu('access')"     class="rtw-item">⭐ Free</div>
+      <div onclick="event.stopPropagation();navMenu('access')"     class="rtw-item">⭐ Premium</div>
       <div onclick="event.stopPropagation();navMenu('grades')"     class="rtw-item">🎖️ Grades</div>
       <div onclick="event.stopPropagation();navMenu('rules')"      class="rtw-item">📋 Règles</div>
       <div style="border-top:1px solid rgba(255,68,68,.2);margin-top:2px">
@@ -774,7 +774,7 @@ select option{background:#040c1c}
     <button class="nav-tab"        onclick="nav('points')">Races</button>
     <button class="nav-tab"        onclick="nav('social')">Feed</button>
     <button class="nav-tab"        onclick="nav('economy')">Market</button>
-    <button class="nav-tab"        onclick="nav('access')">Free</button>
+    <button class="nav-tab"        onclick="nav('access')">Premium</button>
     <button class="nav-tab" id="nav-tab-admin" onclick="nav('admin')" style="display:none;color:var(--red)">⚙ Admin</button>
   </div>
   <div class="nav-wallet">
@@ -2474,8 +2474,6 @@ async function doRegister(){
     var insertData={id:playerId, username:username, email:email, nat:nat, grade:'starter', league:'starter', trend:0, avatar:regAv};
     if(parrainUuid) insertData.referred_by=parrainUuid;
     var {data:ins,error:insErr}=await supabaseClient.from('players').upsert(insertData,{onConflict:'id'}).select();
-    // Activer l'essai Premium gratuit 15 jours
-    if(playerId) activateTrialPremium(playerId);
   }
   if(data.user && !data.session){
     showHgoError('📧 Vérifie tes emails pour confirmer, puis connecte-toi.');
@@ -2538,7 +2536,7 @@ async function onLoginSuccess(user, isNew){
       pts:0, ptsCum:0, km:0, courses:0, source:'strava',
       trend:pd.trend||0, avatar:pd.avatar||null, parrain:null,
       rtwId:rtwId, competitive:pd.competitive||false,
-      premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:!!pd.premium_until
+      premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:pd.premium_trial||false
     };
     var exi=PLAYERS.findIndex(function(p){return p.id===1;});
     if(exi>=0)PLAYERS[exi]=window.__myPlayer; else PLAYERS.unshift(window.__myPlayer);
@@ -3827,12 +3825,14 @@ function renderLeagueNav(){
   LEAGUES.forEach(l=>{
     const isMe=l.key===activeLeagueKey;
     const isCurrent=window.__myPlayer&&l.key===window.__myPlayer.leagueKey;
-    el.innerHTML+=`<div class="league-nav-item ${l.key===activeLeagueKey?'active':''}" onclick="selectLeague('${l.key}')">
+    var _locked=!canAccessLeague(l.key);
+    el.innerHTML+=`<div class="league-nav-item ${l.key===activeLeagueKey?'active':''}" onclick="selectLeague('${l.key}')" style="${_locked?'opacity:.4':''}">
       <div style="display:flex;align-items:center;gap:.4rem">
         ${isCurrent?'<div class="ln-me"></div>':''}
         <span style="font-size:.85rem;line-height:1">${l.emoji}</span>
         <span class="ln-name" style="color:${l.key===activeLeagueKey?l.color:'var(--muted2)'}">${l.name}</span>
         <span style="font-size:.65rem;color:${l.key===activeLeagueKey?l.color:'var(--muted)'}">— ${l.label}</span>
+        ${_locked?'<span style="font-size:.7rem;margin-left:.2rem">🔒</span>':''}
       </div>
       <div style="display:flex;align-items:center;gap:.4rem">
         ${counts[l.key]?`<span class="ln-count">${counts[l.key]}</span>`:''}
@@ -3841,7 +3841,21 @@ function renderLeagueNav(){
   });
 }
 
+function canAccessLeague(key){
+  if(isPremium()) return true;
+  if(!window.__myPlayer) return false;
+  var myKey=window.__myPlayer.leagueKey||'starter';
+  if(key===myKey) return true;
+  var myIdx=LEAGUES.findIndex(function(l){return l.key===myKey;});
+  var targetIdx=LEAGUES.findIndex(function(l){return l.key===key;});
+  return Math.abs(targetIdx-myIdx)<=1;
+}
+
 function selectLeague(key){
+  if(!canAccessLeague(key)){
+    showToast('🔒 Passe en Premium pour voir toutes les leagues');
+    return;
+  }
   activeLeagueKey=key;
   renderLeagueNav();
   renderLeaguePP();
@@ -7436,7 +7450,7 @@ async function adminSetPremium(activate){
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(pid),{
       method:'PATCH',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-      body:JSON.stringify({premium:true,premium_until:until.toISOString()})
+      body:JSON.stringify({premium:true,premium_until:until.toISOString(),premium_trial:false})
     });
     msg.style.color='var(--green)';msg.textContent='✓ Premium activé pour '+days+' jours';
   } else {
@@ -7735,6 +7749,10 @@ function showPlayerCardByUuid(uuid){
 function showPlayerCard(playerId){
   var p=PLAYERS.find(function(x){return x.id===playerId;});
   if(!p) return;
+  if(playerId!==1&&!isPremium()){
+    showToast('🔒 Passe en Premium pour voir les Player Cards');
+    return;
+  }
   if(playerId===1){
     window.__viewedPlayer=null;
     renderDashboard();
@@ -8335,6 +8353,11 @@ function isPremium(){
   }
   return true;
 }
+// Vrai premium (pas essai) = droit aux récompenses mensuelles
+function isFullPremium(){
+  if(!isPremium()) return false;
+  return !window.__myPlayer.premiumTrial;
+}
 
 function updatePremiumUI(){
   var el=document.getElementById('premium-status');
@@ -8343,7 +8366,9 @@ function updatePremiumUI(){
   if(isPremium()){
     var until=window.__myPlayer.premiumUntil?new Date(window.__myPlayer.premiumUntil).toLocaleDateString('fr',{day:'numeric',month:'long',year:'numeric'}):'illimité';
     var isTrial=window.__myPlayer.premiumTrial;
-    el.innerHTML='<span style="color:var(--green);font-weight:700">✓ '+(isTrial?'Essai gratuit':'Premium')+' actif</span> — jusqu\'au '+until;
+    var untilShort=window.__myPlayer.premiumUntil?new Date(window.__myPlayer.premiumUntil).toLocaleDateString('fr',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    el.innerHTML='<span style="color:var(--green);font-weight:700">✓ '+(isTrial?'Essai':'Premium')+' actif</span> · Fin : '+untilShort
+      +(isTrial?'<br><span style="font-size:.6rem;color:var(--muted)">Essai = Premium sans récompenses</span>':'');
     if(btn) btn.textContent='✓ Premium actif';
   } else {
     el.innerHTML='<span style="color:var(--muted2)">Statut : Free</span>';
@@ -8371,6 +8396,40 @@ function handlePremiumClick(){
   openModal('land-modal');
 }
 
+function showTrialOffer(){
+  document.getElementById('lm-title').textContent='';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML='<div style="text-align:center;padding:.5rem 0">'
+    +'<div style="font-size:3.5rem;margin-bottom:.3rem">⭐</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.6rem;letter-spacing:3px;color:var(--gold);margin-bottom:.2rem">DEVIENS PREMIUM</div>'
+    +'<div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0 auto .6rem"></div>'
+    +'<div style="font-size:.85rem;color:var(--text);line-height:1.7;margin-bottom:.3rem">Profite de <strong style="color:var(--gold)">15 jours d\'essai gratuit</strong></div>'
+    +'<div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:1rem">'
+    +'Accès à tous les classements · Toutes les Player Cards<br>'
+    +'5 Boosts + 20 NYX + 20 000 RPC offerts / mois<br>'
+    +'Création de Team privée offerte · Pas de publicités'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:.5rem;max-width:250px;margin:0 auto">'
+    +'<button onclick="acceptTrial()" style="padding:.6rem;border-radius:10px;border:none;background:linear-gradient(175deg,#f5c842,#b8860b);color:#000;font-family:Bebas Neue,sans-serif;font-size:1.1rem;letter-spacing:3px;font-weight:900;cursor:pointer;box-shadow:0 4px 15px rgba(245,200,66,.3)">OUI, J\'ESSAIE GRATUITEMENT</button>'
+    +'<button onclick="closeModal(\'land-modal\')" style="padding:.4rem;border-radius:7px;border:none;background:transparent;color:var(--muted2);font-size:.7rem;cursor:pointer">Non merci, plus tard</button>'
+    +'</div></div>';
+  openModal('land-modal');
+}
+
+async function acceptTrial(){
+  if(!currentUser) return;
+  closeModal('land-modal');
+  await activateTrialPremium(currentUser.id);
+  if(window.__myPlayer){
+    var until=new Date();until.setDate(until.getDate()+15);
+    window.__myPlayer.premium=true;
+    window.__myPlayer.premiumUntil=until.toISOString();
+    window.__myPlayer.premiumTrial=true;
+  }
+  updatePremiumUI();
+  showToast('⭐ Essai Premium activé — 15 jours gratuits !');
+}
+
 async function activateTrialPremium(playerId){
   // 15 jours d'essai gratuit
   var until=new Date();
@@ -8378,7 +8437,7 @@ async function activateTrialPremium(playerId){
   await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(playerId),{
     method:'PATCH',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({premium:true,premium_until:until.toISOString()})
+    body:JSON.stringify({premium:true,premium_until:until.toISOString(),premium_trial:true})
   });
 }
 
@@ -8460,10 +8519,17 @@ function nav(page){
   }
   if(page==='social'){
     if(typeof renderSocialFeed==='function') renderSocialFeed();
-    // Marquer les notifs comme vues
     if(currentUser) localStorage.setItem('social-seen-'+currentUser.id,new Date().toISOString());
     var badge=document.getElementById('social-notif-badge');
     if(badge) badge.style.display='none';
+  }
+  // Page Premium — popup essai gratuit
+  if(page==='access'){
+    if(typeof updatePremiumUI==='function') updatePremiumUI();
+    if(currentUser&&!isPremium()&&!localStorage.getItem('trial-offered-'+currentUser.id)){
+      localStorage.setItem('trial-offered-'+currentUser.id,'1');
+      setTimeout(function(){showTrialOffer();},500);
+    }
   }
 }
 // ── Onboarding (première connexion) ──
