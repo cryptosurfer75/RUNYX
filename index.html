@@ -3481,7 +3481,6 @@ const FP_DATA=[
   {f:'Visualisation de tous les classements', free:false,prem:true},
   {f:'Visualisation de toutes les PC',free:false,prem:true},
   {f:'Visualisation RP dans les Teams',free:false,prem:true},
-  {f:'Chat de Team',free:false,prem:true},
   {f:'Accès Feed des amis',free:false,prem:true},
   {f:'Création Team privée offerte',   free:false,prem:true},
   {f:'Trésors cachés & bonus spéciaux',free:false,prem:true},
@@ -6955,14 +6954,8 @@ async function loadTeamChat(teamId){
   _teamChatId=teamId;
   var chatLocked=document.getElementById('team-chat-locked');
   var chatContent=document.getElementById('team-chat-content');
-  if(!isPremium()){
-    if(chatLocked) chatLocked.style.display='block';
-    if(chatContent) chatContent.style.display='none';
-    return;
-  } else {
-    if(chatLocked) chatLocked.style.display='none';
-    if(chatContent) chatContent.style.display='block';
-  }
+  if(chatLocked) chatLocked.style.display='none';
+  if(chatContent) chatContent.style.display='block';
   var el=document.getElementById('team-chat-messages');
   if(!el||!teamId) return;
   var resp=await window.fetch(supabaseUrl+'/rest/v1/team_messages?team_id=eq.'+encodeURIComponent(teamId)+'&select=id,player_id,content,created_at&order=created_at.desc&limit=50',{
