@@ -755,7 +755,7 @@ select option{background:#040c1c}
       <div onclick="event.stopPropagation();navMenu('dashboard')"  class="rtw-item">🃏 Player Card</div>
       <div onclick="event.stopPropagation();navMenu('teams')"      class="rtw-item">🦈 Teams</div>
       <div onclick="event.stopPropagation();navMenu('lands')"      class="rtw-item">🗺️ Lands</div>
-      <div onclick="event.stopPropagation();navMenu('points')"     class="rtw-item">🏃 Race</div>
+      <div onclick="event.stopPropagation();navMenu('points')"     class="rtw-item">🏃 Races</div>
       <div onclick="event.stopPropagation();navMenu('social')"     class="rtw-item">📸 Feed</div>
       <div onclick="event.stopPropagation();navMenu('economy')"    class="rtw-item">💰 Market</div>
       <div onclick="event.stopPropagation();navMenu('access')"     class="rtw-item">⭐ Free</div>
@@ -771,7 +771,7 @@ select option{background:#040c1c}
     <button class="nav-tab active" onclick="nav('dashboard')">Player Card</button>
     <button class="nav-tab" onclick="nav('teams')" style="position:relative">Teams<span id="team-notif-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#4a90ff"></span></button>
     <button class="nav-tab"        onclick="nav('lands')">Lands</button>
-    <button class="nav-tab"        onclick="nav('points')">Race</button>
+    <button class="nav-tab"        onclick="nav('points')">Races</button>
     <button class="nav-tab"        onclick="nav('social')">Feed</button>
     <button class="nav-tab"        onclick="nav('economy')">Market</button>
     <button class="nav-tab"        onclick="nav('access')">Free</button>
@@ -837,7 +837,7 @@ select option{background:#040c1c}
         background:rgba(74,144,255,.06);cursor:pointer;
         font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:1.5px;
         color:#4a90ff;transition:all .15s;
-      " onmouseover="this.style.background='rgba(74,144,255,.15)'" onmouseout="this.style.background='rgba(74,144,255,.06)'">🏃 RACING</button>
+      " onmouseover="this.style.background='rgba(74,144,255,.15)'" onmouseout="this.style.background='rgba(74,144,255,.06)'">🏃 RACES</button>
       <button onclick="nav('league')" style="
         padding:.5rem .3rem;border-radius:8px;border:1px solid rgba(74,144,255,.3);
         background:rgba(74,144,255,.06);cursor:pointer;
@@ -1687,8 +1687,9 @@ select option{background:#040c1c}
         Free <span style="color:var(--gold)">vs</span> Premium
       </div>
       <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">5,99€ / mois · ou 60€ / an</div>
+      <div id="premium-status" style="font-size:.7rem;margin-top:.3rem"></div>
     </div>
-    <button class="btn btn-gold" onclick="showToast('Abonnement Premium activé !')">⭐ Passer Premium</button>
+    <button id="premium-btn" class="btn btn-gold" onclick="handlePremiumClick()">⭐ Passer Premium</button>
   </div>
 
   <div class="layout-2col" style="margin-bottom:1.25rem">
@@ -2141,6 +2142,37 @@ select option{background:#040c1c}
       </div>
     </div>
 
+    <!-- Gestion Premium -->
+    <div class="block" style="margin-top:1rem;border-color:rgba(245,200,66,.3)">
+      <div class="block-header" style="border-color:rgba(245,200,66,.15)">
+        <div class="block-title">⭐ Gestion <span class="hl">Premium</span></div>
+      </div>
+      <div class="block-body-sm">
+        <div style="display:flex;flex-direction:column;gap:.6rem">
+          <div>
+            <label style="font-size:.65rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">Joueur</label>
+            <select id="admin-premium-player" style="width:100%;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.82rem;outline:none">
+              <option value="">— Choisir —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.65rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">Durée</label>
+            <select id="admin-premium-duration" style="width:100%;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.82rem;outline:none">
+              <option value="15">15 jours (essai)</option>
+              <option value="30">1 mois</option>
+              <option value="90">3 mois</option>
+              <option value="365">1 an</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button onclick="adminSetPremium(true)" style="flex:1;padding:.45rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">⭐ Activer</button>
+            <button onclick="adminSetPremium(false)" style="flex:1;padding:.45rem;border-radius:6px;border:1.5px solid var(--red);background:rgba(255,68,68,.08);color:var(--red);font-weight:700;font-size:.78rem;cursor:pointer">Désactiver</button>
+          </div>
+          <div id="admin-premium-msg" style="font-size:.72rem;min-height:1rem"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modération chats teams -->
     <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.3)">
       <div class="block-header" style="border-color:rgba(74,144,255,.15)">
@@ -2442,6 +2474,8 @@ async function doRegister(){
     var insertData={id:playerId, username:username, email:email, nat:nat, grade:'starter', league:'starter', trend:0, avatar:regAv};
     if(parrainUuid) insertData.referred_by=parrainUuid;
     var {data:ins,error:insErr}=await supabaseClient.from('players').upsert(insertData,{onConflict:'id'}).select();
+    // Activer l'essai Premium gratuit 15 jours
+    if(playerId) activateTrialPremium(playerId);
   }
   if(data.user && !data.session){
     showHgoError('📧 Vérifie tes emails pour confirmer, puis connecte-toi.');
@@ -2503,7 +2537,8 @@ async function onLoginSuccess(user, isNew){
       grade:pd.grade||'starter', leagueKey:(pd.league||'starter').toLowerCase(),
       pts:0, ptsCum:0, km:0, courses:0, source:'strava',
       trend:pd.trend||0, avatar:pd.avatar||null, parrain:null,
-      rtwId:rtwId, competitive:pd.competitive||false
+      rtwId:rtwId, competitive:pd.competitive||false,
+      premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:!!pd.premium_until
     };
     var exi=PLAYERS.findIndex(function(p){return p.id===1;});
     if(exi>=0)PLAYERS[exi]=window.__myPlayer; else PLAYERS.unshift(window.__myPlayer);
@@ -7373,7 +7408,7 @@ async function initAdminPanel(){
     if(el) el.addEventListener('input',adminPreviewPts);
   });
   // Remplir les autres selects joueurs (wallet, exploration)
-  var otherSelects=['admin-wallet-player','admin-explore-player'];
+  var otherSelects=['admin-wallet-player','admin-explore-player','admin-premium-player'];
   otherSelects.forEach(function(selId){
     var s=document.getElementById(selId);
     if(s&&players){
@@ -7387,6 +7422,31 @@ async function initAdminPanel(){
   adminLoadHistory();
   adminLoadFlagged();
   adminLoadTeamList();
+}
+
+async function adminSetPremium(activate){
+  if(!isAdmin()) return;
+  var pid=document.getElementById('admin-premium-player').value;
+  var msg=document.getElementById('admin-premium-msg');
+  if(!pid){msg.style.color='var(--red)';msg.textContent='⚠ Choisis un joueur';return;}
+  if(activate){
+    var days=parseInt(document.getElementById('admin-premium-duration').value)||30;
+    var until=new Date();
+    until.setDate(until.getDate()+days);
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(pid),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({premium:true,premium_until:until.toISOString()})
+    });
+    msg.style.color='var(--green)';msg.textContent='✓ Premium activé pour '+days+' jours';
+  } else {
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(pid),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({premium:false,premium_until:null})
+    });
+    msg.style.color='var(--red)';msg.textContent='Premium désactivé';
+  }
 }
 
 async function adminLoadTeamList(){
@@ -8266,6 +8326,62 @@ function renderEconomy(){
 /* ============================================================
    RENDER : FREE / PREMIUM
 ============================================================ */
+// ── Premium ──
+function isPremium(){
+  if(!window.__myPlayer) return false;
+  if(!window.__myPlayer.premium) return false;
+  if(window.__myPlayer.premiumUntil){
+    return new Date(window.__myPlayer.premiumUntil)>new Date();
+  }
+  return true;
+}
+
+function updatePremiumUI(){
+  var el=document.getElementById('premium-status');
+  var btn=document.getElementById('premium-btn');
+  if(!el) return;
+  if(isPremium()){
+    var until=window.__myPlayer.premiumUntil?new Date(window.__myPlayer.premiumUntil).toLocaleDateString('fr',{day:'numeric',month:'long',year:'numeric'}):'illimité';
+    var isTrial=window.__myPlayer.premiumTrial;
+    el.innerHTML='<span style="color:var(--green);font-weight:700">✓ '+(isTrial?'Essai gratuit':'Premium')+' actif</span> — jusqu\'au '+until;
+    if(btn) btn.textContent='✓ Premium actif';
+  } else {
+    el.innerHTML='<span style="color:var(--muted2)">Statut : Free</span>';
+    if(btn) btn.textContent='⭐ Passer Premium';
+  }
+}
+
+function handlePremiumClick(){
+  if(isPremium()){
+    showToast('✓ Tu es déjà Premium !');
+    return;
+  }
+  document.getElementById('lm-title').textContent='⭐ Premium';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML='<div style="text-align:center;padding:.5rem 0">'
+    +'<div style="font-size:2.5rem;margin-bottom:.5rem">⭐</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--gold);margin-bottom:.5rem">Abonnement Premium</div>'
+    +'<div style="font-size:.8rem;color:var(--muted2);line-height:1.6;margin-bottom:1rem">'
+    +'Le paiement en ligne arrive très bientôt !<br><br>'
+    +'En attendant, contacte l\'administrateur pour activer ton abonnement Premium.<br><br>'
+    +'<strong style="color:var(--gold)">5,99€ / mois</strong> ou <strong style="color:var(--gold)">60€ / an</strong>'
+    +'</div>'
+    +'<button onclick="closeModal(\'land-modal\')" style="padding:.45rem 1.5rem;border-radius:7px;border:1.5px solid var(--gold);background:rgba(245,200,66,.12);color:var(--gold);font-weight:700;font-size:.85rem;cursor:pointer">Compris</button>'
+    +'</div>';
+  openModal('land-modal');
+}
+
+async function activateTrialPremium(playerId){
+  // 15 jours d'essai gratuit
+  var until=new Date();
+  until.setDate(until.getDate()+15);
+  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(playerId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({premium:true,premium_until:until.toISOString()})
+  });
+}
+
 function renderFreePrem(){
   const head='<thead><tr><th style="text-align:left;min-width:220px">Fonctionnalité</th><th style="width:90px">Free</th><th class="prem-col" style="width:110px;color:var(--gold)">⭐ Premium</th></tr></thead>';
   const body='<tbody>'+FP_DATA.map(f=>`<tr>
@@ -8274,6 +8390,7 @@ function renderFreePrem(){
     <td class="prem-col">${f.prem?'<span class="chk-y">✓</span>':(f.premNote?'<span class="chk-x">✕</span>':'<span class="chk-n">—</span>')}</td>
   </tr>`).join('')+'</tbody>';
   document.getElementById('fp-table').innerHTML=head+body;
+  updatePremiumUI();
 }
 
 /* ============================================================
