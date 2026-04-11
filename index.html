@@ -2239,7 +2239,7 @@ select option{background:#040c1c}
         Phase de démarrage : pas de compétition, de podium, de récompenses.<br>
         Passé <strong style="color:var(--gold)">500 pts</strong>, le RP entre dans la League.<br>
         Il monte en fonction de son niveau jusqu'à la fin de période.<br>
-        La période suivante dite de <strong style="color:var(--text)">calibrage</strong>, la montée est encore libre afin de définir le vrai niveau du RP.<br>
+        La période suivante dite de <strong style="color:var(--blue)">calibrage</strong> <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.3);font-family:'Bebas Neue',sans-serif;font-size:.65rem;font-weight:700;color:var(--blue);line-height:1;vertical-align:middle">C</span>, la montée est encore libre afin de définir le vrai niveau du RP. Pas de buy-in, pas de podium, pas de prize pool.<br>
         La période suivante, la <strong style="color:var(--green)">compétition officielle</strong> commence avec les podiums, médailles et prize pool.
       </div>
     </div>
@@ -4118,7 +4118,7 @@ function renderLeaguePanel(){
     var ptColor=isReleg?'var(--red)':'var(--gold)';
     var parrainColors={A:'#2ddb80',G:'#ff6020',E:'#9060f0',F:'#f5c842'};
     var meBadge='';
-    var calibBadge=isCalib?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.3);color:var(--blue);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Période de calibrage — hors podium et prize pool">CALIBRAGE</span>':'';
+    var calibBadge=isCalib?'<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.3);font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:var(--blue);margin-left:.3rem;flex-shrink:0;line-height:1" title="Période de calibrage — hors podium et prize pool">C</span>':'';
     var debtBadge=p.buyin_debt?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Buy-in impayé — exclu des récompenses">DETTE</span>':'';
     var parrainBadge=p.parrain
       ?'<span title="'+(p.parrain==='A'?'Ambassadeur':p.parrain==='G'?'Gouverneur':p.parrain==='E'?'Empereur':'Fondateur')+'" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:'+parrainColors[p.parrain]+'22;border:1px solid '+parrainColors[p.parrain]+'88;font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:'+parrainColors[p.parrain]+';margin-left:.3rem;flex-shrink:0;line-height:1">'+p.parrain+'</span>'
