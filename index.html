@@ -4103,10 +4103,13 @@ function renderLeaguePanel(){
   var maxPts=league.max||Infinity;
   var max2Pts=league.max2||Infinity; // second promo line threshold (for L7 → L5)
 
-  function buildRow(p, rankNum, isPromo, isReleg, paidRanks){
-    var rc=rankNum===1?'rank-1':rankNum===2?'rank-2':rankNum===3?'rank-3':'';
-    var rankDisplay=(!isStarter&&rankNum===1)?'🥇':(!isStarter&&rankNum===2)?'🥈':(!isStarter&&rankNum===3)?'🥉':'<div class="rank-num '+rc+'">'+rankNum+'</div>';
-    var rankCell=(!isStarter&&rankNum<=3)?'<div style="font-size:1.45rem;line-height:1;text-align:center;width:36px;flex-shrink:0">'+rankDisplay+'</div>':'<div class="rank-num '+rc+'">'+rankNum+'</div>';
+  function buildRow(p, rankNum, isPromo, isReleg, paidRanks, compRank){
+    var isCalib=(p.competitive===false);
+    // compRank = rang parmi les compétitifs (pour médailles/places payées), 0 si calibrage
+    var medalRank=isCalib?0:(compRank||rankNum);
+    var rc=medalRank===1?'rank-1':medalRank===2?'rank-2':medalRank===3?'rank-3':'';
+    var rankDisplay=(!isStarter&&medalRank===1)?'🥇':(!isStarter&&medalRank===2)?'🥈':(!isStarter&&medalRank===3)?'🥉':'<div class="rank-num '+rc+'">'+rankNum+'</div>';
+    var rankCell=(!isStarter&&medalRank>=1&&medalRank<=3)?'<div style="font-size:1.45rem;line-height:1;text-align:center;width:36px;flex-shrink:0">'+rankDisplay+'</div>':'<div class="rank-num '+rc+'">'+rankNum+'</div>';
     var isMe=(p.id===1);
     var gc=GRADE_COLORS[p.grade]||'#8090b0';
     var initials=p.name.split(' ').map(function(w){return w[0];}).join('');
@@ -4115,6 +4118,7 @@ function renderLeaguePanel(){
     var ptColor=isReleg?'var(--red)':'var(--gold)';
     var parrainColors={A:'#2ddb80',G:'#ff6020',E:'#9060f0',F:'#f5c842'};
     var meBadge='';
+    var calibBadge=isCalib?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.3);color:var(--blue);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Période de calibrage — hors podium et prize pool">CALIBRAGE</span>':'';
     var debtBadge=p.buyin_debt?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Buy-in impayé — exclu des récompenses">DETTE</span>':'';
     var parrainBadge=p.parrain
       ?'<span title="'+(p.parrain==='A'?'Ambassadeur':p.parrain==='G'?'Gouverneur':p.parrain==='E'?'Empereur':'Fondateur')+'" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:'+parrainColors[p.parrain]+'22;border:1px solid '+parrainColors[p.parrain]+'88;font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:'+parrainColors[p.parrain]+';margin-left:.3rem;flex-shrink:0;line-height:1">'+p.parrain+'</span>'
@@ -4127,8 +4131,8 @@ function renderLeaguePanel(){
     if(trend>0) trendHtml='<span style="font-size:.6rem;color:var(--green);font-weight:700;margin-left:.65rem">▲'+trend+'</span>';
     else if(trend<0) trendHtml='<span style="font-size:.6rem;color:var(--red);font-weight:700;margin-left:.65rem">▼'+Math.abs(trend)+'</span>';
     else trendHtml='<span style="font-size:.6rem;color:var(--muted);margin-left:.65rem;letter-spacing:-.5px">=</span>';
-    // Badge place payée — emoji bourse, identique à la carte
-    var isPaid=(!isStarter)&&(!isReleg)&&(!p.buyin_debt)&&paidRanks&&rankNum<=paidRanks;
+    // Badge place payée — emoji bourse (compétitifs seulement, basé sur compRank)
+    var isPaid=(!isStarter)&&(!isReleg)&&(!isCalib)&&(!p.buyin_debt)&&paidRanks&&medalRank<=paidRanks;
     var paidBadge=isPaid
       ?'<span title="Place payée — gain RPC" style="font-size:.82rem;margin-left:.45rem;flex-shrink:0;vertical-align:middle;line-height:1">💰</span>'
       :'';
@@ -4138,7 +4142,7 @@ function renderLeaguePanel(){
       +'<td><div style="display:flex;align-items:center;gap:.55rem">'
       +natFlagHtml(p.nat)
       +'<div onclick="'+(p.id===1?'window.__viewedPlayer=null;renderDashboard();renderTeams();nav(\'dashboard\')':'showPlayerCard('+p.id+')')+'" style="width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'\'" title="'+p.name+'"><canvas id="'+avId+'" width="28" height="28" style="display:block"></canvas></div>'
-      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+debtBadge+parrainBadge+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+calibBadge+debtBadge+parrainBadge+'</div>'
       +'</div></td>'
       +'<td style="font-family:monospace;font-size:.82rem">'
       +'<strong style="color:'+ptColor+'">'+p.pts.toLocaleString('fr')+'</strong>'+trendHtml+paidBadge
@@ -4179,19 +4183,25 @@ function renderLeaguePanel(){
 
   var rows='';
   var rankCursor=1;
+  var compRankCursor=1; // rang compétitif (saute les RP en calibrage)
+  function buildRowWithCompRank(p, isPromo, isReleg){
+    var r=rankCursor++;
+    var cr=(p.competitive===false)?0:compRankCursor++;
+    return buildRow(p,r,isPromo,isReleg,paidCount,cr);
+  }
   if(promo2Players.length>0){
-    rows+=promo2Players.map(function(p){var r=rankCursor++;return buildRow(p,r,true,false,paidCount);}).join('');
+    rows+=promo2Players.map(function(p){return buildRowWithCompRank(p,true,false);}).join('');
     rows+=makeSepLine(leagueIdx+2);
   }
   if(promo1Players.length>0){
-    rows+=promo1Players.map(function(p){var r=rankCursor++;return buildRow(p,r,true,false,paidCount);}).join('');
+    rows+=promo1Players.map(function(p){return buildRowWithCompRank(p,true,false);}).join('');
     rows+=makeSepLine(leagueIdx+1);
   } else if(promo2Players.length===0 && players.some(function(p){return p.pts>maxPts;})){
     var promoOnly=players.filter(function(p){return p.pts>maxPts;});
-    rows+=promoOnly.map(function(p){var r=rankCursor++;return buildRow(p,r,true,false,paidCount);}).join('');
+    rows+=promoOnly.map(function(p){return buildRowWithCompRank(p,true,false);}).join('');
     rows+=makeSepLine(leagueIdx+1);
   }
-  rows+=normalPlayers.map(function(p){var r=rankCursor++;return buildRow(p,r,false,false,paidCount);}).join('');
+  rows+=normalPlayers.map(function(p){return buildRowWithCompRank(p,false,false);}).join('');
 
   // Relegation zone — players below league min
   if(relegPlayers.length>0){
@@ -4203,7 +4213,7 @@ function renderLeaguePanel(){
       +'<span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:.6rem;font-weight:700;white-space:nowrap;'
       +'color:'+lColor+';background:var(--card);padding:0 .55rem;letter-spacing:.6px;border-radius:2px">'
       +'↓ DESCENTE '+lName.toUpperCase()+'</span></div></td></tr>';
-    rows+=relegPlayers.map(function(p){var r=rankCursor++;return buildRow(p,r,false,true,0);}).join('');
+    rows+=relegPlayers.map(function(p){return buildRowWithCompRank(p,false,true);}).join('');
   }
 
   if(players.length===0){
