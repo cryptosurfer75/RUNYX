@@ -7751,8 +7751,19 @@ function showPlayerCard(playerId){
   var p=PLAYERS.find(function(x){return x.id===playerId;});
   if(!p) return;
   if(playerId!==1&&!isPremium()){
-    showToast('🔒 Passe en Premium pour voir les Player Cards');
-    return;
+    var targetPlayer=PLAYERS.find(function(x){return x.id===playerId;});
+    var allowed=false;
+    // Free : peut voir les PC de sa league + adjacentes
+    if(targetPlayer&&canAccessLeague(targetPlayer.leagueKey)) allowed=true;
+    // Free : peut voir les PC des membres de sa team
+    if(window.__myTeamId&&targetPlayer&&targetPlayer._uuid){
+      var _tmMembers=window._myTeamMemberIds||[];
+      if(_tmMembers.indexOf(targetPlayer._uuid)>=0) allowed=true;
+    }
+    if(!allowed){
+      showToast('🔒 Passe en Premium pour voir cette Player Card');
+      return;
+    }
   }
   if(playerId===1){
     window.__viewedPlayer=null;
@@ -10153,6 +10164,8 @@ async function renderTeams(){
 
     // Utiliser les membres déjà chargés (avec points calculés)
     var members=(_myTeamData&&_myTeamData._members)||[];
+    // Stocker les IDs des membres pour les restrictions Free
+    window._myTeamMemberIds=members.map(function(m){return m.player_id;});
     // Trier : capitaine d'abord, puis par pts desc
     members.sort(function(a,b){
       if(a.role==='capitaine'&&b.role!=='capitaine') return -1;
