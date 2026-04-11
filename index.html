@@ -754,11 +754,11 @@ select option{background:#040c1c}
       <div onclick="event.stopPropagation();navMenu('league')"     class="rtw-item">🏆 League</div>
       <div onclick="event.stopPropagation();navMenu('dashboard')"  class="rtw-item">🃏 Player Card</div>
       <div onclick="event.stopPropagation();navMenu('teams')"      class="rtw-item">🦈 Teams</div>
-      <div onclick="event.stopPropagation();navMenu('points')"     class="rtw-item">🏃 Points</div>
       <div onclick="event.stopPropagation();navMenu('lands')"      class="rtw-item">🗺️ Lands</div>
-      <div onclick="event.stopPropagation();navMenu('social')"     class="rtw-item">📸 Social</div>
+      <div onclick="event.stopPropagation();navMenu('points')"     class="rtw-item">🏃 Race</div>
+      <div onclick="event.stopPropagation();navMenu('social')"     class="rtw-item">📸 Feed</div>
       <div onclick="event.stopPropagation();navMenu('economy')"    class="rtw-item">💰 Market</div>
-      <div onclick="event.stopPropagation();navMenu('access')"     class="rtw-item">⭐ Free / Premium</div>
+      <div onclick="event.stopPropagation();navMenu('access')"     class="rtw-item">⭐ Free</div>
       <div onclick="event.stopPropagation();navMenu('grades')"     class="rtw-item">🎖️ Grades</div>
       <div onclick="event.stopPropagation();navMenu('rules')"      class="rtw-item">📋 Règles</div>
       <div style="border-top:1px solid rgba(255,68,68,.2);margin-top:2px">
@@ -770,11 +770,11 @@ select option{background:#040c1c}
     <button class="nav-tab"        onclick="nav('league')">League</button>
     <button class="nav-tab active" onclick="nav('dashboard')">Player Card</button>
     <button class="nav-tab" onclick="nav('teams')" style="position:relative">Teams<span id="team-notif-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#4a90ff"></span></button>
-    <button class="nav-tab"        onclick="nav('points')">Points</button>
     <button class="nav-tab"        onclick="nav('lands')">Lands</button>
-    <button class="nav-tab"        onclick="nav('social')">Social</button>
+    <button class="nav-tab"        onclick="nav('points')">Race</button>
+    <button class="nav-tab"        onclick="nav('social')">Feed</button>
     <button class="nav-tab"        onclick="nav('economy')">Market</button>
-    <button class="nav-tab"        onclick="nav('access')">Free / Premium</button>
+    <button class="nav-tab"        onclick="nav('access')">Free</button>
     <button class="nav-tab" id="nav-tab-admin" onclick="nav('admin')" style="display:none;color:var(--red)">⚙ Admin</button>
   </div>
   <div class="nav-wallet">
@@ -8284,7 +8284,7 @@ function nav(page){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   window.scrollTo(0,0);
-  const pages=['league','dashboard','teams','points','lands','social','economy','access','grades','rules','admin'];
+  const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','admin'];
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
   // Initialiser la carte Lands quand on y navigue
   if(page==='lands'){
