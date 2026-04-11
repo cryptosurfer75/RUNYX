@@ -2977,9 +2977,29 @@ async function hgo(s){
   hcur=s;
   document.getElementById('hs'+s).style.display='';
   if(s===5){
-    // Afficher le RL-ID séquentiel assigné par onLoginSuccess
-    var uid=window.__myPlayer?window.__myPlayer.rtwId:'00001';
-    document.getElementById('new-id').textContent=uid;
+    // Afficher le RL-ID séquentiel — attendre que onLoginSuccess ait fini
+    var _idCheck=setInterval(function(){
+      var uid=window.__myPlayer?window.__myPlayer.rtwId:null;
+      if(uid&&uid!=='00001'){
+        document.getElementById('new-id').textContent=String(uid).padStart(5,'0');
+        clearInterval(_idCheck);
+      } else if(uid){
+        // Vérifier en DB directement
+        if(currentUser){
+          window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id)+'&select=rtw_id',{
+            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+          }).then(function(r){return r.json();}).then(function(d){
+            if(d&&d[0]&&d[0].rtw_id){
+              document.getElementById('new-id').textContent=String(d[0].rtw_id).padStart(5,'0');
+              if(window.__myPlayer) window.__myPlayer.rtwId=d[0].rtw_id;
+              clearInterval(_idCheck);
+            }
+          });
+        }
+      }
+    },500);
+    // Timeout au bout de 5s
+    setTimeout(function(){clearInterval(_idCheck);},5000);
   }
 }
 function showHgoError(msg){
@@ -6406,7 +6426,7 @@ async function processEndOfPeriod(){
   var msg=document.getElementById('admin-period-msg');
 
   // 1. Charger tous les joueurs avec leurs points
-  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance');
+  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until');
   var {data:allRuns}=await supabaseClient.from('runs').select('player_id,points').eq('period',0);
   if(!allPlayers||!allRuns){return;}
 
@@ -6603,10 +6623,22 @@ async function processEndOfPeriod(){
     }
   }
 
-  // 9. Boost mensuel gratuit — reset stock (1 pour free, 6 pour premium)
-  // Pour l'instant tout le monde est free → 1 boost
+  // 9. Boost mensuel gratuit + récompenses Premium
   for(var bi2=0;bi2<allPlayers.length;bi2++){
-    await supabaseClient.from('players').update({boost_stock:1,boost_active_until:null}).eq('id',allPlayers[bi2].id);
+    var _bp=allPlayers[bi2];
+    var _bpPrem=_bp.premium&&!_bp.premium_trial&&_bp.premium_until&&new Date(_bp.premium_until)>new Date();
+    var boostQty=_bpPrem?5:1;
+    var patchData2={boost_stock:boostQty,boost_active_until:null};
+    // Récompenses mensuelles Full Premium
+    if(_bpPrem){
+      patchData2.rpc_balance=(_bp.rpc_balance||0)+20000;
+      patchData2.nyx_balance=(_bp.nyx_balance||0)+20;
+    }
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(_bp.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify(patchData2)
+    });
   }
 
   // 10. Sauvegarder les stats cumulées AVANT de supprimer les runs
@@ -7001,7 +7033,7 @@ async function renderSocialFeed(){
       +avatarHtml
       +'<div style="flex:1;min-width:0">'
       +'<div style="display:flex;align-items:center;gap:.4rem"><div style="font-weight:700;font-size:.85rem;color:var(--text)">'+p.username+'</div>'+natFlagHtml(p.nat)
-      +(r.player_id!==currentUser.id?'<button onclick="event.stopPropagation();toggleFollow(\''+r.player_id+'\')" style="font-size:.55rem;padding:.12rem .4rem;border-radius:4px;border:1px solid '+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.4)':'rgba(45,219,128,.4)')+';background:'+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.08)':'rgba(45,219,128,.08)')+';color:'+(_myFollowing.indexOf(r.player_id)>=0?'#ff6060':'var(--green)')+';cursor:pointer;font-weight:700">'+(_myFollowing.indexOf(r.player_id)>=0?'✕ Retirer':'+ Suivre')+'</button>':'')
+      +(r.player_id!==currentUser.id&&isPremium()?'<button onclick="event.stopPropagation();toggleFollow(\''+r.player_id+'\')" style="font-size:.55rem;padding:.12rem .4rem;border-radius:4px;border:1px solid '+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.4)':'rgba(45,219,128,.4)')+';background:'+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.08)':'rgba(45,219,128,.08)')+';color:'+(_myFollowing.indexOf(r.player_id)>=0?'#ff6060':'var(--green)')+';cursor:pointer;font-weight:700">'+(_myFollowing.indexOf(r.player_id)>=0?'✕ Retirer':'+ Suivre')+'</button>':'')
       +'</div>'
       +'<div style="font-size:.62rem;color:var(--muted)">'+dateStr+'</div>'
       +'</div>'
@@ -7788,8 +7820,9 @@ function showPlayerCard(playerId){
   if(playerId!==1&&!isPremium()){
     var targetPlayer=PLAYERS.find(function(x){return x.id===playerId;});
     var allowed=false;
-    // Free : peut voir les PC de sa league + adjacentes
-    if(targetPlayer&&canAccessLeague(targetPlayer.leagueKey)) allowed=true;
+    // Free : peut voir les PC de sa league uniquement
+    var myKey=window.__myPlayer?window.__myPlayer.leagueKey:'starter';
+    if(targetPlayer&&targetPlayer.leagueKey===myKey) allowed=true;
     // Free : peut voir les PC des membres de sa team
     if(window.__myTeamId&&targetPlayer&&targetPlayer._uuid){
       var _tmMembers=window._myTeamMemberIds||[];
@@ -9838,9 +9871,10 @@ async function createTeam(){
   var {data:existing}=await supabaseClient
     .from('team_members').select('id').eq('player_id',currentUser.id).maybeSingle();
   if(existing){showToast('⚠️ Tu es déjà dans une team');closeModal('join-team-modal');return;}
-  // Vérifier et déduire 50 NYX via wallet
+  // Vérifier et déduire 50 NYX via wallet (gratuit pour Premium)
+  var teamCost=isFullPremium()?0:50;
   var w=window.__wallet||{rpc:0,nyx:0};
-  if(w.nyx<50){showToast('⚠️ Solde insuffisant en NYX');return;}
+  if(teamCost>0&&w.nyx<teamCost){showToast('⚠️ Solde insuffisant en NYX ('+teamCost+' 💎 requis)');return;}
   // Créer la team
   var privEl=document.getElementById('t-private');
   var isPrivate=privEl?(privEl.type==='checkbox'?privEl.checked:(privEl.value==='true')):false;
@@ -9864,11 +9898,11 @@ async function createTeam(){
     player_id:currentUser.id, team_id:team.id, role:'capitaine'
   });
   if(errM){showToast('⚠️ Team créée mais erreur membres : '+errM.message);return;}
-  await walletDebitNyx(50,'Création team '+n);
+  if(teamCost>0) await walletDebitNyx(teamCost,'Création team '+n);
   window.__myTeamId=team.id;
   window.__myTeamRole='capitaine';
   closeModal('join-team-modal');
-  showToast('🎉 Team "'+n+'" créée ! − 50 💎 NYX');
+  showToast('🎉 Team "'+n+'" créée !'+(teamCost>0?' − '+teamCost+' 💎 NYX':' (offert Premium)'));
   renderTeams();
 }
 
