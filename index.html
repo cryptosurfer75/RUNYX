@@ -5029,7 +5029,9 @@ async function loadParrainageData(playerId){
 }
 
 async function showParrainageInfo(){
-  var uid=currentUser?currentUser.id:null;
+  // Utiliser le joueur consulté ou le joueur connecté
+  var viewedP=window.__viewedPlayer;
+  var uid=viewedP?viewedP._uuid:(currentUser?currentUser.id:null);
   if(!uid) return;
   // Recharger les données
   await loadParrainageData(uid);
@@ -5041,14 +5043,16 @@ async function showParrainageInfo(){
   else if(c.count>=10) detail='Ambassadeur · '+c.count+' parrainages';
   else detail=c.count+' parrainage'+(c.count>1?'s':'')+' · 10 requis pour Ambassadeur';
 
-  // Code parrainage du joueur
-  var myCode='RL-'+(window.__myPlayer?window.__myPlayer.rtwId:'?????');
+  // Code parrainage du joueur consulté
+  var _pName=viewedP?(viewedP.name||'?'):(window.__myPlayer?window.__myPlayer.name:'?');
+  var _pRtw=viewedP?(viewedP.rtwId||'?????'):(window.__myPlayer?window.__myPlayer.rtwId:'?????');
+  var myCode='RL-'+String(_pRtw).padStart(5,'0');
 
   // Liste des filleuls
   var filleulHtml='';
   if(c.filleuls.length){
     filleulHtml='<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.6rem">'
-      +'<div style="font-size:.62rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">Tes filleuls ('+c.count+')</div>';
+      +'<div style="font-size:.62rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">'+(viewedP?'Filleuls de '+_pName:'Tes filleuls')+' ('+c.count+')</div>';
     c.filleuls.slice(0,10).forEach(function(f){
       var steps=f._steps||0;
       var stepsColor=steps===4?'var(--green)':steps>0?'var(--gold)':'var(--muted2)';
