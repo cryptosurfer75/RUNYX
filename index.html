@@ -2056,7 +2056,6 @@ select option{background:#040c1c}
         <div id="admin-period-msg" style="font-size:.72rem;margin-top:.4rem;min-height:1rem"></div>
       </div>
     </div>
-  </div>
 
     <!-- Wallet Admin -->
     <div class="block" style="margin-top:1rem;border-color:rgba(245,200,66,.3)">
@@ -3578,6 +3577,10 @@ function renderDashboard(){
     for(var k in _avatarCurrent){
       _avatarCurrent[k]=Math.floor(Math.random()*_avatarOpts[k].length);
     }
+    // Forcer pas de chapeau, pas de lunettes, pas de barbe au départ
+    _avatarCurrent.hatColor=0;
+    _avatarCurrent.accessories=0;
+    _avatarCurrent.facialHair=0;
     // Construire les sélecteurs
     var el=document.getElementById('avatar-builder-options');
     if(!el) return;
@@ -9985,7 +9988,7 @@ async function renderTeams(){
         +'<td><div class="rank-num '+rc+'">'+(i+1)+'</div></td>'
         +'<td><div style="display:flex;align-items:center;gap:.55rem">'
           +natFlagHtml(p.nat)
-          +'<div '+clickPC+' style="cursor:pointer;width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'"><canvas id="'+avId+'" width="28" height="28" style="display:block;pointer-events:none"></canvas></div>'
+          +'<div '+clickPC+' style="cursor:pointer;width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'">'+(p.avatar?'<img src="'+p.avatar+'" style="width:28px;height:28px;object-fit:cover;display:block;pointer-events:none">':'<canvas id="'+avId+'" width="28" height="28" style="display:block;pointer-events:none"></canvas>')+'</div>'
           +'<div class="runner-name" onclick="showPlayerCardByUuid(\''+m.player_id+'\')" style="cursor:pointer">'+(p.username||'—')+'</div>'
           +(isCap?'<span style="font-size:.58rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:var(--gold);letter-spacing:.5px">C</span>':'')
           +kickBtn
@@ -10437,7 +10440,7 @@ async function loadTeamMembers(teamId, teamName){
   openModal('team-members-modal');
   // Charger membres + runs + médailles en parallèle
   var [membRes, runsRes, medalRes]=await Promise.all([
-    supabaseClient.from('team_members').select('player_id, role, players(username, grade, nat)').eq('team_id',teamId),
+    supabaseClient.from('team_members').select('player_id, role, players(username, grade, nat, avatar)').eq('team_id',teamId),
     supabaseClient.from('runs').select('player_id, points').eq('period',0),
     supabaseClient.from('palmares').select('rank').eq('team_id',teamId)
   ]);
