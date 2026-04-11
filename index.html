@@ -7921,6 +7921,8 @@ async function adminAddRun(){
     player_id:playerId, points:pts, distance:km, time:timeMin, elevation:Math.round(elv), period:0
   });
   if(error){msg.style.color='var(--red)';msg.textContent='Erreur : '+error.message;return;}
+  // Créditer les RPC de course (8 RPC par point gagné)
+  await walletCreditOther(playerId, pts * 8, 0, 'Course admin · ' + pts + ' pts');
   // Trouver le nom du joueur
   var sel=document.getElementById('admin-player');
   var playerName=sel.options[sel.selectedIndex].text;
@@ -9749,6 +9751,8 @@ async function syncStravaActivities(){
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*100)/100,time:Math.round(timeMin*10)/10,elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null,polyline:polyline||null})
       });
+      // Créditer les RPC de course (8 RPC par point gagné)
+      await walletCredit(pts * 8, 0, 'Course ' + (a.name || 'Strava') + ' · ' + pts + ' pts');
       // Décoder GPS en hexagones
       var hexes=[];
       if(polyline&&typeof h3!=='undefined'){
