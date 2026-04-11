@@ -6922,14 +6922,17 @@ async function renderSocialFeed(){
   // Toujours afficher la barre
   var premBar=document.getElementById('feed-premium-bar');
   if(premBar) premBar.style.display='block';
-  // Griser "Mes amis" + cadenas si Free
+  // Griser "Mes amis" + masquer recherche si Free
   var friendsTab=document.getElementById('feed-tab-friends');
+  var searchWrap=document.getElementById('feed-search')?.closest('div[style*="margin-bottom"]');
   if(friendsTab&&!isPremium()){
     friendsTab.style.opacity='.4';
     friendsTab.textContent='🔒 Mes amis';
+    if(searchWrap) searchWrap.style.display='none';
   } else if(friendsTab){
     friendsTab.style.opacity='1';
     friendsTab.textContent='Mes amis';
+    if(searchWrap) searchWrap.style.display='';
   }
   if(!currentUser){feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir le fil social</div>';return;}
   feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Chargement…</div>';
