@@ -8581,6 +8581,11 @@ function nav(page){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   window.scrollTo(0,0);
+  // Reset la vue PC quand on navigue vers dashboard via le menu
+  if(page==='dashboard'&&window.__viewedPlayer){
+    window.__viewedPlayer=null;
+    if(typeof renderDashboard==='function') renderDashboard();
+  }
   const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','admin'];
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
   // Initialiser la carte Lands quand on y navigue
