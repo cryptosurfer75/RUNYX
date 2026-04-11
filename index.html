@@ -3463,15 +3463,13 @@ function renderDashboard(){
     avatarEditBtn.style.display=isOwn?'flex':'none';
   }
   setTimeout(function(){
-    var avatarUrl=window.__myPlayer?window.__myPlayer.avatar:null;
+    var avatarUrl=p?p.avatar:null;
     var imgEl=document.getElementById('pc-avatar-img');
     var cv=document.getElementById('pc-avatar-canvas');
     if(avatarUrl){
-      // Photo Strava ou upload — afficher via <img>
       if(imgEl){imgEl.src=avatarUrl;imgEl.style.display='block';}
       if(cv)cv.style.display='none';
     } else {
-      // Pas d'avatar — dessiner le défaut sur canvas
       if(imgEl)imgEl.style.display='none';
       if(cv){
         cv.style.display='block';
