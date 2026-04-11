@@ -3633,14 +3633,45 @@ function renderDashboard(){
 
   window.openAvatarPicker=function(mode){
     window._avatarPickerMode=mode||'change';
-    // Randomiser les options au départ
-    for(var k in _avatarCurrent){
-      _avatarCurrent[k]=Math.floor(Math.random()*_avatarOpts[k].length);
+    // Essayer de charger l'avatar actuel
+    var currentUrl=window.__myPlayer?window.__myPlayer.avatar:null;
+    var parsed=false;
+    if(currentUrl&&currentUrl.indexOf('api.dicebear.com')>=0){
+      // Parser l'URL pour récupérer les paramètres
+      try{
+        var params=new URLSearchParams(currentUrl.split('?')[1]);
+        for(var k in _avatarOpts){
+          var val=params.get(k);
+          if(val){
+            var idx=_avatarOpts[k].indexOf(val);
+            if(idx>=0) _avatarCurrent[k]=idx;
+          }
+        }
+        // Chapeau : vérifier si top est un chapeau
+        var topVal=params.get('top');
+        if(topVal){
+          var hatIdx=_avatarOpts.hatColor.indexOf(topVal);
+          if(hatIdx>=0){_avatarCurrent.hatColor=hatIdx;}
+          else{_avatarCurrent.hatColor=0;}
+        }
+        // Lunettes
+        var accProb=params.get('accessoriesProbability');
+        if(accProb==='0') _avatarCurrent.accessories=0;
+        // Barbe
+        var fbProb=params.get('facialHairProbability');
+        if(fbProb==='0') _avatarCurrent.facialHair=0;
+        parsed=true;
+      }catch(e){}
     }
-    // Forcer pas de chapeau, pas de lunettes, pas de barbe au départ
-    _avatarCurrent.hatColor=0;
-    _avatarCurrent.accessories=0;
-    _avatarCurrent.facialHair=0;
+    if(!parsed){
+      // Randomiser si pas d'avatar DiceBear existant
+      for(var k in _avatarCurrent){
+        _avatarCurrent[k]=Math.floor(Math.random()*_avatarOpts[k].length);
+      }
+      _avatarCurrent.hatColor=0;
+      _avatarCurrent.accessories=0;
+      _avatarCurrent.facialHair=0;
+    }
     // Construire les sélecteurs
     var el=document.getElementById('avatar-builder-options');
     if(!el) return;
