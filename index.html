@@ -1566,16 +1566,18 @@ select option{background:#040c1c}
         <div style="font-size:.78rem;color:var(--muted2);margin-top:.1rem">Activités des RP</div>
       </div>
     </div>
-    <!-- Filtre Tous / Amis -->
-    <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:8px;overflow:hidden;border:1px solid rgba(74,144,255,.2)">
-      <button id="feed-tab-all" onclick="switchFeedTab('all')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:rgba(245,200,66,.15);color:var(--gold)">Tous les RP</button>
-      <button id="feed-tab-friends" onclick="switchFeedTab('friends')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:transparent;color:var(--muted2)">Mes amis</button>
-    </div>
-    <!-- Recherche RP -->
-    <div style="margin-bottom:.75rem">
-      <div style="position:relative">
-        <input id="feed-search" type="text" placeholder="🔍 Rechercher un RP…" maxlength="30" oninput="searchPlayers(this.value)" style="width:100%;box-sizing:border-box;padding:.45rem .7rem;border-radius:8px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none;font-family:'Space Mono',monospace" onfocus="this.style.borderColor='var(--gold)'" onblur="setTimeout(function(){document.getElementById('search-results').style.display='none';},200);this.style.borderColor='rgba(74,144,255,.15)'">
-        <div id="search-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#080e1e;border:1px solid rgba(74,144,255,.2);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.5)"></div>
+    <!-- Filtre Tous / Amis (Premium only) -->
+    <div id="feed-premium-bar" style="display:none">
+      <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:8px;overflow:hidden;border:1px solid rgba(74,144,255,.2)">
+        <button id="feed-tab-all" onclick="switchFeedTab('all')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:rgba(245,200,66,.15);color:var(--gold)">Tous les RP</button>
+        <button id="feed-tab-friends" onclick="switchFeedTab('friends')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:transparent;color:var(--muted2)">Mes amis</button>
+      </div>
+      <!-- Recherche RP -->
+      <div style="margin-bottom:.75rem">
+        <div style="position:relative">
+          <input id="feed-search" type="text" placeholder="🔍 Rechercher un RP…" maxlength="30" oninput="searchPlayers(this.value)" style="width:100%;box-sizing:border-box;padding:.45rem .7rem;border-radius:8px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none;font-family:'Space Mono',monospace" onfocus="this.style.borderColor='var(--gold)'" onblur="setTimeout(function(){document.getElementById('search-results').style.display='none';},200);this.style.borderColor='rgba(74,144,255,.15)'">
+          <div id="search-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#080e1e;border:1px solid rgba(74,144,255,.2);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.5)"></div>
+        </div>
       </div>
     </div>
     <!-- Feed -->
@@ -4344,12 +4346,16 @@ function renderLeaguePP(){
 /* ============================================================
    RENDER : POINTS HISTORY
 ============================================================ */
-async function renderHistory(){
+var _histPage=0;
+var _histPerPage=10;
+var _allHistRuns=[];
+async function renderHistory(page){
+  if(typeof page==='number') _histPage=page;
   var tb=document.getElementById('hist-tbody');
   var statsRow=document.getElementById('run-stats-row');
   if(!tb) return;
-  if(!currentUser){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir ton historique</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
-  tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Chargement…</td></tr>';
+  if(!currentUser){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir ton historique</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
+  tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Chargement…</td></tr>';
   // Charger toutes les courses pour les stats
   var {data:allRuns,error}=await supabaseClient
     .from('runs')
@@ -4357,9 +4363,12 @@ async function renderHistory(){
     .eq('player_id',currentUser.id)
     .eq('period',0)
     .order('run_date',{ascending:false});
-  var runs=(allRuns||[]).slice(0,10);
+  _allHistRuns=allRuns||[];
+  var totalPages=Math.ceil(_allHistRuns.length/_histPerPage);
+  if(_histPage>=totalPages) _histPage=Math.max(0,totalPages-1);
+  var runs=_allHistRuns.slice(_histPage*_histPerPage,(_histPage+1)*_histPerPage);
   if(error||!allRuns){tb.innerHTML='<tr><td colspan="6" style="color:var(--red);padding:.5rem;font-size:.8rem">Erreur</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
-  if(!allRuns.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Aucune course enregistrée.<br>Synchronise Strava ou attends que l\'admin ajoute tes courses.</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
+  if(!allRuns.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Aucune course enregistrée.<br>Synchronise Strava ou attends que l\'admin ajoute tes courses.</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
   // Stats résumées
   if(statsRow){
     var totalKm=0,totalElv=0,totalPts=0,totalTime=0,nbRuns=allRuns.length;
@@ -4401,6 +4410,23 @@ async function renderHistory(){
       +'<td style="text-align:center"><span onclick="showRunDetails(\''+r.id+'\')" style="cursor:pointer;font-size:.8rem" title="Détails">ℹ️</span></td>'
     +'</tr>';
   }).join('');
+  // Pagination
+  var pagEl=document.getElementById('hist-pagination');
+  if(!pagEl){
+    pagEl=document.createElement('div');
+    pagEl.id='hist-pagination';
+    pagEl.style.cssText='display:flex;justify-content:center;gap:.3rem;padding:.75rem 0';
+    tb.closest('.block').appendChild(pagEl);
+  }
+  if(totalPages<=1){pagEl.innerHTML='';}
+  else{
+    var pagHtml='';
+    for(var pi=0;pi<totalPages;pi++){
+      var active=pi===_histPage;
+      pagHtml+='<button onclick="renderHistory('+pi+')" style="width:28px;height:28px;border-radius:5px;border:1px solid '+(active?'var(--gold)':'var(--border2)')+';background:'+(active?'rgba(245,200,66,.15)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.72rem;font-weight:700;cursor:pointer">'+(pi+1)+'</button>';
+    }
+    pagEl.innerHTML=pagHtml;
+  }
 }
 
 function showRunDetails(runId){
@@ -6088,6 +6114,8 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
+  // Marquer l'exploration comme terminée
+  if(currentUser) localStorage.setItem('expl-done-'+currentUser.id,'1');
   // Supprimer les lands free (non louées/achetées) de la DB
   await window.fetch(supabaseUrl+'/rest/v1/lands?status=eq.free',{
     method:'DELETE',
@@ -6798,6 +6826,10 @@ function searchPlayers(query){
 }
 
 function switchFeedTab(mode){
+  if(mode==='friends'&&!isPremium()){
+    showToast('🔒 Passe en Premium pour accéder à ta liste d\'amis');
+    return;
+  }
   _feedMode=mode;
   var tabAll=document.getElementById('feed-tab-all');
   var tabFriends=document.getElementById('feed-tab-friends');
@@ -6840,6 +6872,9 @@ async function loadMyFollowing(){
 async function renderSocialFeed(){
   var feed=document.getElementById('social-feed');
   if(!feed) return;
+  // Afficher barre amis/recherche seulement pour Premium
+  var premBar=document.getElementById('feed-premium-bar');
+  if(premBar) premBar.style.display=isPremium()?'block':'none';
   if(!currentUser){feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir le fil social</div>';return;}
   feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Chargement…</div>';
   // Charger les follows
@@ -8488,8 +8523,9 @@ function nav(page){
         var finBtn=document.getElementById('lands-finish-btn');
         if(finBtn) finBtn.style.display='block';
       }
-      // Afficher le bouton Terminer si des lands free sont visibles
-      if(window._myPassageLandIds&&window._myPassageLandIds.length>0){
+      // Afficher le bouton Terminer si des lands free sont visibles (et pas déjà terminé)
+      var explDone=currentUser&&localStorage.getItem('expl-done-'+currentUser.id);
+      if(window._myPassageLandIds&&window._myPassageLandIds.length>0&&!explDone&&!window._hidePassages){
         var finBtn=document.getElementById('lands-finish-btn');
         if(finBtn){finBtn.style.display='block';finBtn.textContent='✓ Terminer l\'exploration';}
       }
@@ -9463,6 +9499,7 @@ async function syncStravaActivities(){
         // Stocker les hexes explorés pour affichage sur la carte
         if(!window._recentExploredHexes) window._recentExploredHexes=[];
         window._hidePassages=false;
+        if(currentUser) localStorage.removeItem('expl-done-'+currentUser.id);
         window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
       }
       resultsHtml+='<div style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;border-radius:4px">'
