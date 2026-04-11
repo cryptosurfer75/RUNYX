@@ -2702,7 +2702,11 @@ async function loadPlayersFromSupabase(){
     if(nkey) seenNames[nkey]=true;
     PLAYERS.push(p);
   });
-  // Ne plus forcer id=1 — réservé au joueur connecté via onLoginSuccess
+  // Réinjecter le joueur connecté (id=1)
+  if(window.__myPlayer){
+    var meIdx=PLAYERS.findIndex(function(p){return p.id===1;});
+    if(meIdx<0) PLAYERS.unshift(window.__myPlayer);
+  }
 
   // 6. Rendu
   renderLeagueNav();
