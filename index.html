@@ -1431,10 +1431,15 @@ select option{background:#040c1c}
         <!-- Chat Team -->
         <div style="border-top:1px solid rgba(74,144,255,.2);padding:.65rem .85rem">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;color:var(--gold);margin-bottom:.4rem">💬 Chat Team</div>
-          <div id="team-chat-messages" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;margin-bottom:.5rem;scrollbar-width:thin;scrollbar-color:rgba(74,144,255,.2) transparent"></div>
-          <div style="display:flex;gap:.4rem">
-            <input id="team-chat-input" type="text" placeholder="Message…" maxlength="300" style="flex:1;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none" onkeydown="if(event.key==='Enter')sendTeamMessage()">
-            <button onclick="sendTeamMessage()" style="padding:.4rem .7rem;border-radius:6px;border:1px solid rgba(74,144,255,.25);background:rgba(74,144,255,.08);color:#4a90ff;font-size:.75rem;font-weight:700;cursor:pointer">→</button>
+          <div id="team-chat-locked" style="display:none;text-align:center;padding:.75rem;color:var(--muted2);font-size:.75rem;line-height:1.6;cursor:pointer" onclick="showPremiumGate('L\'accès au Chat de la Team est réservé au statut Premium.')">
+            🔒 <span style="text-decoration:underline">Chat réservé aux membres Premium</span>
+          </div>
+          <div id="team-chat-content">
+            <div id="team-chat-messages" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;margin-bottom:.5rem;scrollbar-width:thin;scrollbar-color:rgba(74,144,255,.2) transparent"></div>
+            <div style="display:flex;gap:.4rem">
+              <input id="team-chat-input" type="text" placeholder="Message…" maxlength="300" style="flex:1;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(74,144,255,.15);background:rgba(4,12,28,.5);color:var(--text);font-size:.75rem;outline:none" onkeydown="if(event.key==='Enter')sendTeamMessage()">
+              <button onclick="sendTeamMessage()" style="padding:.4rem .7rem;border-radius:6px;border:1px solid rgba(74,144,255,.25);background:rgba(74,144,255,.08);color:#4a90ff;font-size:.75rem;font-weight:700;cursor:pointer">→</button>
+            </div>
           </div>
         </div>
       </div>
@@ -3314,6 +3319,7 @@ const FP_DATA=[
   {f:'Visualisation de tous les classements', free:false,prem:true},
   {f:'Visualisation de toutes les PC',free:false,prem:true},
   {f:'Visualisation RP dans les Teams',free:false,prem:true},
+  {f:'Chat de Team',free:false,prem:true},
   {f:'Création Team privée offerte',   free:false,prem:true},
   {f:'Trésors cachés & bonus spéciaux',free:false,prem:true},
   {f:'5 Boosts offerts / mois',       free:false,prem:true},
@@ -3855,7 +3861,6 @@ function renderLeagueNav(){
         <span style="font-size:.85rem;line-height:1">${l.emoji}</span>
         <span class="ln-name" style="color:${l.key===activeLeagueKey?l.color:'var(--muted2)'}">${l.name}</span>
         <span style="font-size:.65rem;color:${l.key===activeLeagueKey?l.color:'var(--muted)'}">— ${l.label}</span>
-        ${_locked?'<span style="font-size:.7rem;margin-left:.2rem">🔒</span>':''}
       </div>
       <div style="display:flex;align-items:center;gap:.4rem">
         ${counts[l.key]?`<span class="ln-count">${counts[l.key]}</span>`:''}
@@ -3876,7 +3881,7 @@ function canAccessLeague(key){
 
 function selectLeague(key){
   if(!canAccessLeague(key)){
-    showToast('🔒 Passe en Premium pour voir toutes les leagues');
+    showPremiumGate('La consultation de toutes les Leagues est accessible avec le statut Premium.');
     return;
   }
   activeLeagueKey=key;
@@ -6754,6 +6759,16 @@ function startChatPoll(teamId){
 }
 async function loadTeamChat(teamId){
   _teamChatId=teamId;
+  var chatLocked=document.getElementById('team-chat-locked');
+  var chatContent=document.getElementById('team-chat-content');
+  if(!isPremium()){
+    if(chatLocked) chatLocked.style.display='block';
+    if(chatContent) chatContent.style.display='none';
+    return;
+  } else {
+    if(chatLocked) chatLocked.style.display='none';
+    if(chatContent) chatContent.style.display='block';
+  }
   var el=document.getElementById('team-chat-messages');
   if(!el||!teamId) return;
   var resp=await window.fetch(supabaseUrl+'/rest/v1/team_messages?team_id=eq.'+encodeURIComponent(teamId)+'&select=id,player_id,content,created_at&order=created_at.desc&limit=50',{
@@ -6859,7 +6874,7 @@ function searchPlayers(query){
 
 function switchFeedTab(mode){
   if(mode==='friends'&&!isPremium()){
-    showToast('🔒 Passe en Premium pour accéder à ta liste d\'amis');
+    showPremiumGate('L\'accès à la liste Amis est disponible avec le statut Premium.');
     return;
   }
   _feedMode=mode;
@@ -6904,9 +6919,18 @@ async function loadMyFollowing(){
 async function renderSocialFeed(){
   var feed=document.getElementById('social-feed');
   if(!feed) return;
-  // Afficher barre amis/recherche seulement pour Premium
+  // Toujours afficher la barre
   var premBar=document.getElementById('feed-premium-bar');
-  if(premBar) premBar.style.display=isPremium()?'block':'none';
+  if(premBar) premBar.style.display='block';
+  // Griser "Mes amis" + cadenas si Free
+  var friendsTab=document.getElementById('feed-tab-friends');
+  if(friendsTab&&!isPremium()){
+    friendsTab.style.opacity='.4';
+    friendsTab.textContent='🔒 Mes amis';
+  } else if(friendsTab){
+    friendsTab.style.opacity='1';
+    friendsTab.textContent='Mes amis';
+  }
   if(!currentUser){feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir le fil social</div>';return;}
   feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Chargement…</div>';
   // Charger les follows
@@ -8454,6 +8478,20 @@ function updatePremiumUI(){
     el.innerHTML='<span style="color:var(--muted2)">Statut : Free</span>';
     if(btn) btn.textContent='⭐ Passer Premium';
   }
+}
+
+function showPremiumGate(message){
+  document.getElementById('lm-title').textContent='';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML='<div style="text-align:center;padding:.5rem 0">'
+    +'<div style="font-size:2.5rem;margin-bottom:.4rem">⭐</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--gold);margin-bottom:.5rem">PREMIUM</div>'
+    +'<div style="font-size:.82rem;color:var(--muted2);line-height:1.6;margin-bottom:1rem">'+message+'<br><br>Veux-tu essayer gratuitement ?</div>'
+    +'<div style="display:flex;flex-direction:column;gap:.4rem;max-width:220px;margin:0 auto">'
+    +'<button onclick="closeModal(\'land-modal\');nav(\'access\')" style="padding:.5rem;border-radius:8px;border:none;background:linear-gradient(175deg,#f5c842,#b8860b);color:#000;font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2px;font-weight:900;cursor:pointer;box-shadow:0 3px 12px rgba(245,200,66,.3)">ESSAYER</button>'
+    +'<button onclick="closeModal(\'land-modal\')" style="padding:.3rem;border:none;background:transparent;color:var(--muted2);font-size:.7rem;cursor:pointer">Peut-être plus tard</button>'
+    +'</div></div>';
+  openModal('land-modal');
 }
 
 function handlePremiumClick(){
