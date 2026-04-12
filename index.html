@@ -7508,7 +7508,13 @@ async function shareRunCard(runId){
     cx.beginPath();cx.roundRect(bx,195,125,70,8);cx.stroke();
     cx.font='600 9px sans-serif';cx.fillStyle='#5a6080';cx.textAlign='center';
     cx.fillText(s.label,bx+62,213);
-    cx.font='700 20px monospace';cx.fillStyle=s.color;
+    // Auto-fit : réduit la police si la valeur déborde du cadre (max 115 px)
+    var maxW=115,fs=20;
+    cx.font='700 '+fs+'px monospace';
+    while(cx.measureText(s.value).width>maxW&&fs>11){
+      fs-=1;cx.font='700 '+fs+'px monospace';
+    }
+    cx.fillStyle=s.color;
     cx.fillText(s.value,bx+62,245);
   });
 
@@ -9610,14 +9616,11 @@ async function loadStravaToken(){
     updateStravaUI(true);
     // Sync auto au login (délai 3s pour laisser le temps au chargement)
     setTimeout(function(){
-      if(window.__stravaToken) syncStravaActivities();
+      if(window.__stravaToken) syncStravaActivities(true);
     },3000);
-    // Sync auto toutes les 5 minutes
-    if(!window._stravaPollInterval){
-      window._stravaPollInterval=setInterval(function(){
-        if(window.__stravaToken&&currentUser) syncStravaActivities();
-      },5*60*1000);
-    }
+    // Polling 5 min désactivé — remplacé par le webhook Strava (Edge Function strava-webhook).
+    // Le webhook push les nouvelles activités en temps réel.
+    // La sync au login ci-dessus sert de filet de sécurité (imports historiques + rattrapage).
   }
 }
 
@@ -9681,7 +9684,7 @@ async function syncStravaActivities(silent){
       headers:{'Authorization':'Bearer '+window.__stravaToken}
     });
     var activities=await resp.json();
-    if(!Array.isArray(activities)){showToast('⚠️ Erreur Strava : '+(activities.message||'?'));return;}
+    if(!Array.isArray(activities)){if(!silent)showToast('⚠️ Erreur Strava : '+(activities.message||'?'));return;}
     // Filtrer les nouvelles activités (pas encore importées)
     var newActivities=[];
     var resultsHtml='';
@@ -9837,10 +9840,10 @@ async function syncStravaActivities(silent){
       // Vérifier montée Starter
       if(typeof adminCheckStarterPromotion==='function') adminCheckStarterPromotion(currentUser.id,'Moi');
     } else {
-      showToast('Aucune nouvelle activité à importer');
+      if(!silent) showToast('Aucune nouvelle activité à importer');
     }
   }catch(e){
-    showToast('⚠️ Erreur sync : '+e.message);
+    if(!silent) showToast('⚠️ Erreur sync : '+e.message);
   }
 }
 
