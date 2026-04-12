@@ -912,7 +912,7 @@ select option{background:#040c1c}
         <div style="text-align:center">
           <div id="pc-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:2px;color:#ffffff;line-height:1.1">Lucas Moreau</div>
           <div id="pc-rtw-id" style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.2rem;letter-spacing:.5px">#RL-00042</div>
-          <div id="pc-premium-badge" style="display:none;margin:.3rem auto 0;padding:.15rem .55rem;border-radius:10px;background:linear-gradient(135deg,rgba(245,200,66,.28),rgba(245,200,66,.08));border:1px solid rgba(245,200,66,.55);font-family:'Bebas Neue',sans-serif;font-size:.58rem;letter-spacing:1.8px;color:#f5c842;text-shadow:0 0 8px rgba(245,200,66,.5);box-shadow:0 0 10px rgba(245,200,66,.2);width:fit-content">⭐ PREMIUM</div>
+          <div id="pc-premium-badge" style="display:none;margin:.3rem auto 0;padding:.15rem .55rem;border-radius:10px;background:linear-gradient(135deg,rgba(245,200,66,.28),rgba(245,200,66,.08));border:1px solid rgba(245,200,66,.55);font-family:'Bebas Neue',sans-serif;font-size:.58rem;letter-spacing:1.8px;color:#f5c842;text-shadow:0 0 8px rgba(245,200,66,.5);box-shadow:0 0 10px rgba(245,200,66,.2);width:fit-content">PREMIUM</div>
         </div>
         <!-- 3 badges sur la même ligne -->
         <div style="display:flex;gap:.3rem;flex-wrap:nowrap;justify-content:center;width:100%">
@@ -9667,11 +9667,11 @@ async function disconnectStrava(){
 // Synchroniser les activités depuis Strava
 var _stravaActivitiesQueue=[];
 
-async function syncStravaActivities(){
-  if(!currentUser||!window.__stravaToken){showToast('⚠️ Connecte Strava d\'abord');return;}
+async function syncStravaActivities(silent){
+  if(!currentUser||!window.__stravaToken){if(!silent)showToast('⚠️ Connecte Strava d\'abord');return;}
   var tokenOk=await refreshStravaToken();
-  if(!tokenOk&&!window.__stravaToken){showToast('⚠️ Token expiré, reconnecte Strava');return;}
-  showToast('🔄 Import des activités…');
+  if(!tokenOk&&!window.__stravaToken){if(!silent)showToast('⚠️ Token expiré, reconnecte Strava');return;}
+  if(!silent)showToast('🔄 Import des activités…');
   // Récupérer les activités depuis la date d'inscription
   var {data:meData}=await supabaseClient.from('players').select('created_at').eq('id',currentUser.id).single();
   var inscriptionDate=meData&&meData.created_at?new Date(meData.created_at):new Date();
