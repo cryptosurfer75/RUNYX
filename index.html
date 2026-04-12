@@ -912,6 +912,7 @@ select option{background:#040c1c}
         <div style="text-align:center">
           <div id="pc-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:2px;color:#ffffff;line-height:1.1">Lucas Moreau</div>
           <div id="pc-rtw-id" style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.2rem;letter-spacing:.5px">#RL-00042</div>
+          <div id="pc-premium-badge" style="display:none;margin:.3rem auto 0;padding:.15rem .55rem;border-radius:10px;background:linear-gradient(135deg,rgba(245,200,66,.28),rgba(245,200,66,.08));border:1px solid rgba(245,200,66,.55);font-family:'Bebas Neue',sans-serif;font-size:.58rem;letter-spacing:1.8px;color:#f5c842;text-shadow:0 0 8px rgba(245,200,66,.5);box-shadow:0 0 10px rgba(245,200,66,.2);width:fit-content">⭐ PREMIUM</div>
         </div>
         <!-- 3 badges sur la même ligne -->
         <div style="display:flex;gap:.3rem;flex-wrap:nowrap;justify-content:center;width:100%">
@@ -2780,7 +2781,7 @@ async function loadPlayersFromSupabase(){
   // 1. Charger tous les joueurs
   const { data: playersData, error: playersErr } = await supabaseClient
     .from('players')
-    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id');
+    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial');
 
   if(playersErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur players : ' + playersErr.message + '</div>';
@@ -2843,6 +2844,9 @@ async function loadPlayersFromSupabase(){
       buyin_debt: p.buyin_debt || false,
       frozen: p.frozen || false,
       rtwId: p.rtw_id || null,
+      premium: p.premium || false,
+      premiumUntil: p.premium_until || null,
+      premiumTrial: p.premium_trial || false,
     };
   });
 
@@ -3548,6 +3552,11 @@ function renderDashboard(){
     set('pc-name', p.name||'Joueur');
     var _rid=p.rtwId||p.id||'00000';
     set('pc-rtw-id', '#RL-'+String(_rid).padStart(5,'0'));
+    var _pcPrem=document.getElementById('pc-premium-badge');
+    if(_pcPrem){
+      var _premActive=p.premium&&(!p.premiumUntil||new Date(p.premiumUntil)>new Date());
+      _pcPrem.style.display=_premActive?'block':'none';
+    }
     var flagEl=document.getElementById('pc-flag');
     if(flagEl){var _f=natFlag(p.nat);var _sq=SQUARE_FLAGS.indexOf(_f)>=0;flagEl.innerHTML='<span style="font-size:2.8rem;line-height:1;'+(_sq?'transform:scale(1.35);display:inline-block':'')+'">'+_f+'</span>';}
     // Badge grade — charger le vrai grade depuis la DB pour le joueur affiché
