@@ -9505,7 +9505,9 @@ async function buyBoosts(qty, cost){
 //  STRAVA — Intégration OAuth + Import activités + GPS → Lands
 // ══════════════════════════════════════════════════════════════════════
 var STRAVA_CLIENT_ID='222683';
-var STRAVA_CLIENT_SECRET='dbcb8174708144bb7f47e9e6b607321bc7f3abeb';
+// Le client_secret n'est JAMAIS stocké côté client — l'échange OAuth
+// passe par l'Edge Function strava-oauth (Supabase) qui le garde côté serveur.
+var STRAVA_OAUTH_ENDPOINT=supabaseUrl+'/functions/v1/strava-oauth';
 var STRAVA_REDIRECT='https://runyxleague.com';
 
 function connectStrava(){
@@ -9535,17 +9537,12 @@ async function handleStravaCallback(){
   // Nettoyer l'URL
   window.history.replaceState({},'',window.location.pathname);
   showToast('🔴 Connexion Strava en cours…');
-  // Échanger le code contre un token
+  // Échanger le code contre un token via l'Edge Function (secret côté serveur)
   try{
-    var resp=await window.fetch('https://www.strava.com/oauth/token',{
+    var resp=await window.fetch(STRAVA_OAUTH_ENDPOINT,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        client_id:STRAVA_CLIENT_ID,
-        client_secret:STRAVA_CLIENT_SECRET,
-        code:code,
-        grant_type:'authorization_code'
-      })
+      body:JSON.stringify({code:code, grant_type:'authorization_code'})
     });
     var data=await resp.json();
     if(data.access_token){
@@ -9596,15 +9593,11 @@ async function refreshStravaToken(){
   var now=Math.floor(Date.now()/1000);
   if(window.__stravaExpires&&window.__stravaExpires>now+60) return true; // encore valide
   try{
-    var resp=await window.fetch('https://www.strava.com/oauth/token',{
+    // Échange refresh_token → access_token via l'Edge Function (secret côté serveur)
+    var resp=await window.fetch(STRAVA_OAUTH_ENDPOINT,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        client_id:STRAVA_CLIENT_ID,
-        client_secret:STRAVA_CLIENT_SECRET,
-        refresh_token:window.__stravaRefresh,
-        grant_type:'refresh_token'
-      })
+      body:JSON.stringify({refresh_token:window.__stravaRefresh, grant_type:'refresh_token'})
     });
     var data=await resp.json();
     if(data.access_token){
