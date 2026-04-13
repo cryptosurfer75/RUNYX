@@ -11120,6 +11120,17 @@ async function loadTeamMembers(teamId, teamName){
   var title=document.getElementById('tmm-title');
   var sub=document.getElementById('tmm-subtitle');
   if(!tbody) return;
+  // Vérifier si la team est privée → gate Premium pour les free users
+  var {data:_tDataCheck}=await supabaseClient.from('teams').select('invite_code').eq('id',teamId).maybeSingle();
+  var _isPrivate=_tDataCheck&&_tDataCheck.invite_code!==OPEN_TEAM_MARKER;
+  // Exception : membre de cette team (y compris capitaine) — pas besoin d'être Premium
+  var _isMember=window.__myTeamId===teamId;
+  if(_isPrivate && !isPremium() && !_isMember){
+    if(typeof showPremiumGate==='function'){
+      showPremiumGate('Voir la composition d\'une Team privée est réservé au Premium. Les Teams ouvertes sont consultables en Free.');
+    }
+    return;
+  }
   var decodedName=decodeURIComponent(teamName);
   if(title) title.textContent=decodedName;
   if(sub) sub.textContent='Chargement…';
