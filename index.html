@@ -723,7 +723,7 @@ select option{background:#040c1c}
       <div style="font-size:.72rem;color:#4a6080;margin:5px 0 9px">10 000 RPC + 5 NYX offerts pour démarrer !</div>
       <div style="background:rgba(4,12,28,.8);border:1px solid rgba(245,200,66,.16);border-radius:8px;padding:9px">
         <div style="font-size:.54rem;color:#3a5070;letter-spacing:.8px;margin-bottom:2px">TON IDENTIFIANT UNIQUE</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.92rem;color:#f5c842;letter-spacing:2px">#RL-<span id="new-id">00001</span></div>
+        <div style="font-family:'Space Mono',monospace;font-size:.92rem;color:#f5c842;letter-spacing:2px">#RL-<span id="new-id">…</span></div>
       </div>
     </div>
     <button onclick="enterApp()" style="width:100%;padding:14px;border-radius:13px;border:none;border-bottom:5px solid #0c2e10;background:linear-gradient(160deg,#68d46c,#267830);font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:6px;color:#fff;text-shadow:0 2px 5px rgba(0,0,0,.5);box-shadow:0 7px 0 #0c2e10,0 12px 35px rgba(0,0,0,.65);cursor:pointer;margin-bottom:9px"
@@ -3157,29 +3157,24 @@ async function hgo(s){
   hcur=s;
   document.getElementById('hs'+s).style.display='';
   if(s===5){
-    // Afficher le RL-ID séquentiel — attendre que onLoginSuccess ait fini
+    // Afficher le RL-ID séquentiel — re-fetch depuis la DB pour être à jour
+    var _newIdEl=document.getElementById('new-id');
+    if(_newIdEl) _newIdEl.textContent='…';
     var _idCheck=setInterval(function(){
-      var uid=window.__myPlayer?window.__myPlayer.rtwId:null;
-      if(uid&&uid!=='00001'){
-        document.getElementById('new-id').textContent=String(uid).padStart(5,'0');
-        clearInterval(_idCheck);
-      } else if(uid){
-        // Vérifier en DB directement
-        if(currentUser){
-          window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id)+'&select=rtw_id',{
-            headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-          }).then(function(r){return r.json();}).then(function(d){
-            if(d&&d[0]&&d[0].rtw_id){
-              document.getElementById('new-id').textContent=String(d[0].rtw_id).padStart(5,'0');
-              if(window.__myPlayer) window.__myPlayer.rtwId=d[0].rtw_id;
-              clearInterval(_idCheck);
-            }
-          });
+      if(!currentUser){return;}
+      // Toujours faire un fetch DB pour récupérer le vrai rtw_id
+      window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id)+'&select=rtw_id',{
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d&&d[0]&&d[0].rtw_id){
+          if(_newIdEl) _newIdEl.textContent=String(d[0].rtw_id).padStart(5,'0');
+          if(window.__myPlayer) window.__myPlayer.rtwId=d[0].rtw_id;
+          clearInterval(_idCheck);
         }
-      }
-    },500);
-    // Timeout au bout de 5s
-    setTimeout(function(){clearInterval(_idCheck);},5000);
+      }).catch(function(){});
+    },600);
+    // Timeout étendu à 15s pour laisser le temps à la DB
+    setTimeout(function(){clearInterval(_idCheck);},15000);
   }
 }
 function showHgoError(msg){
@@ -8126,14 +8121,7 @@ function goToPcLeague(){
   if(typeof updateLeaguePickerLabel==='function') updateLeaguePickerLabel();
 }
 function goToPcTeam(){
-  var vp=window.__viewedPlayer;
-  if(vp&&!isPremium()){
-    showPremiumGate('Voir la Team d\'un autre RP est réservé au Premium.');
-    return;
-  }
-  // Si vue d'un autre RP, on stocke son uuid pour que renderTeams scrolle jusqu'à sa team
-  if(vp) window.__viewedTeamOfPlayerUuid=vp._uuid;
-  else window.__viewedTeamOfPlayerUuid=null;
+  // La vérif free/premium + open/private se fait dans renderTeams (on a besoin du type de team)
   nav('teams');
 }
 
@@ -10564,14 +10552,24 @@ async function renderTeams(){
     var _mta=document.getElementById('myteam-actions');
     // Si on consulte la PC d'un autre RP, afficher SA team (read-only) au lieu de la mienne
     var _isViewedTeamMode=false;
+    var _viewedTeamIsPrivate=false;
     if(window.__viewedPlayer&&window.__viewedPlayer._uuid){
       var _vpMem=(allMembers||[]).find(function(m){return m.player_id===window.__viewedPlayer._uuid;});
       if(_vpMem){
         var _vpTeam=teams.find(function(t){return t.id===_vpMem.team_id;});
         if(_vpTeam){
-          _myTeamData=_vpTeam;
-          myTeamId=_vpTeam.id;
-          _isViewedTeamMode=true;
+          _viewedTeamIsPrivate=(_vpTeam.invite_code!==OPEN_TEAM_MARKER);
+          // Free users : interdits sur teams privées, autorisés sur teams open
+          if(_viewedTeamIsPrivate && !isPremium()){
+            if(typeof showPremiumGate==='function'){
+              showPremiumGate('Voir la composition d\'une Team privée est réservé au Premium. Les Teams ouvertes sont consultables en Free.');
+            }
+            _myTeamData=null; // on cache le panel
+          } else {
+            _myTeamData=_vpTeam;
+            myTeamId=_vpTeam.id;
+            _isViewedTeamMode=true;
+          }
         }
       } else {
         _myTeamData=null;
