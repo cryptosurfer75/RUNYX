@@ -6331,6 +6331,8 @@ async function adminForceRent(){
 // Charger les explorations en attente depuis la DB
 async function loadPendingExploration(){
   if(!currentUser) return;
+  // Si l'utilisateur a déjà terminé l'exploration, on ne réouvre pas la modale
+  if(localStorage.getItem('expl-done-'+currentUser.id)==='1') return;
   var {data:player}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
   if(!player||!player.pending_exploration) return;
   try{
@@ -6372,8 +6374,16 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
-  // Marquer l'exploration comme terminée
-  if(currentUser) localStorage.setItem('expl-done-'+currentUser.id,'1');
+  // Marquer l'exploration comme terminée (localStorage + DB)
+  if(currentUser){
+    localStorage.setItem('expl-done-'+currentUser.id,'1');
+    // Effacer pending_exploration en DB pour ne plus déclencher la modale
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({pending_exploration:null})
+    });
+  }
   // Supprimer les lands free (non louées/achetées) de la DB
   await window.fetch(supabaseUrl+'/rest/v1/lands?status=eq.free',{
     method:'DELETE',
