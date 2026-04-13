@@ -4607,7 +4607,7 @@ async function renderHistory(page){
   // Charger toutes les courses pour les stats
   var {data:allRuns,error}=await supabaseClient
     .from('runs')
-    .select('id,distance,time,elevation,points,run_date,name,avg_hr,max_hr,calories,avg_cadence')
+    .select('id,distance,time,elevation,points,run_date,name,avg_hr,max_hr,calories,avg_cadence,strava_activity_id')
     .eq('player_id',currentUser.id)
     .eq('period',0)
     .order('run_date',{ascending:false});
@@ -4714,7 +4714,10 @@ function showRunDetails(runId){
     +row('🔥','Calories',r.calories?r.calories+' kcal':null,'#ff8040')
     +row('👟','Cadence',r.avg_cadence?Math.round(r.avg_cadence*2)+' pas/min':null,'var(--text)')
     +row('🏆','Points',pts.toLocaleString('fr'),'#f5c842')
-    +'</div>';
+    +'</div>'
+    +(r.strava_activity_id
+      ?'<a href="https://www.strava.com/activities/'+r.strava_activity_id+'" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:.45rem;margin-top:.9rem;padding:.55rem;border-radius:8px;background:#fc4c02;color:#fff;font-size:.78rem;font-weight:700;letter-spacing:.5px;text-decoration:none;box-shadow:0 3px 10px rgba(252,76,2,.3)">🔗 Voir sur Strava</a>'
+      :'');
 
   document.getElementById('lm-title').textContent='📋 Détails de la course';
   document.getElementById('lm-sub').textContent='';
@@ -7533,12 +7536,12 @@ async function shareRunCard(runId){
     cx.fillText('"'+desc+'"',45,305);
   }
 
-  // Powered by Strava (compliance API Agreement)
+  // Powered by Strava (compliance API Agreement) — discret
   cx.textAlign='center';
   cx.fillStyle='#fc4c02';
-  cx.beginPath();cx.roundRect(225,285,150,22,5);cx.fill();
-  cx.font='700 10px sans-serif';cx.fillStyle='#ffffff';
-  cx.fillText('POWERED BY STRAVA',300,300);
+  cx.beginPath();cx.roundRect(262,288,76,11,3);cx.fill();
+  cx.font='700 6px sans-serif';cx.fillStyle='#ffffff';
+  cx.fillText('POWERED BY STRAVA',300,295);
 
   // Icônes réseaux sociaux
   cx.textAlign='center';
