@@ -815,7 +815,7 @@ select option{background:#040c1c}
 
     <!-- Titre PLAYER CARD = bouton + carré parrainage -->
     <div style="text-align:center;margin-bottom:.9rem;display:flex;align-items:center;justify-content:center;gap:.6rem">
-      <button onclick="if(window.__viewedPlayer){window.__viewedPlayer=null;renderDashboard();}else{nav('dashboard');}" style="
+      <button onclick="if(window.__viewedPlayer){window.__viewedPlayer=null;renderDashboard();if(typeof renderTeams==='function')renderTeams();}else{nav('dashboard');}" style="
         font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:6px;
         color:#4a90ff;text-shadow:0 0 18px rgba(74,144,255,.7);
         background:rgba(74,144,255,.08);border:1px solid rgba(74,144,255,.4);
@@ -842,7 +842,7 @@ select option{background:#040c1c}
         font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:1.5px;
         color:#4a90ff;transition:all .15s;
       " onmouseover="this.style.background='rgba(74,144,255,.15)'" onmouseout="this.style.background='rgba(74,144,255,.06)'">🏃 RACES</button>
-      <button onclick="nav('league')" style="
+      <button onclick="goToPcLeague()" style="
         padding:.5rem .3rem;border-radius:8px;border:1px solid rgba(74,144,255,.3);
         background:rgba(74,144,255,.06);cursor:pointer;
         font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:1.5px;
@@ -946,7 +946,7 @@ select option{background:#040c1c}
       <!-- Droite : drapeau + team -->
       <div style="display:flex;flex-direction:column;gap:.8rem;align-items:center;padding-top:.3rem">
         <div style="width:48px;height:36px;overflow:hidden;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 5px rgba(255,255,255,.2))" id="pc-flag"><span style="font-size:2.8rem;line-height:1">🇫🇷</span></div>
-        <div id="pc-team-frame" onclick="nav('teams')" style="
+        <div id="pc-team-frame" onclick="goToPcTeam()" style="
           width:54px;height:54px;border-radius:10px;
           background:rgba(74,144,255,.1);border:1px solid rgba(74,144,255,.3);
           cursor:pointer;transition:all .15s;overflow:hidden;
@@ -3978,7 +3978,7 @@ function renderDashboard(){
     var img=document.getElementById('pc-team-blason');
     if(!frame||!img) return;
     frame.style.cursor='pointer';
-    frame.onclick=function(){nav('teams');};
+    frame.onclick=function(){goToPcTeam();};
     // SVG neutre par défaut
     img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
       '<svg viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">'+
@@ -4611,11 +4611,21 @@ async function renderHistory(page){
   if(!tb) return;
   if(!currentUser){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir ton historique</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
   tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Chargement…</td></tr>';
+  // Si on consulte un autre RP, afficher SES courses — sinon les miennes
+  var _targetUuid=(window.__viewedPlayer&&window.__viewedPlayer._uuid)||currentUser.id;
+  var _isViewingOther=!!window.__viewedPlayer;
+  // Titre adaptatif
+  var _pageTitle=document.querySelector('#page-points > div:first-child > div:first-child');
+  if(_pageTitle){
+    _pageTitle.innerHTML=_isViewingOther
+      ? 'Courses <span style="color:var(--gold)">de '+(window.__viewedPlayer.name||'RP')+'</span>'
+      : 'Mes <span style="color:var(--gold)">Courses</span>';
+  }
   // Charger toutes les courses pour les stats
   var {data:allRuns,error}=await supabaseClient
     .from('runs')
     .select('id,distance,time,elevation,points,run_date,name,avg_hr,max_hr,calories,avg_cadence,strava_activity_id')
-    .eq('player_id',currentUser.id)
+    .eq('player_id',_targetUuid)
     .eq('period',0)
     .order('run_date',{ascending:false});
   _allHistRuns=allRuns||[];
@@ -8090,6 +8100,33 @@ function hexToRgb(hex){
   var n=parseInt(r,16);
   return [(n>>16)&255,(n>>8)&255,n&255].join(',');
 }
+// Helpers pour les boutons PC : naviguer vers la league/team du joueur consulté
+function goToPcLeague(){
+  var vp=window.__viewedPlayer;
+  if(vp){
+    if(!isPremium()){
+      showPremiumGate('Voir la League d\'un autre RP est réservé au Premium.');
+      return;
+    }
+    activeLeagueKey=vp.leagueKey||'starter';
+  }
+  nav('league');
+  if(typeof renderLeagueNav==='function') renderLeagueNav();
+  if(typeof renderLeaguePanel==='function') renderLeaguePanel();
+  if(typeof updateLeaguePickerLabel==='function') updateLeaguePickerLabel();
+}
+function goToPcTeam(){
+  var vp=window.__viewedPlayer;
+  if(vp&&!isPremium()){
+    showPremiumGate('Voir la Team d\'un autre RP est réservé au Premium.');
+    return;
+  }
+  // Si vue d'un autre RP, on stocke son uuid pour que renderTeams scrolle jusqu'à sa team
+  if(vp) window.__viewedTeamOfPlayerUuid=vp._uuid;
+  else window.__viewedTeamOfPlayerUuid=null;
+  nav('teams');
+}
+
 function showPlayerCardByUuid(uuid){
   if(currentUser&&uuid===currentUser.id){
     window.__viewedPlayer=null;
@@ -10892,12 +10929,14 @@ async function doJoinOpenTeam(teamId, teamName){
 var _cachedPlayerPalmares=null;
 var _cachedTeamPalmares=null;
 
-// Charger les médailles du joueur connecté et mettre à jour la PC
+// Charger les médailles du joueur (connecté ou consulté) et mettre à jour la PC
 async function loadPlayerMedals(){
   if(!currentUser) return;
+  // Si on consulte un autre RP, charger SES médailles
+  var _pmUid=(window.__viewedPlayer&&window.__viewedPlayer._uuid)||currentUser.id;
   var {data,error}=await supabaseClient
     .from('palmares').select('rank,period,league_key,pts')
-    .eq('player_id',currentUser.id)
+    .eq('player_id',_pmUid)
     .is('team_id',null)
     .order('period',{ascending:false});
   if(error){console.warn('[PAL] player medals error:',error.message);return;}
