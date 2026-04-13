@@ -796,6 +796,7 @@ select option{background:#040c1c}
         <span style="color:var(--text)">PLAYER</span> <span style="color:var(--gold)">CARD</span>
       </div>
       <div id="pc-period-info" style="font-size:.78rem;color:var(--muted2);margin-top:.1rem"></div>
+      <a href="https://www.strava.com" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:.3rem;margin-top:.35rem;padding:.2rem .5rem;border-radius:5px;background:#fc4c02;color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.6px;text-decoration:none;width:fit-content">POWERED BY STRAVA</a>
     </div>
     <button class="btn btn-gold" onclick="openModal('sync-modal')">⚡ Sync Strava / Garmin</button>
   </div>
@@ -1197,7 +1198,7 @@ select option{background:#040c1c}
   <div class="block" style="margin-bottom:1.25rem">
     <div class="block-header">
       <div class="block-title">Historique des <span class="hl">courses</span></div>
-      <div style="font-size:.65rem;color:var(--muted2)">10 dernières activités</div>
+      <a href="https://www.strava.com" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:5px;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;text-decoration:none;white-space:nowrap">POWERED BY STRAVA</a>
     </div>
     <div style="overflow-x:auto">
       <table class="tbl" id="hist-tbl">
@@ -1734,6 +1735,7 @@ select option{background:#040c1c}
     <button class="modal-close" onclick="closeModal('sync-modal')">✕</button>
     <div class="modal-title">Synchroniser</div>
     <div class="modal-sub">Connecte ton app pour importer tes activités.</div>
+    <a href="https://www.strava.com" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:.4rem;margin:.4rem auto .8rem;padding:.35rem .7rem;border-radius:6px;background:#fc4c02;color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.8px;text-decoration:none;width:fit-content;box-shadow:0 2px 8px rgba(252,76,2,.35)">POWERED BY STRAVA</a>
     <div style="display:flex;flex-direction:column;gap:.65rem">
       <div id="strava-connect-block" class="block" style="cursor:pointer;border-color:rgba(252,76,2,.3)" onclick="connectStrava()">
         <div class="block-body-sm" style="display:flex;align-items:center;gap:.85rem">
@@ -3753,9 +3755,9 @@ function renderDashboard(){
   // ── Avatar Builder (créateur d'avatar DiceBear) ──
   var _avatarOpts={
     skinColor:['fdbcb4','edb98a','d08b5b','ae5d29','614335','f8d25c'],
-    top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froAndBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
+    top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
     hairColor:['a55728','2c1b18','b58143','d6b370','724133','4a312c','c93305','e8e1e1','f59797'],
-    hatColor:['none','hat','winterHat01','winterHat04','hijab','turban'],
+    hatColor:['none','hat','winterHat1','winterHat04','hijab','turban'],
     accessories:['blank','kurt','prescription01','prescription02','round','sunglasses','wayfarers'],
     clothing:['blazerAndShirt','blazerAndSweater','collarAndSweater','graphicShirt','hoodie','overall','shirtCrewNeck','shirtScoopNeck','shirtVNeck'],
     clothesColor:['3c4f5c','65c9ff','5199e4','25557c','e6e6e6','929598','a7ffc4','ffdeb5','ffafb9','ff488e','262e33','ff5c5c'],
@@ -3820,10 +3822,16 @@ function renderDashboard(){
         }
         // Chapeau : vérifier si top est un chapeau
         var topVal=params.get('top');
+        // Migration des anciens noms DiceBear obsolètes
+        if(topVal==='froAndBand') topVal='froBand';
+        if(topVal==='winterHat01') topVal='winterHat1';
         if(topVal){
           var hatIdx=_avatarOpts.hatColor.indexOf(topVal);
           if(hatIdx>=0){_avatarCurrent.hatColor=hatIdx;}
           else{_avatarCurrent.hatColor=0;}
+          // Migration côté 'top' (cheveux)
+          var topIdx=_avatarOpts.top.indexOf(topVal);
+          if(topIdx>=0) _avatarCurrent.top=topIdx;
         }
         // Lunettes
         var accProb=params.get('accessoriesProbability');
@@ -7524,6 +7532,13 @@ async function shareRunCard(runId){
     var desc=run.description.length>80?run.description.substring(0,80)+'…':run.description;
     cx.fillText('"'+desc+'"',45,305);
   }
+
+  // Powered by Strava (compliance API Agreement)
+  cx.textAlign='center';
+  cx.fillStyle='#fc4c02';
+  cx.beginPath();cx.roundRect(225,285,150,22,5);cx.fill();
+  cx.font='700 10px sans-serif';cx.fillStyle='#ffffff';
+  cx.fillText('POWERED BY STRAVA',300,300);
 
   // Icônes réseaux sociaux
   cx.textAlign='center';
