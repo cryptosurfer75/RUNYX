@@ -5551,6 +5551,17 @@ async function loadLandsOnMap(){
       }
     }catch(e){}
   });
+  // ── Afficher le bouton "Terminer" si des free lands avec mes passages subsistent ──
+  if(myId&&!window._hidePassages){
+    var myFreeExplored=lands.filter(function(l){
+      if(l.status!=='free') return false;
+      if(window._myPassageLandIds&&window._myPassageLandIds.indexOf(l.id)>=0) return true;
+      var allExpl=(_lastExploredHexes||[]).concat(window._recentExploredHexes||[]);
+      return allExpl.indexOf(l.id)>=0;
+    });
+    var finBtn=document.getElementById('lands-finish-btn');
+    if(finBtn) finBtn.style.display=myFreeExplored.length>0?'block':'none';
+  }
   // Dessiner les contours de territoire (groupes de 3+ lands du même RP)
   var landsByPlayer={};
   lands.forEach(function(l){
@@ -6331,10 +6342,15 @@ async function adminForceRent(){
 // Charger les explorations en attente depuis la DB
 async function loadPendingExploration(){
   if(!currentUser) return;
-  // Si l'utilisateur a déjà terminé l'exploration, on ne réouvre pas la modale
-  if(localStorage.getItem('expl-done-'+currentUser.id)==='1') return;
   var {data:player}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
   if(!player||!player.pending_exploration) return;
+  // Effacer en DB DÈS qu'on a lu la valeur — la modale ne ressortira plus au prochain login
+  // (le tracé et le bouton Terminer restent gérés par loadLandsOnMap selon les passages)
+  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({pending_exploration:null})
+  });
   try{
     var data=JSON.parse(player.pending_exploration);
     if(!data||!data.hexes||!data.hexes.length) return;
