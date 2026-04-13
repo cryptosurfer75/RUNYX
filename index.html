@@ -769,7 +769,7 @@ select option{background:#040c1c}
   </div>
   <div class="nav-tabs">
     <button class="nav-tab"        onclick="nav('league')">League</button>
-    <button class="nav-tab active" onclick="nav('dashboard')">Player Card</button>
+    <button class="nav-tab active" onclick="navPlayerCard()">Player Card</button>
     <button class="nav-tab" onclick="nav('teams')" style="position:relative">Teams<span id="team-notif-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#4a90ff"></span></button>
     <button class="nav-tab"        onclick="nav('lands')">Lands</button>
     <button class="nav-tab"        onclick="nav('points')">Races</button>
@@ -6021,8 +6021,18 @@ async function renderMyLands(page){
   var summary=document.getElementById('lands-count-summary');
   var pagEl=document.getElementById('lands-pagination');
   if(!tbody) return;
+  // Si on consulte un autre RP, afficher SES lands
+  var _lTargetUuid=(window.__viewedPlayer&&window.__viewedPlayer._uuid)||currentUser.id;
+  var _lIsOther=!!window.__viewedPlayer;
+  // Titre "Mes Lands" → "Lands de X" si consulté
+  var _lHeader=document.querySelector('#page-lands .block-title');
+  if(_lHeader&&_lHeader.textContent&&_lHeader.textContent.toLowerCase().indexOf('land')>=0){
+    _lHeader.innerHTML=_lIsOther
+      ? 'Lands <span class="hl">de '+(window.__viewedPlayer.name||'RP')+'</span>'
+      : 'Mes <span class="hl">Lands</span>';
+  }
   var {data:myLands}=await supabaseClient.from('lands').select('id,status,stars,rent_periods,rent_start_period,monthly_revenue,owner_id,tenant_id')
-    .or('tenant_id.eq.'+currentUser.id+',owner_id.eq.'+currentUser.id)
+    .or('tenant_id.eq.'+_lTargetUuid+',owner_id.eq.'+_lTargetUuid)
     .order('status');
   if(!myLands||!myLands.length){
     tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Aucune Land.<br>Explore pour en découvrir !</td></tr>';
@@ -9056,6 +9066,18 @@ function navMenu(page){
   document.getElementById('rtw-menu').style.display='none';
   _rtwMenuLock=true;
   setTimeout(function(){_rtwMenuLock=false;},300);
+}
+// Nav vers la Player Card SANS effacer __viewedPlayer (pour revenir à la PC consultée)
+function navPlayerCard(){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  var dashPage=document.getElementById('page-dashboard');
+  if(dashPage) dashPage.classList.add('active');
+  window.scrollTo(0,0);
+  if(typeof renderDashboard==='function') renderDashboard();
+  if(typeof renderTeams==='function') renderTeams();
+  var pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin'];
+  document.querySelectorAll('.nav-tab')[pages.indexOf('dashboard')]?.classList.add('active');
 }
 function toggleRtwMenu(){
   if(_rtwMenuLock) return;
