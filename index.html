@@ -7529,19 +7529,12 @@ async function shareRunCard(runId){
     cx.fillText(s.value,bx+62,245);
   });
 
-  // Description si présente
-  if(run.description){
-    cx.font='400 14px sans-serif';cx.fillStyle='#c0c8d8';cx.textAlign='left';
-    var desc=run.description.length>80?run.description.substring(0,80)+'…':run.description;
-    cx.fillText('"'+desc+'"',45,305);
-  }
+  // (Description retirée du partage — reste visible dans le détail de course en privé)
 
-  // Powered by Strava (compliance API Agreement) — discret
-  cx.textAlign='center';
-  cx.fillStyle='#fc4c02';
-  cx.beginPath();cx.roundRect(262,274,76,10,3);cx.fill();
-  cx.font='700 6px sans-serif';cx.fillStyle='#ffffff';
-  cx.fillText('POWERED BY STRAVA',300,280.5);
+  // Powered by Strava (compliance API Agreement) — texte seul, coin bas-droit
+  cx.textAlign='right';
+  cx.font='700 7px sans-serif';cx.fillStyle='#fc4c02';
+  cx.fillText('POWERED BY STRAVA',580,388);
 
   // Icônes réseaux sociaux
   cx.textAlign='center';
