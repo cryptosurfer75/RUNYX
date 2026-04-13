@@ -9483,24 +9483,36 @@ function getBoostTimeLeft(){
   return h+'h'+String(m).padStart(2,'0');
 }
 
-function renderBoostRow(){
+async function renderBoostRow(){
   var br=document.getElementById('boost-row');
   if(!br) return;
-  var b=window.__boost||{stock:0,activeUntil:null};
-  var active=isBoostActive();
-  var stock=b.stock||0;
+  // Si on consulte un autre RP, on charge SES boosts (read-only, pas cliquable)
+  var _viewP=window.__viewedPlayer;
+  var b, active, stock;
+  if(_viewP&&_viewP._uuid){
+    var {data:vpB}=await supabaseClient.from('players').select('boost_stock,boost_active_until').eq('id',_viewP._uuid).single();
+    b={stock:(vpB&&vpB.boost_stock)||0, activeUntil:(vpB&&vpB.boost_active_until)||null};
+    active=!!(b.activeUntil&&new Date(b.activeUntil)>new Date());
+    stock=b.stock;
+  } else {
+    b=window.__boost||{stock:0,activeUntil:null};
+    active=isBoostActive();
+    stock=b.stock||0;
+  }
   br.innerHTML='';
   for(var i=0;i<10;i++){
     var cls,lbl,title,onclick='';
     if(i===0&&active){
-      cls='borb-on';lbl='ON';title='Boost actif — '+getBoostTimeLeft()+' restant';
+      cls='borb-on';lbl='ON';title=_viewP?'Boost actif chez ce RP':('Boost actif — '+getBoostTimeLeft()+' restant');
     } else if(i<stock+(active?1:0)){
-      cls='borb-avail';lbl='⚡';title='Boost disponible — cliquer pour activer';
-      if(!active) onclick=' onclick="activateBoost()"';
+      cls='borb-avail';lbl='⚡';
+      title=_viewP?'Boost en réserve chez ce RP':'Boost disponible — cliquer pour activer';
+      // Cliquable uniquement sur SA PROPRE PC
+      if(!active&&!_viewP) onclick=' onclick="activateBoost()"';
     } else {
       cls='borb-used';lbl='·';title='Slot vide';
     }
-    br.innerHTML+='<div class="borb '+cls+'" title="'+title+'"'+onclick+'>'+lbl+'</div>';
+    br.innerHTML+='<div class="borb '+cls+'" title="'+title+'"'+onclick+' style="'+(_viewP?'cursor:default;opacity:.85':'')+'">'+lbl+'</div>';
   }
   // Timer
   var timerEl=document.getElementById('boost-timer');
@@ -9516,9 +9528,16 @@ function renderBoostRow(){
   // Info
   var infoEl=document.getElementById('boost-info');
   if(infoEl){
-    if(active) infoEl.innerHTML='Boost actif : <strong style="color:var(--green)">+10%</strong> · '+getBoostTimeLeft()+' restant · '+stock+' en réserve';
-    else if(stock>0) infoEl.innerHTML=stock+' boost'+(stock>1?'s':'')+' disponible'+(stock>1?'s':'')+' · Clique pour activer';
-    else infoEl.innerHTML='Aucun boost en réserve · <span style="cursor:pointer;color:var(--green);text-decoration:underline" onclick="openModal(\'boost-shop-modal\')">Acheter</span>';
+    if(_viewP){
+      // Read-only sur la PC d'un autre RP
+      if(active) infoEl.innerHTML='⚡ Boost actif sur ce RP · '+stock+' en réserve';
+      else if(stock>0) infoEl.innerHTML=stock+' boost'+(stock>1?'s':'')+' en réserve';
+      else infoEl.innerHTML='Aucun boost en réserve';
+    } else {
+      if(active) infoEl.innerHTML='Boost actif : <strong style="color:var(--green)">+10%</strong> · '+getBoostTimeLeft()+' restant · '+stock+' en réserve';
+      else if(stock>0) infoEl.innerHTML=stock+' boost'+(stock>1?'s':'')+' disponible'+(stock>1?'s':'')+' · Clique pour activer';
+      else infoEl.innerHTML='Aucun boost en réserve · <span style="cursor:pointer;color:var(--green);text-decoration:underline" onclick="openModal(\'boost-shop-modal\')">Acheter</span>';
+    }
   }
   // Stock dans la boutique
   var shopStock=document.getElementById('boost-shop-stock');
@@ -9543,6 +9562,8 @@ function startBoostTimer(){
 
 async function activateBoost(){
   if(!currentUser) return;
+  // Interdit d'activer un boost quand on consulte la PC d'un autre RP
+  if(window.__viewedPlayer){showToast('👀 Mode consultation — tu ne peux pas activer les boosts d\'un autre RP');return;}
   var b=window.__boost||{stock:0,activeUntil:null};
   if(isBoostActive()){showToast('⚠️ Un boost est déjà actif');return;}
   if(b.stock<=0){showToast('⚠️ Aucun boost en réserve');openModal('boost-shop-modal');return;}
@@ -10541,6 +10562,21 @@ async function renderTeams(){
     var _mtp=document.getElementById('myteam-panel');
     var _mthc=document.getElementById('myteam-header-content');
     var _mta=document.getElementById('myteam-actions');
+    // Si on consulte la PC d'un autre RP, afficher SA team (read-only) au lieu de la mienne
+    var _isViewedTeamMode=false;
+    if(window.__viewedPlayer&&window.__viewedPlayer._uuid){
+      var _vpMem=(allMembers||[]).find(function(m){return m.player_id===window.__viewedPlayer._uuid;});
+      if(_vpMem){
+        var _vpTeam=teams.find(function(t){return t.id===_vpMem.team_id;});
+        if(_vpTeam){
+          _myTeamData=_vpTeam;
+          myTeamId=_vpTeam.id;
+          _isViewedTeamMode=true;
+        }
+      } else {
+        _myTeamData=null;
+      }
+    }
     if(_mtp){
       if(!_myTeamData){
         _mtp.style.display='none';
@@ -10570,19 +10606,25 @@ async function renderTeams(){
             +'</div>'
           +'</div>';
         // Actions (quitter + gestion capitaine — pas pour les teams open sauf quitter)
+        // En mode consultation, pas d'actions (read-only)
         if(_mta){
-          var _isCap2=(window.__myTeamRole==='capitaine');
-          var actHtml='';
-          if(!_isMyOpen && _isCap2){
-            actHtml+='<button onclick="showInviteCode(\''+myTeamId+'\',\''+encodeURIComponent(_myTeamData.name)+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-size:.7rem;font-weight:700;cursor:pointer">🔑 Code invitation</button>';
-            actHtml+='<button onclick="openKickModal(\''+myTeamId+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(128,144,176,.4);background:rgba(128,144,176,.08);color:var(--muted2);font-size:.7rem;font-weight:700;cursor:pointer">List</button>';
+          if(_isViewedTeamMode){
+            _mta.innerHTML='<span style="font-size:.7rem;color:var(--muted2);padding:.3rem .5rem">👀 Mode consultation — lecture seule</span>';
+            _mta.style.display='flex';
+          } else {
+            var _isCap2=(window.__myTeamRole==='capitaine');
+            var actHtml='';
+            if(!_isMyOpen && _isCap2){
+              actHtml+='<button onclick="showInviteCode(\''+myTeamId+'\',\''+encodeURIComponent(_myTeamData.name)+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-size:.7rem;font-weight:700;cursor:pointer">🔑 Code invitation</button>';
+              actHtml+='<button onclick="openKickModal(\''+myTeamId+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(128,144,176,.4);background:rgba(128,144,176,.08);color:var(--muted2);font-size:.7rem;font-weight:700;cursor:pointer">List</button>';
+            }
+            actHtml+='<button onclick="leaveTeam(\''+myTeamId+'\',\''+encodeURIComponent(_myTeamData.name)+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:var(--red);font-size:.7rem;font-weight:700;cursor:pointer;margin-left:auto">🚪 Quitter</button>';
+            _mta.innerHTML=actHtml;
+            _mta.style.display='flex';
           }
-          actHtml+='<button onclick="leaveTeam(\''+myTeamId+'\',\''+encodeURIComponent(_myTeamData.name)+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:var(--red);font-size:.7rem;font-weight:700;cursor:pointer;margin-left:auto">🚪 Quitter</button>';
-          _mta.innerHTML=actHtml;
-          _mta.style.display='flex';
         }
-        // Charger les demandes d'adhésion (capitaine uniquement)
-        if(_isCap2){
+        // Charger les demandes d'adhésion (capitaine uniquement — pas en consultation)
+        if(!_isViewedTeamMode && (window.__myTeamRole==='capitaine')){
           // Injecter le conteneur s'il n'existe pas
           if(!document.getElementById('join-requests-section')){
             var reqSection=document.createElement('div');
@@ -10593,8 +10635,8 @@ async function renderTeams(){
           }
           loadJoinRequests(myTeamId);
         }
-        // Charger le chat team
-        if(typeof loadTeamChat==='function'){loadTeamChat(myTeamId);startChatPoll(myTeamId);}
+        // Charger le chat team (pas en consultation)
+        if(!_isViewedTeamMode && typeof loadTeamChat==='function'){loadTeamChat(myTeamId);startChatPoll(myTeamId);}
       }
     }
 
