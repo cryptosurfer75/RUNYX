@@ -798,7 +798,10 @@ select option{background:#040c1c}
       <div id="pc-period-info" style="font-size:.78rem;color:var(--muted2);margin-top:.1rem"></div>
       <a href="https://www.strava.com" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:.3rem;margin-top:.35rem;padding:.2rem .5rem;border-radius:5px;background:#fc4c02;color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.6px;text-decoration:none;width:fit-content">POWERED BY STRAVA</a>
     </div>
-    <button class="btn btn-gold" onclick="openModal('sync-modal')">⚡ Sync Strava / Garmin</button>
+    <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end">
+      <button onclick="openModal('sync-modal')" style="display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .85rem;border-radius:7px;border:none;background:#fc4c02;color:#fff;font-weight:800;font-size:.78rem;letter-spacing:.5px;cursor:pointer;box-shadow:0 3px 10px rgba(252,76,2,.35);transition:transform .12s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">⚡ Sync Strava</button>
+      <button onclick="openModal('sync-modal')" style="display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .85rem;border-radius:7px;border:none;background:#007cc3;color:#fff;font-weight:800;font-size:.78rem;letter-spacing:.5px;cursor:pointer;box-shadow:0 3px 10px rgba(0,124,195,.35);transition:transform .12s;opacity:.55" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'" title="Bientôt disponible">⚡ Sync Garmin</button>
+    </div>
   </div>
 
   <!-- ── PLAYER CARD ─────────────────────────────────────────── -->
