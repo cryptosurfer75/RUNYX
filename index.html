@@ -1226,15 +1226,15 @@ select option{background:#040c1c}
         <div class="form-grid">
           <div class="fgroup">
             <label>Distance (km)</label>
-            <input type="number" id="c-km" value="10" min="0.1" step="0.1" oninput="calcPts()">
+            <input type="number" id="c-km" value="0" min="0" step="0.1" oninput="calcPts()">
           </div>
           <div class="fgroup">
             <label>Vitesse moy. (km/h)</label>
-            <input type="number" id="c-spd" value="10.5" min="1" step="0.1" oninput="calcPts()">
+            <input type="number" id="c-spd" value="0" min="0" step="0.1" oninput="calcPts()">
           </div>
           <div class="fgroup">
             <label>Dénivelé (m)</label>
-            <input type="number" id="c-elv" value="120" min="0" step="10" oninput="calcPts()">
+            <input type="number" id="c-elv" value="0" min="0" step="10" oninput="calcPts()">
           </div>
         </div>
         <label class="toggle-row" style="margin-bottom:.85rem">
@@ -1245,8 +1245,8 @@ select option{background:#040c1c}
         <div class="result-block">
           <div>
             <div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.2rem">Total points</div>
-            <div class="result-pts" id="r-pts">—</div>
-            <div class="result-rpc" id="r-rpc"></div>
+            <div class="result-pts" id="r-pts">0</div>
+            <div class="result-rpc" id="r-rpc">→ <strong>+0 RPC</strong></div>
           </div>
         </div>
       </div>
@@ -3645,7 +3645,7 @@ function renderDashboard(){
         var totalPts=(cumData?cumData.pts_cumulated||0:0)+currentPts;
         var totalKm=(cumData?cumData.km_cumulated||0:0)+currentKm;
         var totalElv=(cumData?cumData.elv_cumulated||0:0)+currentElv;
-        var totalTime=(cumData?cumData.time_cumulated||0:0)+currentTime;
+        var totalTime=Math.round((cumData?cumData.time_cumulated||0:0)+currentTime);
         var nbCourses=(cumData?cumData.runs_cumulated||0:0)+currentRuns;
         var heures=Math.floor(totalTime/60);
         var minutes=totalTime%60;
@@ -4037,7 +4037,7 @@ function buildLeaguePicker(){
   PLAYERS.forEach(p=>{counts[p.leagueKey]=(counts[p.leagueKey]||0)+1;});
   dd.innerHTML=LEAGUES.map(l=>{
     const isActive=l.key===activeLeagueKey;
-    const isMyLeague=l.key==='l4';
+    const isMyLeague=window.__myPlayer&&l.key===window.__myPlayer.leagueKey;
     return `<div onclick="selectLeague('${l.key}');toggleLeaguePicker()" style="
       display:flex;align-items:center;justify-content:space-between;
       padding:.55rem .9rem;cursor:pointer;
@@ -8826,6 +8826,8 @@ function nav(page){
   if(page==='dashboard'){
     if(window.__viewedPlayer) window.__viewedPlayer=null;
     if(typeof renderDashboard==='function') renderDashboard();
+    // Rafraîchir aussi renderTeams pour remettre le blason de MA team sur la PC
+    if(typeof renderTeams==='function') renderTeams();
   }
   // Rafraîchir les données selon la page
   if(page==='league'){
