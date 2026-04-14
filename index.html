@@ -608,7 +608,7 @@ onkeydown="if(event.key==='Enter')checkAccessCode()">
 <script>
 function checkAccessCode(){
   var code=document.getElementById('access-code-input').value.trim().toUpperCase();
-  if(code==='RUNYX2026'){
+  if(code==='RUNYX2026TEST'){
     localStorage.setItem('rl_access','ok');
     document.getElementById('access-gate').style.display='none';
   } else {
@@ -3351,7 +3351,7 @@ const COLORS=['#f5c842','#2ddb80','#4a90ff','#ff6020','#9060f0','#20d0e0','#ff44
 // Leagues ordered Starter (lowest) → L Elite (highest)
 const LEAGUES=[
   {key:'starter', name:'Starter',  label:'Zone',       emoji:'⚙️',  min:0,     max:500,    color:'#7a8090', buyin:0},
-  {key:'l10',     name:'L10',      label:'Fer',        emoji:'🔩',  min:41,    max:1200,  color:'#8090a0', buyin:1200},
+  {key:'l10',     name:'L10',      label:'Fer',        emoji:'🔩',  min:501,   max:1200,  color:'#8090a0', buyin:1200},
   {key:'l9',      name:'L9',       label:'Cuivre',     emoji:'🟠',  min:1201,  max:1800,  color:'#c07830', buyin:1800},
   {key:'l8',      name:'L8',       label:'Jade',       emoji:'💚',  min:1801,  max:2500,  color:'#20b080', buyin:2500},
   {key:'l7',      name:'L7',       label:'Saphir',     emoji:'💙',  min:2501,  max:3200,  max2:4500, color:'#2080e0', buyin:3200},
@@ -5579,9 +5579,12 @@ async function loadLandsOnMap(){
     }catch(e){window._hidePassages=true;}
   }
 
-  // Charger mes passages pour afficher les lands visitées (sauf si session terminée)
+  // Charger mes passages du JOUR uniquement (pas d'historique cumulé)
+  // — le tracé blanc ne doit refléter que la session du jour ;
+  //   les passages de la veille ne doivent plus réapparaître au réveil de l'app.
   if(myId&&!window._hidePassages){
-    var passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?player_id=eq.'+encodeURIComponent(myId)+'&select=land_id',{
+    var _todayStr=(typeof getParisTodayStr==='function')?getParisTodayStr():new Date().toISOString().slice(0,10);
+    var passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?player_id=eq.'+encodeURIComponent(myId)+'&passage_date=eq.'+_todayStr+'&select=land_id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
     });
     var passData=await passResp.json();
@@ -10841,12 +10844,8 @@ async function renderTeams(){
     var members=(_myTeamData&&_myTeamData._members)||[];
     // Stocker les IDs des membres pour les restrictions Free
     window._myTeamMemberIds=members.map(function(m){return m.player_id;});
-    // Trier : capitaine d'abord, puis par pts desc
-    members.sort(function(a,b){
-      if(a.role==='capitaine'&&b.role!=='capitaine') return -1;
-      if(b.role==='capitaine'&&a.role!=='capitaine') return 1;
-      return (b.pts||0)-(a.pts||0);
-    });
+    // Trier par pts desc (chacun à sa vraie place)
+    members.sort(function(a,b){ return (b.pts||0)-(a.pts||0); });
 
     var isCaptain=(window.__myTeamRole==='capitaine');
     tbody.innerHTML=members.map(function(m,i){
@@ -11718,7 +11717,7 @@ async function loadTeamMembers(teamId, teamName){
   (runsRes.data||[]).forEach(function(r){ptsByP[r.player_id]=(ptsByP[r.player_id]||0)+(r.points||0);});
   var data=membRes.data;
   data.forEach(function(m){m._pts=ptsByP[m.player_id]||0;});
-  data.sort(function(a,b){return a.role==='capitaine'?-1:b.role==='capitaine'?1:(b._pts-a._pts);});
+  data.sort(function(a,b){return (b._pts||0)-(a._pts||0);});
   var totalPts=data.reduce(function(s,m){return s+m._pts;},0);
   if(sub) sub.textContent=data.length+' membre'+(data.length>1?'s':'')+' · '+totalPts.toLocaleString('fr')+' pts total';
   tbody.innerHTML=data.map(function(m,i){
