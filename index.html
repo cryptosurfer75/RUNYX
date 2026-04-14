@@ -4245,6 +4245,20 @@ function renderLeaguePanel(){
     var cr=(p.competitive===false)?0:compRankCursor++;
     return buildRow(p,r,isPromo,isReleg,paidCount,cr);
   }
+  // Helper pour la ligne de descente (en bas) — extraite pour réutilisation
+  function makeRelegLine(){
+    var lowerLeague=leagueIdx>0?LEAGUES[leagueIdx-1]:null;
+    var lName=lowerLeague?(lowerLeague.name+' — '+lowerLeague.label):'League Inférieure';
+    var lColor=lowerLeague?lowerLeague.color:'#ff4444';
+    return '<tr><td colspan="3" style="padding:6px 0">'
+      +'<div style="height:2px;background:linear-gradient(90deg,'+lColor+'00,'+lColor+','+lColor+'00);position:relative;display:flex;align-items:center;justify-content:center">'
+      +'<span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:.6rem;font-weight:700;white-space:nowrap;'
+      +'color:'+lColor+';background:var(--card);padding:0 .55rem;letter-spacing:.6px;border-radius:2px">'
+      +'↓ DESCENTE '+lName.toUpperCase()+'</span></div></td></tr>';
+  }
+
+  // ── Zone promotion (haut) ──────────────────────────────────────
+  var hasUpperLeague=(leagueIdx<LEAGUES.length-1);
   if(promo2Players.length>0){
     rows+=promo2Players.map(function(p){return buildRowWithCompRank(p,true,false);}).join('');
     rows+=makeSepLine(leagueIdx+2);
@@ -4256,20 +4270,20 @@ function renderLeaguePanel(){
     var promoOnly=players.filter(function(p){return p.pts>maxPts;});
     rows+=promoOnly.map(function(p){return buildRowWithCompRank(p,true,false);}).join('');
     rows+=makeSepLine(leagueIdx+1);
+  } else if(hasUpperLeague && !isStarter){
+    // Aucun RP n'est dans la zone promotion — on affiche quand même la ligne comme repère
+    rows+=makeSepLine(leagueIdx+1);
   }
   rows+=normalPlayers.map(function(p){return buildRowWithCompRank(p,false,false);}).join('');
 
-  // Relegation zone — players below league min
+  // ── Zone relégation (bas) ──────────────────────────────────────
+  var hasLowerLeague=(leagueIdx>0);
   if(relegPlayers.length>0){
-    var lowerLeague=leagueIdx>0?LEAGUES[leagueIdx-1]:null;
-    var lName=lowerLeague?(lowerLeague.name+' — '+lowerLeague.label):'League Inférieure';
-    var lColor=lowerLeague?lowerLeague.color:'#ff4444';
-    rows+='<tr><td colspan="3" style="padding:6px 0">'
-      +'<div style="height:2px;background:linear-gradient(90deg,'+lColor+'00,'+lColor+','+lColor+'00);position:relative;display:flex;align-items:center;justify-content:center">'
-      +'<span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:.6rem;font-weight:700;white-space:nowrap;'
-      +'color:'+lColor+';background:var(--card);padding:0 .55rem;letter-spacing:.6px;border-radius:2px">'
-      +'↓ DESCENTE '+lName.toUpperCase()+'</span></div></td></tr>';
+    rows+=makeRelegLine();
     rows+=relegPlayers.map(function(p){return buildRowWithCompRank(p,false,true);}).join('');
+  } else if(hasLowerLeague && !isStarter){
+    // Aucun RP en zone relégation — on affiche quand même la ligne comme repère
+    rows+=makeRelegLine();
   }
 
   if(players.length===0){
