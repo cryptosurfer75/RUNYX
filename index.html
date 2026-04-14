@@ -132,6 +132,7 @@ body::before{
 .page.active{display:block;animation:fadeUp .25s ease}
 .map-tiles-brighter{filter:brightness(1.4) contrast(0.95)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes onlinePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
 
 /* Two-column layout: sidebar + main */
 .layout-sidebar{display:grid;grid-template-columns:280px 1fr;gap:1.25rem;align-items:start}
@@ -2025,6 +2026,16 @@ select option{background:#040c1c}
 
 <!-- Modal palmarès Team Or -->
 
+<!-- Modal liste RP en ligne (admin) -->
+<div class="modal" id="online-users-modal">
+  <div class="modal-box" style="max-width:420px;width:96%">
+    <button class="modal-close" onclick="closeModal('online-users-modal')">✕</button>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--green);margin-bottom:.2rem">🟢 RP EN LIGNE</div>
+    <div id="online-users-subtitle" style="font-size:.7rem;color:var(--muted2);margin-bottom:.8rem">—</div>
+    <div id="online-users-list" style="overflow-y:auto;max-height:360px;display:flex;flex-direction:column;gap:.35rem"></div>
+  </div>
+</div>
+
 <!-- Modal membres d'une team -->
 <div class="modal" id="team-members-modal">
   <div class="modal-box" style="max-width:500px;width:96%">
@@ -2047,6 +2058,18 @@ select option{background:#040c1c}
   <div style="max-width:600px;margin:0 auto">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;margin-bottom:1.25rem;color:var(--cyan,#20d0e0)">
       ⚙ Admin <span style="color:var(--muted2);font-size:1rem">Panel</span>
+    </div>
+
+    <!-- Compteur RP en ligne -->
+    <div id="admin-online-block" onclick="showOnlineUsersModal()" style="margin-bottom:1rem;padding:.7rem 1rem;border-radius:10px;border:1.5px solid rgba(45,219,128,.4);background:rgba(45,219,128,.06);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(45,219,128,.12)'" onmouseout="this.style.background='rgba(45,219,128,.06)'">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:onlinePulse 2s infinite"></span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:var(--green)">RP EN LIGNE</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <span id="admin-online-count" style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--green)">0</span>
+        <span style="font-size:.7rem;color:var(--muted2)">— clique pour voir</span>
+      </div>
     </div>
 
     <!-- Import de course -->
@@ -2825,6 +2848,8 @@ async function onLoginSuccess(user, isNew){
   if(isNew){
     setTimeout(function(){if(typeof nav==='function') nav('dashboard');},300);
   }
+  // Présence live — s'abonner au canal "online_users" pour tracker qui est connecté
+  if(typeof initPresence==='function') initPresence(user);
 }
 
 async function checkExistingSession(){
@@ -5757,7 +5782,7 @@ async function showLandDetail(landId){
     +statusLine+'<br>'
     +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
     +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
-    +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+(land.rent_periods||0)+'</strong><br>':'')
+    +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
     +'Rendement ce mois : <strong style="color:var(--gold)">'+(land.monthly_revenue||0).toLocaleString('fr')+' RPC</strong>'
   +'</div>';
 
@@ -5792,7 +5817,7 @@ async function showLandDetail(landId){
     var isMineOwned2=(land.status==='owned'&&land.owner_id===myId);
     body+='<div style="margin-top:.75rem;display:flex;justify-content:space-between;align-items:center">';
     if(isMineRentedOnly&&canBuyLands()){
-      var buyPrice=getLandBuyPrice(land.rent_periods||0);
+      var buyPrice=getLandBuyPrice(_computeRentPeriods(land));
       body+='<button onclick="buyLand(\''+landId+'\')" style="padding:.3rem .8rem;border-radius:6px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.72rem;cursor:pointer">🏠 Acheter — '+buyPrice+' NYX</button>';
     } else if(isMineRentedOnly&&!canBuyLands()){
       body+='<span style="font-size:.65rem;color:var(--muted2)">🔒 Droit d\'acquisition requis pour acheter</span>';
@@ -5950,7 +5975,7 @@ async function buyLand(landId){
   var {data:land}=await supabaseClient.from('lands').select('*').eq('id',landId).single();
   if(!land){showToast('⚠️ Land introuvable');return;}
   if(land.tenant_id!==currentUser.id){showToast('⚠️ Tu dois être locataire pour acheter');return;}
-  var price=getLandBuyPrice(land.rent_periods||0);
+  var price=getLandBuyPrice(_computeRentPeriods(land));
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
   if(!confirm('Veux-tu acheter cette Land pour '+price+' NYX ?\nElle deviendra ta propriété définitive.')) return;
@@ -6142,7 +6167,7 @@ async function renderMyLands(page){
   var totalLoyer=0;
   myLands.forEach(function(l){
     if(l.status==='rented'){
-      var rp=l.rent_periods||0;
+      var rp=_computeRentPeriods(l);
       totalLoyer+=(rp<=1?5000:rp<=6?4800:4600);
     }
   });
@@ -6173,7 +6198,7 @@ async function renderMyLands(page){
       ?'<span class="badge g-confirme" style="font-size:.55rem">Propriété</span>'
       :'<span class="badge g-debutant" style="font-size:.55rem">Location</span>';
     // Loyer selon la période de location
-    var rp=l.rent_periods||0;
+    var rp=_computeRentPeriods(l);
     var rentCost=rp<=1?5000:rp<=6?4800:4600;
     var loyerCell=isOwned?'<span style="color:var(--green);font-size:.7rem">—</span>':'<span style="color:var(--red)">−'+rentCost.toLocaleString('fr')+'</span>';
     // Prix d'achat possible
@@ -6361,10 +6386,9 @@ async function processMonthlyRent(){
   var totalLoyer=0;
   var details=[];
   myRentedLands.forEach(function(l){
-    var rp=l.rent_periods||0;
+    var rp=_computeRentPeriods(l);
     var cost=rp<=1?5000:rp<=6?4800:4600;
     totalLoyer+=cost;
-    details.push({id:l.id,cost:cost,newRp:rp+1});
   });
   // Vérifier le solde
   var w=window.__wallet||{rpc:0,nyx:0};
@@ -6375,14 +6399,6 @@ async function processMonthlyRent(){
   // Débiter le wallet
   var ok=await walletCredit(-totalLoyer,0,'Loyer mensuel '+myRentedLands.length+' lands');
   if(!ok) return;
-  // Incrémenter rent_periods pour chaque land
-  for(var i=0;i<details.length;i++){
-    await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(details[i].id),{
-      method:'PATCH',
-      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-      body:JSON.stringify({rent_periods:details[i].newRp})
-    });
-  }
   // Marquer comme payé ce mois
   localStorage.setItem(monthKey,'paid');
   showToast('🏠 Loyer prélevé : −'+totalLoyer.toLocaleString('fr')+' RPC ('+myRentedLands.length+' land'+(myRentedLands.length>1?'s':'')+')');
@@ -6416,7 +6432,7 @@ async function adminForceRent(){
     var lands=byTenant[tid];
     var loyer=0;
     lands.forEach(function(l){
-      var rp=l.rent_periods||0;
+      var rp=_computeRentPeriods(l);
       loyer+=(rp<=1?5000:rp<=6?4800:4600);
     });
     // Charger le solde du joueur
@@ -6430,14 +6446,6 @@ async function adminForceRent(){
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
       body:JSON.stringify({rpc_balance:newRpc})
     });
-    // Incrémenter rent_periods
-    for(var i=0;i<lands.length;i++){
-      await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(lands[i].id),{
-        method:'PATCH',
-        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-        body:JSON.stringify({rent_periods:(lands[i].rent_periods||0)+1})
-      });
-    }
     totalDebited+=loyer;
     tenantsProcessed++;
   }
@@ -6742,6 +6750,14 @@ async function initAdminExplorePanel(){
 // ══════════════════════════════════════════════════════════════════════
 var _periodData={period:1,start:null,end:null};
 var _periodTimerInterval=null;
+
+// Dérive le nombre de périodes louées depuis rent_start_period (self-healing, pas de drift)
+function _computeRentPeriods(land){
+  if(!land) return 0;
+  var period=_periodData.period||1;
+  if(land.rent_start_period) return Math.max(1,(period-land.rent_start_period)+1);
+  return land.rent_periods||1;
+}
 
 async function loadPeriodSettings(){
   var {data}=await supabaseClient.from('game_settings').select('key,value');
@@ -7879,11 +7895,99 @@ var ADMIN_UID='0cba7ec2-3d9d-4b08-9b51-280aa0c05a28';
 
 function isAdmin(){return currentUser&&currentUser.id===ADMIN_UID;}
 
+// ── Présence live via Supabase Realtime ─────────────────────────────
+window.__onlineUsers=[];
+function initPresence(user){
+  if(window.__presenceChannel) return;
+  var ch=supabaseClient.channel('online_users',{config:{presence:{key:user.id}}});
+  window.__presenceChannel=ch;
+  ch.on('presence',{event:'sync'},function(){
+    var state=ch.presenceState();
+    var list=[];
+    Object.keys(state).forEach(function(k){
+      var meta=(state[k]&&state[k][0])||{};
+      list.push({id:k,username:meta.username||'?'});
+    });
+    // Dédupliquer par id (au cas où)
+    var seen={};
+    window.__onlineUsers=list.filter(function(u){
+      if(seen[u.id]) return false;
+      seen[u.id]=true;
+      return true;
+    });
+    if(typeof updateAdminOnlineCounter==='function') updateAdminOnlineCounter();
+  });
+  ch.subscribe(async function(status){
+    if(status==='SUBSCRIBED'){
+      var uname=(window.__myPlayer&&window.__myPlayer.username)||user.email||'?';
+      await ch.track({username:uname});
+    }
+  });
+}
+function updateAdminOnlineCounter(){
+  var el=document.getElementById('admin-online-count');
+  if(el) el.textContent=(window.__onlineUsers||[]).length;
+  // Si la modal est ouverte, rafraîchir aussi la liste
+  var modal=document.getElementById('online-users-modal');
+  if(modal&&modal.classList.contains('open')) renderOnlineUsersList();
+}
+function renderOnlineUsersList(){
+  var list=window.__onlineUsers||[];
+  var sub=document.getElementById('online-users-subtitle');
+  var body=document.getElementById('online-users-list');
+  if(sub) sub.textContent=list.length+' RP connecté'+(list.length>1?'s':'')+' en ce moment';
+  if(!body) return;
+  if(!list.length){
+    body.innerHTML='<div style="text-align:center;padding:1rem;color:var(--muted2);font-size:.8rem">Personne en ligne.</div>';
+    return;
+  }
+  var sorted=list.slice().sort(function(a,b){return (a.username||'').localeCompare(b.username||'');});
+  body.innerHTML=sorted.map(function(u){
+    return '<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-radius:6px;background:rgba(45,219,128,.05);border:1px solid rgba(45,219,128,.15)">'
+      +'<span style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);flex-shrink:0"></span>'
+      +'<span style="font-size:.82rem;color:var(--text)">'+(u.username||'?')+'</span>'
+    +'</div>';
+  }).join('');
+}
+function showOnlineUsersModal(){
+  if(!isAdmin()) return;
+  renderOnlineUsersList();
+  openModal('online-users-modal');
+}
+
+// Rend tous les blocs de la page Admin repliables (cliquer le titre pour ouvrir)
+function adminSetupCollapsibleBlocks(){
+  var page=document.getElementById('page-admin');
+  if(!page) return;
+  page.querySelectorAll('.block').forEach(function(b){
+    if(b.dataset.collapsibleInit==='1') return;
+    b.dataset.collapsibleInit='1';
+    var hdr=b.querySelector('.block-header');
+    var body=b.querySelector('.block-body-sm')||b.querySelector('.block-body');
+    if(!hdr||!body) return;
+    body.style.display='none';
+    hdr.style.cursor='pointer';
+    hdr.style.userSelect='none';
+    var ic=document.createElement('span');
+    ic.className='admin-toggle-icon';
+    ic.textContent='▽';
+    ic.style.cssText='color:var(--muted2);font-size:.85rem;transition:transform .2s;display:inline-block;transform:rotate(-90deg);margin-left:auto';
+    hdr.appendChild(ic);
+    hdr.addEventListener('click',function(){
+      var open=body.style.display!=='none';
+      body.style.display=open?'none':'';
+      ic.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
+    });
+  });
+}
+
 async function initAdminPanel(){
   // Afficher l'onglet admin si c'est l'admin
   var tabEl=document.getElementById('nav-tab-admin');
   if(tabEl) tabEl.style.display=isAdmin()?'inline-block':'none';
   if(!isAdmin()) return;
+  updateAdminOnlineCounter();
+  adminSetupCollapsibleBlocks();
   // Charger la liste des joueurs dans le select
   var sel=document.getElementById('admin-player');
   if(!sel) return;
