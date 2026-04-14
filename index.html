@@ -2756,7 +2756,20 @@ async function onLoginSuccess(user, isNew){
     var pts=runs.reduce(function(s,r){return s+(r.points||0);},0);
     window.__myPlayer.pts=pts; window.__myPlayer.ptsCum=pts;
     window.__myPlayer.km=Math.round(pts/8); window.__myPlayer.courses=runs.length;
-    // League = celle en DB, pas de recalcul en cours de période
+    // Montée libre en calibrage : si Starter et ≥ 500 pts, promotion instantanée
+    // (et si déjà hors Starter en calibrage, réajustement possible vers le haut)
+    if(!window.__myPlayer.competitive){
+      var curLk=(window.__myPlayer.leagueKey||'starter').toLowerCase();
+      var targetLg=LEAGUES.slice().reverse().find(function(l){return pts>=l.min&&l.key!=='starter';});
+      if(targetLg){
+        var curIdx=LEAGUES.findIndex(function(l){return l.key===curLk;});
+        var tgtIdx=LEAGUES.findIndex(function(l){return l.key===targetLg.key;});
+        if(tgtIdx>curIdx){
+          await supabaseClient.from('players').update({league:targetLg.key}).eq('id',user.id);
+          window.__myPlayer.leagueKey=targetLg.key;
+        }
+      }
+    }
     activeLeagueKey=window.__myPlayer.leagueKey;
     var exi=PLAYERS.findIndex(function(p){return p.id===1;});
     if(exi>=0)PLAYERS[exi]=window.__myPlayer;
@@ -10043,6 +10056,22 @@ async function syncStravaActivities(silent){
               headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
               body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
             });
+            // Créditer le propriétaire/locataire et incrémenter le rendement mensuel
+            var landOwner=ld?(ld.owner_id||ld.tenant_id):null;
+            if(landOwner&&landOwner!==currentUser.id){
+              await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+              // Recharger monthly_revenue courant pour éviter une race
+              var revResp=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=monthly_revenue',{
+                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+              });
+              var revData=await revResp.json();
+              var curRev=(revData&&revData[0]&&revData[0].monthly_revenue)||0;
+              await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+                method:'PATCH',
+                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+                body:JSON.stringify({monthly_revenue:curRev+rpcEarned})
+              });
+            }
           }
         }
         // Stocker les hexes explorés pour affichage sur la carte
@@ -10072,9 +10101,29 @@ async function syncStravaActivities(silent){
       if(resultsDiv) resultsDiv.style.display='block';
       if(listDiv) listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">Courses importées · Passages Lands enregistrés automatiquement</div>'+resultsHtml;
       showToast('✓ '+newActivities.length+' activité'+(newActivities.length>1?'s':'')+' importée'+(newActivities.length>1?'s':''));
+      // Un nouveau run écrase l'ancien tracé : purger toute trace périmée
+      var hasNewHexes=newActivities.some(function(a){return a.hexes&&a.hexes.length;});
+      if(hasNewHexes){
+        _lastExploredHexes=[];
+        // Purger pending_exploration (admin explore obsolète)
+        await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+          method:'PATCH',
+          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+          body:JSON.stringify({pending_exploration:null})
+        });
+        // Purger les flags "terminer" pour que les nouveaux passages s'affichent
+        if(currentUser){
+          localStorage.removeItem('expl-hide-'+currentUser.id);
+          localStorage.removeItem('expl-hide-at-'+currentUser.id);
+          localStorage.removeItem('expl-done-'+currentUser.id);
+        }
+        window._hidePassages=false;
+      }
       // Rafraîchir
       if(typeof renderHistory==='function') renderHistory();
       if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
+      // Rafraîchir la carte Lands si elle est déjà initialisée (sinon elle sera chargée à la navigation)
+      if(_landsMap&&typeof loadLandsOnMap==='function') loadLandsOnMap();
       // Vérifier montée Starter
       if(typeof adminCheckStarterPromotion==='function') adminCheckStarterPromotion(currentUser.id,'Moi');
       // Vérifier les badges après import (distance/cumul/éclair/horaires/capitales)
@@ -10130,7 +10179,13 @@ async function processStravaLands(index){
       });
       var landOwner=ld?(ld.owner_id||ld.tenant_id):null;
       if(landOwner&&landOwner!==currentUser.id){
-        walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
+        await walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
+        var curRev2=(ld.monthly_revenue||0);
+        await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+          method:'PATCH',
+          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+          body:JSON.stringify({monthly_revenue:curRev2+rpcEarned})
+        });
       }
     }
   }
