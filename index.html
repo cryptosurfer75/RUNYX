@@ -286,6 +286,11 @@ body::before{
   position:absolute;right:6px;top:50%;transform:translateY(-50%);
 }
 
+/* ── Badge cards (défis) ── */
+.badge-card:hover{transform:translateY(-3px)}
+.badge-breathe svg{animation:badgeBreathe 3.2s ease-in-out infinite}
+@keyframes badgeBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+
 /* ============================================================
    LEAGUE PANEL
 ============================================================ */
@@ -813,13 +818,21 @@ select option{background:#040c1c}
     position:relative;overflow:hidden;
   ">
 
-    <!-- Titre PLAYER CARD = bouton + carré parrainage -->
-    <div style="text-align:center;margin-bottom:.9rem;display:flex;align-items:center;justify-content:center;gap:.6rem">
+    <!-- Titre PLAYER CARD = bouton + carré parrainage + flèches classement -->
+    <div style="text-align:center;margin-bottom:.9rem;display:flex;align-items:center;justify-content:center;gap:.5rem">
+      <!-- Flèche GAUCHE (descendre le classement = moins de points) -->
+      <button onclick="navPcRank(1)" title="Classement inférieur" style="
+        width:32px;height:32px;border-radius:8px;flex-shrink:0;
+        border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+        color:var(--muted2);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        transition:all .15s;
+      " onmouseover="this.style.background='rgba(255,255,255,.1)';this.style.color='var(--text)'"
+         onmouseout="this.style.background='rgba(255,255,255,.04)';this.style.color='var(--muted2)'">▼</button>
       <button onclick="if(window.__viewedPlayer){window.__viewedPlayer=null;renderDashboard();if(typeof renderTeams==='function')renderTeams();}else{nav('dashboard');}" style="
         font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:6px;
         color:#4a90ff;text-shadow:0 0 18px rgba(74,144,255,.7);
         background:rgba(74,144,255,.08);border:1px solid rgba(74,144,255,.4);
-        border-radius:9px;padding:.3rem 1.5rem;cursor:pointer;
+        border-radius:9px;padding:.3rem 1.2rem;cursor:pointer;
         transition:all .18s;
       " onmouseover="this.style.background='rgba(74,144,255,.18)'" onmouseout="this.style.background='rgba(74,144,255,.08)'">PLAYER CARD</button>
       <!-- Carré parrainage -->
@@ -832,6 +845,14 @@ select option{background:#040c1c}
          onmouseout="this.style.background='rgba(245,200,66,.1)';this.style.borderColor='rgba(245,200,66,.5)'">
         <span style="font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:1px;color:var(--gold);line-height:1" id="parrainage-letter">F</span>
       </div>
+      <!-- Flèche DROITE (monter le classement = plus de points) -->
+      <button onclick="navPcRank(-1)" title="Classement supérieur" style="
+        width:32px;height:32px;border-radius:8px;flex-shrink:0;
+        border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+        color:var(--muted2);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        transition:all .15s;
+      " onmouseover="this.style.background='rgba(255,255,255,.1)';this.style.color='var(--text)'"
+         onmouseout="this.style.background='rgba(255,255,255,.04)';this.style.color='var(--muted2)'">▲</button>
     </div>
 
     <!-- 3 boutons navigation séparés -->
@@ -1215,6 +1236,18 @@ select option{background:#040c1c}
         </tr></thead>
         <tbody id="hist-tbody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Les Défis / Badges -->
+  <div class="block" style="margin-bottom:1.25rem">
+    <div class="block-header">
+      <div class="block-title">🎖️ Les <span class="hl">Défis</span></div>
+      <div id="challenges-summary" style="font-size:.65rem;color:var(--muted2)">—</div>
+    </div>
+    <div style="padding:.6rem .6rem 1rem">
+      <div id="challenges-filter" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
+      <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
     </div>
   </div>
 
@@ -2756,6 +2789,10 @@ async function onLoginSuccess(user, isNew){
   // Bonus connexion continu — vérifier et réclamer le streak
   if(typeof checkAndClaimStreak==='function'){
     setTimeout(function(){ checkAndClaimStreak(); }, isNew?1500:800);
+  }
+  // Check badges une fois au login (rattrapage rétroactif)
+  if(typeof triggerBadgeCheck==='function'){
+    setTimeout(function(){ triggerBadgeCheck(); }, 5000);
   }
   // Notifications parrainage — après le streak (délai plus long)
   if(typeof checkReferralNotifications==='function'){
@@ -4597,7 +4634,7 @@ function renderLeaguePP(){
    RENDER : POINTS HISTORY
 ============================================================ */
 var _histPage=0;
-var _histPerPage=10;
+var _histPerPage=5;
 var _allHistRuns=[];
 async function renderHistory(page){
   if(typeof page==='number') _histPage=page;
@@ -5492,7 +5529,30 @@ async function loadLandsOnMap(){
   }
   window._rpColorMap=rpColorMap;
 
-  // Charger mes passages pour afficher les lands visitées (sauf si exploration terminée)
+  // ── Check hide-flag : session terminée sans nouveau run depuis ? ──
+  if(myId&&localStorage.getItem('expl-hide-'+myId)==='1'){
+    try{
+      var hideAt=localStorage.getItem('expl-hide-at-'+myId);
+      if(hideAt){
+        var {data:latest}=await supabaseClient.from('runs')
+          .select('run_date').eq('player_id',myId)
+          .order('run_date',{ascending:false}).limit(1).maybeSingle();
+        if(latest&&latest.run_date&&latest.run_date>hideAt){
+          // Un nouveau run a été importé depuis le dernier Terminer → on ré-ouvre
+          localStorage.removeItem('expl-hide-'+myId);
+          localStorage.removeItem('expl-hide-at-'+myId);
+          localStorage.removeItem('expl-done-'+myId);
+          window._hidePassages=false;
+        } else {
+          window._hidePassages=true;
+        }
+      } else {
+        window._hidePassages=true;
+      }
+    }catch(e){window._hidePassages=true;}
+  }
+
+  // Charger mes passages pour afficher les lands visitées (sauf si session terminée)
   if(myId&&!window._hidePassages){
     var passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?player_id=eq.'+encodeURIComponent(myId)+'&select=land_id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
@@ -5557,6 +5617,7 @@ async function loadLandsOnMap(){
     }catch(e){}
   });
   // ── Afficher le bouton "Terminer" si des free lands avec mes passages subsistent ──
+  var _finBtnEl=document.getElementById('lands-finish-btn');
   if(myId&&!window._hidePassages){
     var myFreeExplored=lands.filter(function(l){
       if(l.status!=='free') return false;
@@ -5564,8 +5625,10 @@ async function loadLandsOnMap(){
       var allExpl=(_lastExploredHexes||[]).concat(window._recentExploredHexes||[]);
       return allExpl.indexOf(l.id)>=0;
     });
-    var finBtn=document.getElementById('lands-finish-btn');
-    if(finBtn) finBtn.style.display=myFreeExplored.length>0?'block':'none';
+    if(_finBtnEl) _finBtnEl.style.display=myFreeExplored.length>0?'block':'none';
+  } else if(_finBtnEl){
+    // Session terminée → bouton caché
+    _finBtnEl.style.display='none';
   }
   // Dessiner les contours de territoire (groupes de 3+ lands du même RP)
   var landsByPlayer={};
@@ -5734,7 +5797,8 @@ async function rentLand(landId){
   var {data:ban}=await supabaseClient.from('land_bans').select('id').eq('land_id',landId).eq('player_id',currentUser.id).gt('ban_until_period',period).maybeSingle();
   if(ban){showToast('⚠️ Non disponible pour cette période');return;}
   var {error}=await supabaseClient.from('lands').update({
-    tenant_id:currentUser.id, status:'rented', rent_start_period:period, rent_periods:1
+    tenant_id:currentUser.id, status:'rented', rent_start_period:period, rent_periods:1,
+    rented_at:new Date().toISOString()
   }).eq('id',landId).eq('status','free');
   if(error){showToast('⚠️ '+error.message);return;}
   await walletCredit(-rentCost,0,'Loyer Land '+landId.substring(0,8));
@@ -5742,6 +5806,8 @@ async function rentLand(landId){
   showToast('🔑 Land louée ! −'+rentCost.toLocaleString('fr')+' RPC');
   loadLandsOnMap();
   renderMyLands();
+  // Déclenche la vérif du badge PROSPECTEUR (fenêtre 60 min)
+  if(typeof triggerBadgeCheck==='function') triggerBadgeCheck();
 }
 
 // Couleur carte du joueur
@@ -6405,9 +6471,22 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
-  // Marquer l'exploration comme terminée (localStorage + DB)
+  // Marquer la SESSION d'exploration comme terminée (localStorage + DB)
   if(currentUser){
     localStorage.setItem('expl-done-'+currentUser.id,'1');
+    // Enregistrer la date du dernier run à l'instant du Terminer.
+    // → le tracé réapparaîtra dès qu'un NOUVEAU run (date > cette valeur) sera importé.
+    try{
+      var {data:latestRun}=await supabaseClient.from('runs')
+        .select('run_date').eq('player_id',currentUser.id)
+        .order('run_date',{ascending:false}).limit(1).maybeSingle();
+      if(latestRun&&latestRun.run_date){
+        localStorage.setItem('expl-hide-at-'+currentUser.id,latestRun.run_date);
+      } else {
+        localStorage.setItem('expl-hide-at-'+currentUser.id,new Date().toISOString());
+      }
+      localStorage.setItem('expl-hide-'+currentUser.id,'1');
+    }catch(e){console.warn('[finishExpl] hide-flag save failed:',e);}
     // Effacer pending_exploration en DB pour ne plus déclencher la modale
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
       method:'PATCH',
@@ -8105,6 +8184,41 @@ function hexToRgb(hex){
   var n=parseInt(r,16);
   return [(n>>16)&255,(n>>8)&255,n&255].join(',');
 }
+// Naviguer entre les PC selon le classement (flèches ▼ ▲ en haut de la PC)
+// direction = +1 → descend le classement (moins de points) · -1 → monte le classement
+function navPcRank(direction){
+  if(!window.__myPlayer||!PLAYERS||!PLAYERS.length) return;
+  // Qui est affiché actuellement ?
+  var curPid=window.__viewedPlayer?window.__viewedPlayer.id:1; // id=1 = mon profil dans PLAYERS
+  var viewedLeague=window.__viewedPlayer?window.__viewedPlayer.leagueKey:(window.__myPlayer.leagueKey||'starter');
+  // Liste des candidats
+  var candidates;
+  if(isPremium()){
+    // Premium : accès à toutes les leagues
+    candidates=PLAYERS.slice();
+  } else {
+    // Free : uniquement les RP de la même league que l'affiché
+    candidates=PLAYERS.filter(function(p){return p.leagueKey===viewedLeague;});
+  }
+  // Tri par points décroissant (rang 1 = +gros score)
+  candidates.sort(function(a,b){return (b.pts||0)-(a.pts||0);});
+  var idx=candidates.findIndex(function(p){return p.id===curPid;});
+  if(idx<0) return;
+  var newIdx=idx+direction;
+  if(newIdx<0){showToast('🏆 Déjà au sommet du classement');return;}
+  if(newIdx>=candidates.length){showToast('🔻 Déjà en bas du classement');return;}
+  var target=candidates[newIdx];
+  if(target.id===1){
+    // Retour à MA PC
+    window.__viewedPlayer=null;
+    renderDashboard();
+    if(typeof renderTeams==='function') renderTeams();
+    window.scrollTo(0,0);
+  } else {
+    if(typeof showPlayerCard==='function') showPlayerCard(target.id);
+  }
+}
+
 // Helpers pour les boutons PC : naviguer vers la league/team du joueur consulté
 function goToPcLeague(){
   var vp=window.__viewedPlayer;
@@ -8899,6 +9013,7 @@ function nav(page){
   }
   if(page==='points'){
     if(typeof renderHistory==='function') renderHistory();
+    if(typeof renderChallenges==='function') renderChallenges();
   }
   const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin'];
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
@@ -9833,20 +9948,22 @@ async function syncStravaActivities(silent){
         resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--red);border-bottom:1px solid rgba(30,37,53,.6)">🚫 '+a.name+' — Vitesse trop élevée ('+Math.round(spd)+' km/h)</div>';
         continue;
       }
-      // 5. Accélération GPS : vérifier les segments de la polyline
+      // 5. Accélération GPS : vérifier les segments (en ignorant les bords imprécis)
       var gpsRejected=false;
       if(polyline&&typeof decodePolyline==='function'){
         var gpsPoints=decodePolyline(polyline);
-        for(var g=1;g<gpsPoints.length;g++){
+        // Skip 5 premiers/derniers points (GPS imprécis démarrage/arrêt)
+        var gStart=Math.min(5,Math.floor(gpsPoints.length/4));
+        var gEnd=Math.max(gpsPoints.length-5,gpsPoints.length-Math.floor(gpsPoints.length/4));
+        for(var g=Math.max(1,gStart);g<gEnd;g++){
           var dLat=gpsPoints[g][0]-gpsPoints[g-1][0];
           var dLng=gpsPoints[g][1]-gpsPoints[g-1][1];
-          // Distance approx en km (1° lat ≈ 111km, 1° lng ≈ 111km * cos(lat))
           var distKm=Math.sqrt(Math.pow(dLat*111,2)+Math.pow(dLng*111*Math.cos(gpsPoints[g][0]*Math.PI/180),2));
-          // Temps estimé entre 2 points (réparti uniformément)
           var segTime=timeMin/gpsPoints.length;
           if(segTime>0){
             var segSpd=distKm/(segTime/60);
-            if(segSpd>25){
+            // Seuil assoupli à 35 km/h (avant : 25)
+            if(segSpd>35){
               gpsRejected=true;
               break;
             }
@@ -9946,6 +10063,8 @@ async function syncStravaActivities(silent){
       if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
       // Vérifier montée Starter
       if(typeof adminCheckStarterPromotion==='function') adminCheckStarterPromotion(currentUser.id,'Moi');
+      // Vérifier les badges après import (distance/cumul/éclair/horaires/capitales)
+      if(typeof triggerBadgeCheck==='function') triggerBadgeCheck();
     } else {
       if(!silent) showToast('Aucune nouvelle activité à importer');
     }
@@ -11061,6 +11180,363 @@ var LEAGUE_DISPLAY={};
 
 // Afficher le modal palmarès pour un rang (1=or, 2=argent, 3=bronze)
 // type: 'player' ou 'team'
+// ============================================================
+// BADGES — Catalogue, rendu grille, progression
+// ============================================================
+var _badgesCatalog=null; // Cache du catalogue
+var _CHALLENGES_CURRENT_FILTER='all';
+
+// Catégories et leurs labels (pour les filtres)
+var BADGE_CATEGORIES={
+  single_run:     {label:'🏃 Course', order:1},
+  cumul_distance: {label:'📊 Cumul',  order:2},
+  elevation:      {label:'⛰️ D+',     order:3},
+  speed:          {label:'⚡ Vitesse', order:4},
+  streak:         {label:'🔥 Régularité', order:5},
+  lands:          {label:'🗺️ Lands',  order:6},
+  location_fr:    {label:'🇫🇷 France', order:7},
+  location_eu:    {label:'🇪🇺 Europe', order:8},
+  time_window:    {label:'⏰ Horaires', order:9}
+};
+
+// Capitales régionales FR (pour compter NOMADE côté client)
+var FR_CAPITALS_CLIENT=[
+  {name:'Paris',lat:48.8566,lng:2.3522},{name:'Marseille',lat:43.2965,lng:5.3698},
+  {name:'Lyon',lat:45.7640,lng:4.8357},{name:'Toulouse',lat:43.6047,lng:1.4442},
+  {name:'Nice',lat:43.7102,lng:7.2620},{name:'Nantes',lat:47.2184,lng:-1.5536},
+  {name:'Strasbourg',lat:48.5734,lng:7.7521},{name:'Montpellier',lat:43.6108,lng:3.8767},
+  {name:'Bordeaux',lat:44.8378,lng:-0.5792},{name:'Lille',lat:50.6292,lng:3.0573},
+  {name:'Rennes',lat:48.1173,lng:-1.6778},{name:'Reims',lat:49.2583,lng:4.0317},
+  {name:'Dijon',lat:47.3220,lng:5.0415},{name:'Saint-Denis',lat:-20.8823,lng:55.4504},
+  {name:'Fort-de-France',lat:14.6161,lng:-61.0588},{name:'Cayenne',lat:4.9227,lng:-52.3262}
+];
+var EU_CAPITALS_CLIENT=[
+  {name:'Amsterdam',lat:52.3676,lng:4.9041},{name:'Athènes',lat:37.9838,lng:23.7275},
+  {name:'Berlin',lat:52.5200,lng:13.4050},{name:'Bratislava',lat:48.1486,lng:17.1077},
+  {name:'Bruxelles',lat:50.8503,lng:4.3517},{name:'Bucarest',lat:44.4268,lng:26.1025},
+  {name:'Budapest',lat:47.4979,lng:19.0402},{name:'Copenhague',lat:55.6761,lng:12.5683},
+  {name:'Dublin',lat:53.3498,lng:-6.2603},{name:'Helsinki',lat:60.1699,lng:24.9384},
+  {name:'La Valette',lat:35.8989,lng:14.5146},{name:'Lisbonne',lat:38.7223,lng:-9.1393},
+  {name:'Ljubljana',lat:46.0569,lng:14.5058},{name:'Luxembourg',lat:49.6116,lng:6.1319},
+  {name:'Madrid',lat:40.4168,lng:-3.7038},{name:'Nicosie',lat:35.1856,lng:33.3823},
+  {name:'Paris',lat:48.8566,lng:2.3522},{name:'Prague',lat:50.0755,lng:14.4378},
+  {name:'Riga',lat:56.9496,lng:24.1052},{name:'Rome',lat:41.9028,lng:12.4964},
+  {name:'Sofia',lat:42.6977,lng:23.3219},{name:'Stockholm',lat:59.3293,lng:18.0686},
+  {name:'Tallinn',lat:59.4370,lng:24.7536},{name:'Varsovie',lat:52.2297,lng:21.0122},
+  {name:'Vienne',lat:48.2082,lng:16.3738},{name:'Vilnius',lat:54.6872,lng:25.2797},
+  {name:'Zagreb',lat:45.8150,lng:15.9819},{name:'Londres',lat:51.5074,lng:-0.1278},
+  {name:'Oslo',lat:59.9139,lng:10.7522},{name:'Berne',lat:46.9481,lng:7.4474},
+  {name:'Reykjavik',lat:64.1466,lng:-21.9426}
+];
+
+function _haversineKm(la1,ln1,la2,ln2){
+  var R=6371,toR=function(x){return x*Math.PI/180;};
+  var dLat=toR(la2-la1),dLng=toR(ln2-ln1);
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toR(la1))*Math.cos(toR(la2))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function _parisHour(iso){return parseInt(new Date(iso).toLocaleString('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',hour12:false}),10);}
+function _parisDate(iso){return new Date(iso).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'});}
+function _longestStreak(runs){
+  var dates=new Set();
+  runs.forEach(function(r){if(r.run_date)dates.add(_parisDate(r.run_date));});
+  var sorted=[].slice.call(dates).sort();
+  var longest=0,current=0,prev=null;
+  sorted.forEach(function(d){
+    if(prev){
+      var diff=(new Date(d)-new Date(prev))/86400000;
+      if(Math.round(diff)===1)current++;
+      else{longest=Math.max(longest,current);current=1;}
+    }else current=1;
+    prev=d;
+  });
+  return Math.max(longest,current);
+}
+function _countCapitals(runs,caps){
+  var visited=new Set();
+  runs.forEach(function(r){
+    if(!r.polyline)return;
+    try{
+      var pts=decodePolyline(r.polyline);
+      if(!pts.length)return;
+      var start=pts[0];
+      for(var i=0;i<caps.length;i++){
+        if(_haversineKm(start[0],start[1],caps[i].lat,caps[i].lng)<=25){visited.add(caps[i].name);break;}
+      }
+    }catch(e){}
+  });
+  return visited.size;
+}
+function _countTimeWindow(runs,from,to){
+  return runs.filter(function(r){
+    if(!r.run_date)return false;
+    var h=_parisHour(r.run_date);
+    if(from<=to)return h>=from&&h<to;
+    return h>=from||h<to;
+  }).length;
+}
+
+// ── Helpers de couleur (éclaircir / assombrir) ──
+function _mixHex(hex,factor){
+  var h=(hex||'#808080').replace('#','');
+  if(h.length===3) h=h.split('').map(function(c){return c+c;}).join('');
+  var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  if(factor>0){r=Math.min(255,Math.round(r+(255-r)*factor));g=Math.min(255,Math.round(g+(255-g)*factor));b=Math.min(255,Math.round(b+(255-b)*factor));}
+  else{var f=-factor;r=Math.max(0,Math.round(r*(1-f)));g=Math.max(0,Math.round(g*(1-f)));b=Math.max(0,Math.round(b*(1-f)));}
+  return '#'+[r,g,b].map(function(x){return x.toString(16).padStart(2,'0');}).join('');
+}
+
+// ── Label du ruban en bas du badge ──
+function _badgeRibbonLabel(b){
+  var v=b.threshold_value||0;
+  switch(b.threshold_type){
+    case 'single_run_km':
+    case 'cumul_km':         return (Number.isInteger(v)?v:v.toLocaleString('fr'))+' km';
+    case 'cumul_elv_m':
+    case 'single_run_elv_m': return v.toLocaleString('fr')+' m';
+    case 'speed_over_5km':   return v+' km/h';
+    case 'streak_days':      return v+' j';
+    case 'simultaneous_lands': return '×'+v;
+    case 'capitals_fr':      return v+' 🇫🇷';
+    case 'capitals_eu':      return v+' 🇪🇺';
+    case 'night_runs':       return '22→4h';
+    case 'morning_runs':     return '4→7h';
+    default:                 return '';
+  }
+}
+
+// ── SVG d'un hexagone de badge (dégradé, texture, ruban) ──
+function _renderBadgeHex(b,isUnlocked){
+  var color=b.color||'#8090b0';
+  var light,mid,dark,iconOp,hexOp,borderCol,ribbonTxtCol,glowStyle;
+  if(isUnlocked){
+    light=_mixHex(color,0.45); mid=color; dark=_mixHex(color,-0.5);
+    iconOp=1; hexOp=1; borderCol=_mixHex(color,0.25); ribbonTxtCol='#ffffff';
+    glowStyle='filter:drop-shadow(0 3px 10px '+color+'aa) drop-shadow(0 0 2px '+color+')';
+  } else {
+    light='#4a5162'; mid='#2a303c'; dark='#1a1e28';
+    iconOp=0.42; hexOp=0.75; borderCol='#4a5062'; ribbonTxtCol='#9098a8';
+    glowStyle='';
+  }
+  var uid='bg'+b.id+(isUnlocked?'u':'l');
+  var pat='pat'+uid;
+  var ribbon=_badgeRibbonLabel(b);
+  return ''
+    +'<svg viewBox="0 0 100 115" style="width:100%;height:100%;'+glowStyle+'">'
+    +'  <defs>'
+    +'    <linearGradient id="'+uid+'" x1="0" y1="0" x2="0" y2="1">'
+    +'      <stop offset="0%" stop-color="'+light+'"/>'
+    +'      <stop offset="50%" stop-color="'+mid+'"/>'
+    +'      <stop offset="100%" stop-color="'+dark+'"/>'
+    +'    </linearGradient>'
+    +'    <pattern id="'+pat+'" width="10" height="11.5" patternUnits="userSpaceOnUse">'
+    +'      <polygon points="5,0.5 9.3,3 9.3,8.5 5,11 0.7,8.5 0.7,3" fill="none" stroke="white" stroke-opacity="0.09" stroke-width="0.35"/>'
+    +'    </pattern>'
+    +'  </defs>'
+    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="black" opacity="0.28" transform="translate(0 3)"/>'
+    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="url(#'+uid+')" opacity="'+hexOp+'"/>'
+    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="url(#'+pat+')"/>'
+    +'  <polygon points="50,8 92,32 92,50 50,74 8,50 8,32" fill="white" opacity="0.11"/>'
+    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="none" stroke="'+borderCol+'" stroke-width="1.4"/>'
+    +'  <circle cx="50" cy="46" r="17" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.28)" stroke-width="0.7"/>'
+    +'  <foreignObject x="28" y="24" width="44" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;font-size:26px;opacity:'+iconOp+';filter:'+(isUnlocked?'none':'grayscale(.7)')+'">'+(b.icon||'🏆')+'</div></foreignObject>'
+    +'  <rect x="14" y="78" width="72" height="17" rx="3" fill="rgba(0,0,0,0.45)" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>'
+    +'  <text x="50" y="90" text-anchor="middle" fill="'+ribbonTxtCol+'" font-size="8.5" font-weight="700" font-family="Space Mono, monospace" letter-spacing="0.5">'+ribbon+'</text>'
+    +'</svg>';
+}
+
+async function renderChallenges(){
+  var grid=document.getElementById('challenges-grid');
+  var summary=document.getElementById('challenges-summary');
+  var filterBar=document.getElementById('challenges-filter');
+  if(!grid) return;
+
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Chargement des défis…</div>';
+
+  // Qui regarde-t-on ?
+  var targetUuid=(window.__viewedPlayer&&window.__viewedPlayer._uuid)||(currentUser?currentUser.id:null);
+  if(!targetUuid){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir tes défis</div>';return;}
+
+  // 1. Catalogue (cache)
+  if(!_badgesCatalog){
+    var {data:cat}=await supabaseClient.from('badges').select('*').order('sort_order');
+    _badgesCatalog=cat||[];
+  }
+  // 2. Badges débloqués
+  var {data:unlocked}=await supabaseClient.from('player_badges').select('badge_id,earned_at').eq('player_id',targetUuid);
+  var unlockedMap={};
+  (unlocked||[]).forEach(function(u){unlockedMap[u.badge_id]=u.earned_at;});
+
+  // 3. Stats runs (non flaggés)
+  var {data:runs}=await supabaseClient.from('runs').select('distance,time,elevation,run_date,polyline,flagged').eq('player_id',targetUuid);
+  var valid=(runs||[]).filter(function(r){return !r.flagged;});
+
+  // 4. Lands louées 60min
+  var cutoff=new Date(Date.now()-60*60*1000).toISOString();
+  var {data:rec}=await supabaseClient.from('lands').select('id,rented_at').eq('tenant_id',targetUuid).gte('rented_at',cutoff);
+  var simultaneousLands=(rec||[]).length;
+
+  // 5. Stats agrégées
+  var stats={
+    single_run_km:valid.reduce(function(m,r){return Math.max(m,r.distance||0);},0),
+    single_run_elv_m:valid.reduce(function(m,r){return Math.max(m,r.elevation||0);},0),
+    cumul_km:valid.reduce(function(s,r){return s+(r.distance||0);},0),
+    cumul_elv_m:valid.reduce(function(s,r){return s+(r.elevation||0);},0),
+    speed_over_5km:valid.filter(function(r){return (r.distance||0)>=5&&r.time>0;}).reduce(function(m,r){return Math.max(m,r.distance/(r.time/60));},0),
+    streak_days:_longestStreak(valid),
+    simultaneous_lands:simultaneousLands,
+    capitals_fr:_countCapitals(valid,FR_CAPITALS_CLIENT),
+    capitals_eu:_countCapitals(valid,EU_CAPITALS_CLIENT),
+    night_runs:_countTimeWindow(valid,22,4),
+    morning_runs:_countTimeWindow(valid,4,7)
+  };
+
+  // 6. Barre de filtres
+  var categoriesPresent={};
+  _badgesCatalog.forEach(function(b){categoriesPresent[b.category]=true;});
+  var filterHtml='<button onclick="_setChallengeFilter(\'all\')" style="padding:.25rem .6rem;border-radius:4px;border:1px solid '+(_CHALLENGES_CURRENT_FILTER==='all'?'var(--gold)':'var(--border2)')+';background:'+(_CHALLENGES_CURRENT_FILTER==='all'?'rgba(245,200,66,.15)':'transparent')+';color:'+(_CHALLENGES_CURRENT_FILTER==='all'?'var(--gold)':'var(--muted2)')+';font-size:.65rem;font-weight:700;cursor:pointer">Tous</button>';
+  var catKeys=Object.keys(BADGE_CATEGORIES).sort(function(a,b){return BADGE_CATEGORIES[a].order-BADGE_CATEGORIES[b].order;});
+  catKeys.forEach(function(k){
+    if(!categoriesPresent[k])return;
+    var active=_CHALLENGES_CURRENT_FILTER===k;
+    filterHtml+='<button onclick="_setChallengeFilter(\''+k+'\')" style="padding:.25rem .6rem;border-radius:4px;border:1px solid '+(active?'var(--gold)':'var(--border2)')+';background:'+(active?'rgba(245,200,66,.15)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.65rem;font-weight:700;cursor:pointer">'+BADGE_CATEGORIES[k].label+'</button>';
+  });
+  if(filterBar) filterBar.innerHTML=filterHtml;
+
+  // 7. Filtrage + rendu
+  var list=_badgesCatalog.filter(function(b){return _CHALLENGES_CURRENT_FILTER==='all'||b.category===_CHALLENGES_CURRENT_FILTER;});
+  var nbUnlocked=Object.keys(unlockedMap).length;
+  var nbTotal=_badgesCatalog.length;
+  if(summary) summary.textContent=nbUnlocked+' / '+nbTotal+' débloqués';
+
+  grid.innerHTML=list.map(function(b){
+    var isUnlocked=!!unlockedMap[b.id];
+    var current=stats[b.threshold_type]||0;
+    var target=b.threshold_value||1;
+    var pct=Math.min(100,Math.round((current/target)*100));
+    var color=b.color||'#8090b0';
+    var nameColor=isUnlocked?_mixHex(color,0.2):'#8a92a0';
+    var rewardTxt=[];
+    if(b.reward_rpc) rewardTxt.push('<span style="color:'+(isUnlocked?'var(--gold)':'var(--muted2)')+'">+'+b.reward_rpc.toLocaleString('fr')+' RPC</span>');
+    if(b.reward_nyx) rewardTxt.push('<span style="color:'+(isUnlocked?'var(--green)':'var(--muted2)')+'">+'+b.reward_nyx+' 💎</span>');
+    var isBinary=(b.threshold_type==='single_run_km'||b.threshold_type==='single_run_elv_m'||b.threshold_type==='speed_over_5km');
+    var progressTxt;
+    if(isUnlocked){
+      var d=new Date(unlockedMap[b.id]);
+      progressTxt='Débloqué le '+d.toLocaleDateString('fr',{day:'2-digit',month:'short'});
+    } else if(isBinary){
+      progressTxt='À réaliser en 1 course';
+    } else {
+      if(b.threshold_type==='cumul_km') progressTxt=current.toFixed(1)+' / '+target+' km';
+      else if(b.threshold_type==='cumul_elv_m') progressTxt=Math.round(current)+' / '+target+' m';
+      else if(b.threshold_type==='streak_days') progressTxt=current+' / '+target+' j';
+      else if(b.threshold_type==='simultaneous_lands') progressTxt=current+' / '+target+' (60min)';
+      else progressTxt=current+' / '+target;
+    }
+    var cardBorder=isUnlocked?(color+'55'):'rgba(255,255,255,.06)';
+    var cardShadow=isUnlocked?'box-shadow:0 4px 18px '+color+'30;':'';
+    var breatheClass=isUnlocked?' badge-breathe':'';
+    return '<div onclick="showBadgeDetail('+b.id+')" class="badge-card'+breatheClass+'" style="cursor:pointer;padding:.75rem .45rem .55rem;border-radius:11px;background:linear-gradient(155deg,rgba(20,25,35,.9),rgba(8,12,20,.95));border:1px solid '+cardBorder+';'+cardShadow+'text-align:center;transition:transform .15s ease">'
+      +'<div style="width:94px;height:108px;margin:0 auto .5rem">'+_renderBadgeHex(b,isUnlocked)+'</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.3px;color:'+nameColor+';line-height:1.05;margin-bottom:.3rem;min-height:1.8em;display:flex;align-items:center;justify-content:center;padding:0 .1rem">'+b.name+'</div>'
+      +(isUnlocked
+          ?'<div style="font-size:.56rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'
+          : (isBinary
+              ?'<div style="font-size:.55rem;color:var(--muted);font-style:italic">'+progressTxt+'</div>'
+              :'<div style="font-size:.55rem;color:var(--muted);font-family:Space Mono,monospace;margin-bottom:.3rem">'+progressTxt+'</div>'
+                +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,'+_mixHex(color,0.3)+','+color+');border-radius:2px;transition:width .4s"></div></div>'))
+      +(rewardTxt.length?'<div style="font-size:.52rem;color:var(--muted2);margin-top:.3rem;letter-spacing:.3px">'+rewardTxt.join(' · ')+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+function _setChallengeFilter(k){
+  _CHALLENGES_CURRENT_FILTER=k;
+  renderChallenges();
+}
+
+function showBadgeDetail(badgeId){
+  if(!_badgesCatalog) return;
+  var b=_badgesCatalog.find(function(x){return x.id===badgeId;});
+  if(!b) return;
+  var color=b.color||'#f5c842';
+  var rewards=[];
+  if(b.reward_rpc) rewards.push('+'+b.reward_rpc.toLocaleString('fr')+' RPC');
+  if(b.reward_nyx) rewards.push('+'+b.reward_nyx+' 💎 NYX');
+  document.getElementById('lm-title').textContent='🎖️ '+b.name;
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML=''
+    +'<div style="text-align:center;padding:1rem .5rem">'
+    +'  <div style="width:110px;height:125px;margin:0 auto 1rem;position:relative;display:flex;align-items:center;justify-content:center">'
+    +'    <svg viewBox="0 0 100 115" style="width:100%;height:100%;filter:drop-shadow(0 0 14px '+color+'80)">'
+    +'      <polygon points="50,2 95,28 95,82 50,108 5,82 5,28" fill="'+color+'" opacity="0.25"/>'
+    +'      <polygon points="50,2 95,28 95,82 50,108 5,82 5,28" fill="none" stroke="'+color+'" stroke-width="2.5"/>'
+    +'    </svg>'
+    +'    <div style="position:absolute;font-size:2.6rem">'+(b.icon||'🏆')+'</div>'
+    +'  </div>'
+    +'  <div style="font-size:.85rem;color:var(--text);margin-bottom:.4rem">'+(b.tagline||'')+'</div>'
+    +(rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.82rem;color:var(--gold);margin-top:.4rem">Récompense : '+rewards.join(' · ')+'</div>':'')
+    +'  <button onclick="closeModal(\'land-modal\')" style="margin-top:1rem;padding:.45rem 1.2rem;border-radius:7px;border:1.5px solid '+color+';background:'+color+'20;color:'+color+';font-weight:700;font-size:.78rem;cursor:pointer">Fermer</button>'
+    +'</div>';
+  openModal('land-modal');
+}
+
+// ============================================================
+// BADGES — Trigger la vérification côté serveur + modal « BOUM »
+// ============================================================
+var _badgeCheckInFlight=false;
+async function triggerBadgeCheck(){
+  if(!currentUser||_badgeCheckInFlight) return;
+  _badgeCheckInFlight=true;
+  try{
+    var resp=await window.fetch(supabaseUrl+'/functions/v1/check-badges',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({player_id:currentUser.id})
+    });
+    var data=await resp.json();
+    if(data&&data.ok&&data.new_badges&&data.new_badges.length){
+      // Afficher un « BOUM » par badge (l'un après l'autre)
+      for(var i=0;i<data.new_badges.length;i++){
+        (function(b,delay){
+          setTimeout(function(){showBadgeUnlockModal(b);}, delay);
+        })(data.new_badges[i], i*1200);
+      }
+      // Rafraîchir le wallet + la grille des défis si visible
+      if(typeof walletLoad==='function') await walletLoad();
+      if(typeof renderChallenges==='function') renderChallenges();
+    }
+  }catch(e){console.warn('[badges] check failed:',e);}
+  finally{_badgeCheckInFlight=false;}
+}
+
+function showBadgeUnlockModal(b){
+  var color=b.color||'#f5c842';
+  var icon=b.icon||'🏆';
+  var rewards=[];
+  if(b.reward_rpc) rewards.push('+'+b.reward_rpc.toLocaleString('fr')+' RPC');
+  if(b.reward_nyx) rewards.push('+'+b.reward_nyx+' 💎 NYX');
+  var rewardsHtml=rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.85rem;color:var(--gold);margin-top:.4rem">'+rewards.join(' · ')+'</div>':'';
+  document.getElementById('lm-title').textContent='🎖️ Badge débloqué !';
+  document.getElementById('lm-sub').textContent='';
+  document.getElementById('lm-body').innerHTML=''
+    +'<div style="text-align:center;padding:1rem .5rem">'
+    +'  <div style="width:120px;height:138px;margin:0 auto 1rem;position:relative;display:flex;align-items:center;justify-content:center;animation:badgePop .6s ease-out">'
+    +'    <svg viewBox="0 0 100 115" style="width:100%;height:100%;filter:drop-shadow(0 0 18px '+color+'80)">'
+    +'      <polygon points="50,2 95,28 95,82 50,108 5,82 5,28" fill="'+color+'" opacity="0.18"/>'
+    +'      <polygon points="50,2 95,28 95,82 50,108 5,82 5,28" fill="none" stroke="'+color+'" stroke-width="2.5"/>'
+    +'    </svg>'
+    +'    <div style="position:absolute;font-size:3rem">'+icon+'</div>'
+    +'  </div>'
+    +'  <div style="font-family:Bebas Neue,sans-serif;font-size:1.8rem;letter-spacing:3px;color:'+color+';text-shadow:0 0 12px '+color+'80;margin-bottom:.3rem">'+(b.name||'BADGE')+'</div>'
+    +'  <div style="font-size:.78rem;color:var(--muted2);margin-bottom:.4rem">'+(b.tagline||'')+'</div>'
+    +   rewardsHtml
+    +'  <button onclick="closeModal(\'land-modal\')" style="margin-top:1rem;padding:.5rem 1.5rem;border-radius:7px;border:1.5px solid '+color+';background:'+color+'20;color:'+color+';font-weight:700;font-size:.85rem;cursor:pointer">Bravo !</button>'
+    +'</div>'
+    +'<style>@keyframes badgePop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}</style>';
+  openModal('land-modal');
+}
+
 function showPalmares(rank, type){
   type=type||'player';
   var data=(type==='team'?_cachedTeamPalmares:_cachedPlayerPalmares)||[];
