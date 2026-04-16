@@ -1573,6 +1573,7 @@ select option{background:#040c1c}
           <div class="eco-row"><span>×2 RP supp.</span><span class="eco-price eco-price-nyx">45 NYX</span></div>
           <div class="eco-row"><span>×4 RP supp.</span><span class="eco-price eco-price-nyx">80 NYX</span></div>
           <div class="eco-row"><span>×10 RP supp.</span><span class="eco-price eco-price-nyx">180 NYX</span></div>
+          <div class="eco-row"><span>×14 RP supp.</span><span class="eco-price eco-price-nyx">210 NYX</span></div>
         </div>
       </div>
     </div>
@@ -1675,8 +1676,30 @@ select option{background:#040c1c}
 
   </div>
 
-  <!-- Ligne 2 : Lands / Étoiles / Boost / Licences -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem">
+  <!-- Ligne 2 : Licences / Boost (achetables) -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+
+    <div class="block">
+      <div class="block-header"><div class="block-title">🪪 Licences <span class="hl">Team</span></div></div>
+      <div class="block-body-sm" id="licences-eco"></div>
+    </div>
+
+    <div class="block">
+      <div class="block-header"><div class="block-title">⚡ Boost</div></div>
+      <div class="block-body-sm">
+        <div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>5 Boosts</span><button onclick="buyBoosts(5,10)" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(45,219,128,.4);background:linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04));color:var(--green);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(45,219,128,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(45,219,128,.25),rgba(45,219,128,.1))';this.style.boxShadow='0 2px 8px rgba(45,219,128,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04))';this.style.boxShadow='0 1px 4px rgba(45,219,128,.15)'">10 NYX</button></div>
+        <div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>10 Boosts</span><button onclick="buyBoosts(10,18)" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(45,219,128,.4);background:linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04));color:var(--green);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(45,219,128,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(45,219,128,.25),rgba(45,219,128,.1))';this.style.boxShadow='0 2px 8px rgba(45,219,128,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04))';this.style.boxShadow='0 1px 4px rgba(45,219,128,.15)'">18 NYX</button></div>
+        <div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>20 Boosts</span><button onclick="buyBoosts(20,30)" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(45,219,128,.4);background:linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04));color:var(--green);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(45,219,128,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(45,219,128,.25),rgba(45,219,128,.1))';this.style.boxShadow='0 2px 8px rgba(45,219,128,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04))';this.style.boxShadow='0 1px 4px rgba(45,219,128,.15)'">30 NYX</button></div>
+        <div style="font-size:.62rem;color:var(--muted2);margin-top:.5rem">
+          Effet : <strong style="color:var(--green)">+10%</strong> sur les points · 24h
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Ligne 3 : Lands Location / Lands Achat / Étoiles Land (informatif) -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
 
     <div class="block">
       <div class="block-header"><div class="block-title">🔑 Lands <span class="hl">Location</span></div></div>
@@ -1684,7 +1707,12 @@ select option{background:#040c1c}
         <div class="eco-row"><span>Nouvelle land (P1)</span><span class="eco-price">5 000 RPC</span></div>
         <div class="eco-row"><span>À partir de P3</span><span class="eco-price">4 800 RPC</span></div>
         <div class="eco-row"><span>À partir de P6</span><span class="eco-price">4 600 RPC</span></div>
-        <div style="margin-top:.6rem;border-top:1px solid var(--border);padding-top:.5rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted2);margin-bottom:.4rem">Achat Land</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-header"><div class="block-title">🔑 Lands <span class="hl">Achat</span></div></div>
+      <div class="block-body-sm">
         <div class="eco-row"><span>Après P3</span><span class="eco-price eco-price-nyx">120 NYX</span></div>
         <div class="eco-row"><span>Après P6</span><span class="eco-price eco-price-nyx">150 NYX</span></div>
         <div class="eco-row"><span>Après P12</span><span class="eco-price eco-price-nyx">200 NYX</span></div>
@@ -1705,23 +1733,6 @@ select option{background:#040c1c}
         <div class="eco-row"><span>★★★ Étoile ×3</span><span class="eco-price">12 RPC</span></div>
         <div style="font-size:.6rem;color:var(--muted2);margin-top:.35rem">ROI : 750–1 000 passages</div>
       </div>
-    </div>
-
-    <div class="block">
-      <div class="block-header"><div class="block-title">⚡ Boost</div></div>
-      <div class="block-body-sm">
-        <div class="eco-row"><span>5 Boosts</span><span class="eco-price eco-price-nyx">10 NYX</span></div>
-        <div class="eco-row"><span>10 Boosts</span><span class="eco-price eco-price-nyx">18 NYX</span></div>
-        <div class="eco-row"><span>20 Boosts</span><span class="eco-price eco-price-nyx">30 NYX</span></div>
-        <div style="font-size:.62rem;color:var(--muted2);margin-top:.5rem">
-          Effet : <strong style="color:var(--green)">+10%</strong> sur les points · 24h
-        </div>
-      </div>
-    </div>
-
-    <div class="block">
-      <div class="block-header"><div class="block-title">🪪 Licences <span class="hl">Team</span></div></div>
-      <div class="block-body-sm" id="licences-eco"></div>
     </div>
 
   </div>
@@ -3627,6 +3638,8 @@ function renderDashboard(){
   if(_streakBanner) _streakBanner.style.display='block';
 
   if(p){
+    var _parrUid=p._uuid||(isOwn&&currentUser?currentUser.id:null);
+    if(_parrUid&&typeof loadParrainageData==='function') loadParrainageData(_parrUid);
     var set=function(id,val){var el=document.getElementById(id);if(el)el.textContent=val;};
     // Identité
     set('pc-name', p.name||'Joueur');
@@ -8984,20 +8997,36 @@ function renderGrades(){
 /* ============================================================
    RENDER : ECONOMY
 ============================================================ */
+function buyPack(type, amount, price){
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  var label=type==='rpc'?amount.toLocaleString('fr')+' RPC':amount+' NYX';
+  var emoji=type==='rpc'?'🪙':'💎';
+  document.getElementById('lm-title').textContent=emoji+' Acheter '+label;
+  document.getElementById('lm-body').innerHTML=
+    '<div style="text-align:center;padding:1rem">'
+    +'<div style="font-size:2rem;margin-bottom:.5rem">'+emoji+'</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.4rem;letter-spacing:2px;color:var(--text);margin-bottom:.3rem">'+label+'</div>'
+    +'<div style="font-size:1rem;color:var(--gold);font-weight:700;margin-bottom:1rem">'+price+'</div>'
+    +'<div style="font-size:.72rem;color:var(--muted2);margin-bottom:1.2rem;line-height:1.5">Le paiement sera disponible prochainement.<br>Fonctionnalité en cours de développement.</div>'
+    +'<button onclick="closeModal(\'land-modal\')" style="padding:.5rem 1.5rem;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:var(--text);font-size:.8rem;font-weight:700;cursor:pointer">Fermer</button>'
+    +'</div>';
+  openModal('land-modal');
+}
+
 function renderEconomy(){
   const rpcBuy=[[10000,'2,49€'],[50000,'9,99€'],[100000,'19,99€'],[500000,'79,99€']];
   const elRpcBuy=document.getElementById('rpc-buy');
-  if(elRpcBuy) elRpcBuy.innerHTML=rpcBuy.map(r=>`<div class="eco-row"><span>${r[0].toLocaleString('fr')} RPC</span><span class="eco-price">${r[1]}</span></div>`).join('');
+  if(elRpcBuy) elRpcBuy.innerHTML=rpcBuy.map(r=>`<div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>${r[0].toLocaleString('fr')} RPC</span><button onclick="buyPack('rpc',${r[0]},'${r[1]}')" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(245,200,66,.4);background:linear-gradient(175deg,rgba(245,200,66,.12),rgba(245,200,66,.04));color:var(--gold);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(245,200,66,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(245,200,66,.25),rgba(245,200,66,.1))';this.style.boxShadow='0 2px 8px rgba(245,200,66,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(245,200,66,.12),rgba(245,200,66,.04))';this.style.boxShadow='0 1px 4px rgba(245,200,66,.15)'">${r[1]}</button></div>`).join('');
   const nyxBuy=[[10,'1,29€'],[50,'4,99€'],[100,'9,99€'],[500,'44,99€']];
   const elNyxBuy=document.getElementById('nyx-buy');
-  if(elNyxBuy) elNyxBuy.innerHTML=nyxBuy.map(r=>`<div class="eco-row"><span>${r[0]} NYX</span><span class="eco-price eco-price-nyx">${r[1]}</span></div>`).join('');
-  const licences=[['×1 RP supplémentaire','25 NYX'],['×2 RP supplémentaires','45 NYX'],['×4 RP supplémentaires','80 NYX'],['×10 RP supplémentaires','180 NYX']];
+  if(elNyxBuy) elNyxBuy.innerHTML=nyxBuy.map(r=>`<div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>${r[0]} NYX</span><button onclick="buyPack('nyx',${r[0]},'${r[1]}')" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(45,219,128,.4);background:linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04));color:var(--green);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(45,219,128,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(45,219,128,.25),rgba(45,219,128,.1))';this.style.boxShadow='0 2px 8px rgba(45,219,128,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04))';this.style.boxShadow='0 1px 4px rgba(45,219,128,.15)'">${r[1]}</button></div>`).join('');
   const licEl=document.getElementById('licences-eco');
-  if(licEl) licEl.innerHTML=licences.map(r=>`<div class="eco-row"><span>${r[0]}</span><span class="eco-price eco-price-nyx">${r[1]}</span></div>`).join('')
+  if(licEl) licEl.innerHTML=LICENCE_PACKS.map(function(p){
+    return '<div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>+'+p.qty+' RP</span><button onclick="buyLicence('+p.qty+','+p.price+')" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(45,219,128,.4);background:linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04));color:var(--green);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(45,219,128,.15);transition:all .15s" onmouseover="this.style.background=\'linear-gradient(175deg,rgba(45,219,128,.25),rgba(45,219,128,.1))\';this.style.boxShadow=\'0 2px 8px rgba(45,219,128,.25)\'" onmouseout="this.style.background=\'linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04))\';this.style.boxShadow=\'0 1px 4px rgba(45,219,128,.15)\'">'+p.price+' NYX</button></div>';
+  }).join('')
     +'<div style="height:1px;background:rgba(255,255,255,.08);margin:.45rem 0"></div>'
     +'<div class="eco-row"><span>Création team privée</span><span class="eco-price eco-price-nyx">50 NYX</span></div>'
     +'<div style="font-size:.65rem;color:var(--muted2);margin-top:.45rem">Base : 6 RP · Max : 20 RP</div>';
-  renderLicenceBuyButtons();
 }
 
 /* ============================================================
@@ -9424,7 +9453,7 @@ async function walletDebitNyx(amount, reason){
 // ── Licences Team : capacité et achat ──
 var TEAM_BASE_SLOTS=6;
 var TEAM_MAX_SLOTS=20;
-var LICENCE_PACKS=[{qty:1,price:25},{qty:2,price:45},{qty:4,price:80},{qty:10,price:180}];
+var LICENCE_PACKS=[{qty:1,price:25},{qty:2,price:45},{qty:4,price:80},{qty:10,price:180},{qty:14,price:210}];
 
 function getTeamCapacity(team){
   return Math.min(TEAM_BASE_SLOTS+(team.extra_slots||0),TEAM_MAX_SLOTS);
@@ -9437,6 +9466,7 @@ async function buyLicence(qty,price){
   if(!teamId){showToast('⚠️ Tu n\'es dans aucune team');return;}
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
+  if(!confirm('Acheter +'+qty+' place'+(qty>1?'s':'')+' pour '+price+' NYX ?')) return;
   var {data:team}=await supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single();
   if(!team){showToast('⚠️ Team introuvable');return;}
   var current=team.extra_slots||0;
@@ -9448,6 +9478,41 @@ async function buyLicence(qty,price){
   await supabaseClient.from('teams').update({extra_slots:newSlots}).eq('id',teamId);
   showToast('🪪 +'+realQty+' place'+(realQty>1?'s':'')+' ! Capacité : '+(TEAM_BASE_SLOTS+newSlots)+'/'+TEAM_MAX_SLOTS+' RP');
   renderTeams();
+}
+
+function toggleLicencePanel(){
+  var el=document.getElementById('licence-panel-section');
+  if(!el) return;
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function renderTeamLicencePanel(teamId){
+  var el=document.getElementById('licence-panel-section');
+  if(!el) return;
+  supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single().then(function(res){
+    var team=res.data;if(!team) return;
+    var current=team.extra_slots||0;
+    var cap=TEAM_BASE_SLOTS+current;
+    var w=window.__wallet||{nyx:0};
+    var html='<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:2px;color:var(--green);margin-bottom:.4rem">🪪 Licences Team</div>'
+      +'<div style="font-size:.72rem;color:var(--muted2);margin-bottom:.5rem">Capacité actuelle : <strong style="color:var(--text)">'+cap+' / '+TEAM_MAX_SLOTS+' RP</strong> · Solde : <strong style="color:var(--green)">'+w.nyx+' NYX</strong></div>';
+    if(cap>=TEAM_MAX_SLOTS){
+      html+='<div style="font-size:.72rem;color:var(--green);padding:.3rem 0">✓ Capacité maximale atteinte</div>';
+    } else {
+      html+=LICENCE_PACKS.map(function(p){
+        var wouldExceed=(current+p.qty)>(TEAM_MAX_SLOTS-TEAM_BASE_SLOTS);
+        var canAfford=w.nyx>=p.price;
+        var disabled=wouldExceed||!canAfford;
+        var note=wouldExceed?' (dépasserait le max)':(!canAfford?' (solde insuffisant)':'');
+        return '<button onclick="buyLicence('+p.qty+','+p.price+')" '+(disabled?'disabled':'')
+          +' style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:.3rem;padding:.4rem .6rem;border-radius:5px;border:1px solid '+(disabled?'rgba(128,144,176,.15)':'rgba(255,255,255,.12)')
+          +';background:'+(disabled?'rgba(128,144,176,.03)':'rgba(255,255,255,.04)')
+          +';color:var(--text);font-size:.72rem;font-weight:700;cursor:'+(disabled?'not-allowed':'pointer')
+          +';text-align:left;opacity:'+(disabled?'.4':'1')+'"><span>+'+p.qty+' RP'+note+'</span><span style="color:var(--green)">'+p.price+' NYX</span></button>';
+      }).join('');
+    }
+    el.innerHTML=html;
+  });
 }
 
 function renderLicenceBuyButtons(){
@@ -9464,7 +9529,7 @@ function renderLicenceBuyButtons(){
     infoEl.innerHTML='<div style="font-size:.72rem;color:var(--gold);margin-bottom:.4rem">🪪 Ta team : <strong>'+cap+' / '+TEAM_MAX_SLOTS+' RP</strong></div>'
       +(cap>=TEAM_MAX_SLOTS?'<div style="font-size:.68rem;color:var(--green)">✓ Capacité maximale atteinte</div>'
       :LICENCE_PACKS.filter(function(p){return current+p.qty<=TEAM_MAX_SLOTS-TEAM_BASE_SLOTS;}).map(function(p){
-        return '<button onclick="buyLicence('+p.qty+','+p.price+')" style="display:block;width:100%;margin-top:.3rem;padding:.35rem .5rem;border-radius:5px;border:1px solid rgba(245,200,66,.3);background:rgba(245,200,66,.08);color:var(--gold);font-size:.7rem;font-weight:700;cursor:pointer;text-align:left">+'+p.qty+' RP → '+p.price+' NYX</button>';
+        return '<button onclick="buyLicence('+p.qty+','+p.price+')" style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:.3rem;padding:.35rem .5rem;border-radius:5px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--text);font-size:.7rem;font-weight:700;cursor:pointer;text-align:left"><span>+'+p.qty+' RP</span><span style=\'color:var(--green)\'>'+p.price+' NYX</span></button>';
       }).join(''));
     el.appendChild(infoEl);
   });
@@ -9874,6 +9939,7 @@ async function activateBoost(){
 
 async function buyBoosts(qty, cost){
   if(!currentUser) return;
+  if(!confirm('Acheter '+qty+' boost'+(qty>1?'s':'')+' pour '+cost+' NYX ?')) return;
   var w=window.__wallet||{rpc:0,nyx:0};
   if(w.nyx<cost){showToast('⚠️ Solde insuffisant en NYX');return;}
   var b=window.__boost||{stock:0};
@@ -10963,6 +11029,8 @@ async function renderTeams(){
             if(!_isMyOpen && _isCap2){
               actHtml+='<button onclick="showInviteCode(\''+myTeamId+'\',\''+encodeURIComponent(_myTeamData.name)+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-size:.7rem;font-weight:700;cursor:pointer">🔑 Code invitation</button>';
               actHtml+='<button onclick="openKickModal(\''+myTeamId+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(128,144,176,.4);background:rgba(128,144,176,.08);color:var(--muted2);font-size:.7rem;font-weight:700;cursor:pointer">List</button>';
+              var _cap2=getTeamCapacity(_myTeamData);
+              if(_cap2<TEAM_MAX_SLOTS) actHtml+='<button onclick="toggleLicencePanel()" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(45,219,128,.4);background:rgba(45,219,128,.08);color:var(--green);font-size:.7rem;font-weight:700;cursor:pointer">🪪 Licences ('+_cap2+'/'+TEAM_MAX_SLOTS+')</button>';
             }
             actHtml+='<button onclick="leaveTeam(\''+myTeamId+'\',\''+encodeURIComponent(_myTeamData.name)+'\')" style="padding:.3rem .7rem;border-radius:5px;border:1px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:var(--red);font-size:.7rem;font-weight:700;cursor:pointer;margin-left:auto">🚪 Quitter</button>';
             _mta.innerHTML=actHtml;
@@ -10980,6 +11048,14 @@ async function renderTeams(){
             _mta.parentNode.insertBefore(reqSection,_mta.nextSibling);
           }
           loadJoinRequests(myTeamId);
+          // Injecter le panneau licences (caché par défaut)
+          if(!document.getElementById('licence-panel-section')){
+            var licSection=document.createElement('div');
+            licSection.id='licence-panel-section';
+            licSection.style.cssText='display:none;border-top:1px solid rgba(45,219,128,.15);padding:.5rem .85rem';
+            _mta.parentNode.insertBefore(licSection,document.getElementById('join-requests-section').nextSibling);
+          }
+          renderTeamLicencePanel(myTeamId);
         }
         // Charger le chat team (pas en consultation)
         if(!_isViewedTeamMode && typeof loadTeamChat==='function'){loadTeamChat(myTeamId);startChatPoll(myTeamId);}
@@ -11094,10 +11170,10 @@ async function requestJoinTeam(teamId,teamNameEnc){
   });
   var chkData=await chk.json();
   if(chkData&&chkData.length>0){showToast('📩 Demande déjà envoyée à '+teamName);return;}
-  // Envoyer la demande
-  var resp=await window.fetch(supabaseUrl+'/rest/v1/team_join_requests',{
+  // Envoyer la demande (upsert : réactive si ancienne demande existe)
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/team_join_requests?on_conflict=team_id,player_id',{
     method:'POST',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal,resolution=merge-duplicates'},
     body:JSON.stringify({team_id:teamId,player_id:currentUser.id,status:'pending'})
   });
   if(!resp.ok){var errTxt=await resp.text();showToast('⚠️ Erreur demande : '+errTxt);return;}
@@ -11132,7 +11208,7 @@ async function handleJoinRequest(requestId,playerId,teamId,accept){
     var {data:teamData}=await supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single();
     var cap=teamData?getTeamCapacity(teamData):TEAM_BASE_SLOTS;
     var {count:nb}=await supabaseClient.from('team_members').select('id',{count:'exact',head:true}).eq('team_id',teamId);
-    if(nb>=cap){showToast('⚠️ Team complète ('+nb+'/'+cap+') — achète des licences pour agrandir');loadJoinRequests(teamId);return;}
+    if(nb>=cap){showToast('⚠️ Team complète ('+nb+'/'+cap+') — clique 🪪 Licences pour agrandir');loadJoinRequests(teamId);return;}
     await window.fetch(supabaseUrl+'/rest/v1/team_members',{
       method:'POST',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
