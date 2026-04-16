@@ -11091,6 +11091,13 @@ async function handleJoinRequest(requestId,playerId,teamId,accept){
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
     body:JSON.stringify({status:accept?'accepted':'rejected'})
   });
+  if(accept){
+    await window.fetch(supabaseUrl+'/rest/v1/team_join_requests?player_id=eq.'+encodeURIComponent(playerId)+'&status=eq.pending',{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({status:'cancelled'})
+    });
+  }
   loadJoinRequests(teamId);
   renderTeams();
 }
