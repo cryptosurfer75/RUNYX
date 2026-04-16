@@ -8996,6 +8996,7 @@ function renderEconomy(){
     +'<div style="height:1px;background:rgba(255,255,255,.08);margin:.45rem 0"></div>'
     +'<div class="eco-row"><span>Création team privée</span><span class="eco-price eco-price-nyx">50 NYX</span></div>'
     +'<div style="font-size:.65rem;color:var(--muted2);margin-top:.45rem">Base : 6 RP · Max : 20 RP</div>';
+  renderLicenceBuyButtons();
 }
 
 /* ============================================================
@@ -9417,6 +9418,55 @@ async function walletDebitNyx(amount, reason){
   window.__wallet.nyx=newNyx;
   walletRefreshUI();
   return true;
+}
+
+// ── Licences Team : capacité et achat ──
+var TEAM_BASE_SLOTS=6;
+var TEAM_MAX_SLOTS=20;
+var LICENCE_PACKS=[{qty:1,price:25},{qty:2,price:45},{qty:4,price:80},{qty:10,price:180}];
+
+function getTeamCapacity(team){
+  return Math.min(TEAM_BASE_SLOTS+(team.extra_slots||0),TEAM_MAX_SLOTS);
+}
+
+async function buyLicence(qty,price){
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  if(window.__myTeamRole!=='capitaine'){showToast('⚠️ Seul le capitaine peut acheter des licences');return;}
+  var teamId=window.__myTeamId;
+  if(!teamId){showToast('⚠️ Tu n\'es dans aucune team');return;}
+  var w=window.__wallet||{nyx:0};
+  if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
+  var {data:team}=await supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single();
+  if(!team){showToast('⚠️ Team introuvable');return;}
+  var current=team.extra_slots||0;
+  var newSlots=Math.min(current+qty,TEAM_MAX_SLOTS-TEAM_BASE_SLOTS);
+  if(newSlots<=current){showToast('⚠️ Capacité max déjà atteinte ('+TEAM_MAX_SLOTS+' RP)');return;}
+  var realQty=newSlots-current;
+  var ok=await walletDebitNyx(price,'Licence +'+realQty+' RP');
+  if(!ok) return;
+  await supabaseClient.from('teams').update({extra_slots:newSlots}).eq('id',teamId);
+  showToast('🪪 +'+realQty+' place'+(realQty>1?'s':'')+' ! Capacité : '+(TEAM_BASE_SLOTS+newSlots)+'/'+TEAM_MAX_SLOTS+' RP');
+  renderTeams();
+}
+
+function renderLicenceBuyButtons(){
+  var el=document.getElementById('licences-eco');
+  if(!el||!currentUser||window.__myTeamRole!=='capitaine') return;
+  var teamId=window.__myTeamId;
+  if(!teamId) return;
+  supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single().then(function(res){
+    var team=res.data;if(!team) return;
+    var current=team.extra_slots||0;
+    var cap=TEAM_BASE_SLOTS+current;
+    var infoEl=document.createElement('div');
+    infoEl.style.cssText='margin-top:.6rem;padding:.5rem .6rem;border-radius:6px;background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.15)';
+    infoEl.innerHTML='<div style="font-size:.72rem;color:var(--gold);margin-bottom:.4rem">🪪 Ta team : <strong>'+cap+' / '+TEAM_MAX_SLOTS+' RP</strong></div>'
+      +(cap>=TEAM_MAX_SLOTS?'<div style="font-size:.68rem;color:var(--green)">✓ Capacité maximale atteinte</div>'
+      :LICENCE_PACKS.filter(function(p){return current+p.qty<=TEAM_MAX_SLOTS-TEAM_BASE_SLOTS;}).map(function(p){
+        return '<button onclick="buyLicence('+p.qty+','+p.price+')" style="display:block;width:100%;margin-top:.3rem;padding:.35rem .5rem;border-radius:5px;border:1px solid rgba(245,200,66,.3);background:rgba(245,200,66,.08);color:var(--gold);font-size:.7rem;font-weight:700;cursor:pointer;text-align:left">+'+p.qty+' RP → '+p.price+' NYX</button>';
+      }).join(''));
+    el.appendChild(infoEl);
+  });
 }
 
 // Créditer le wallet d'un AUTRE joueur (parrainage)
@@ -10442,13 +10492,13 @@ async function loadOpenTeamsForJoin(){
   await ensureOpenTeamExists();
 
   var {data:teams,error}=await supabaseClient
-    .from('teams').select('*, team_members(count)')
+    .from('teams').select('*, extra_slots, team_members(count)')
     .eq('invite_code',OPEN_TEAM_MARKER).order('name');
   if(error){el.innerHTML='<div style="color:#f66;padding:1rem;font-size:.8rem">Erreur chargement</div>';return;}
 
   var available=teams.filter(function(t){
     var nb=(t.team_members&&t.team_members[0])?t.team_members[0].count:0;
-    return nb<20;
+    return nb<TEAM_MAX_SLOTS;
   });
 
   if(!available.length){
@@ -10458,8 +10508,9 @@ async function loadOpenTeamsForJoin(){
 
   el.innerHTML=available.map(function(t){
     var nb=(t.team_members&&t.team_members[0])?t.team_members[0].count:0;
-    var places=20-nb;
-    var pct=Math.round(nb/20*100);
+    var cap=getTeamCapacity(t);
+    var places=cap-nb;
+    var pct=Math.round(nb/cap*100);
     var barColor=nb>=OPEN_TEAM_THRESHOLD?'var(--cyan)':'var(--muted2)';
     return '<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:8px;border:1px solid rgba(32,208,224,.15);background:rgba(32,208,224,.03)">'
       +'<div style="width:40px;height:40px;border-radius:7px;border:1.5px solid rgba(32,208,224,.35);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;background:rgba(32,208,224,.06)">'+OPEN_TEAM_EMOJI+'</div>'
@@ -10467,7 +10518,7 @@ async function loadOpenTeamsForJoin(){
         +'<div style="font-family:Bebas Neue,sans-serif;letter-spacing:1.5px;font-size:1rem;color:var(--cyan)">'+t.name+'</div>'
         +'<div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">'
           +'<div style="flex:1;height:6px;background:rgba(30,37,53,.9);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px"></div></div>'
-          +'<span style="font-family:Space Mono,monospace;font-size:.65rem;color:var(--muted2)">'+nb+'/20</span>'
+          +'<span style="font-family:Space Mono,monospace;font-size:.65rem;color:var(--muted2)">'+nb+'/'+cap+'</span>'
         +'</div>'
       +'</div>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">'
@@ -10510,7 +10561,7 @@ async function doJoinPrivateTeam(){
   msg.style.color='var(--muted2)'; msg.textContent='V\u00e9rification\u2026';
 
   var {data:teams,error} = await supabaseClient
-    .from('teams').select('id,name,color,emoji').eq('invite_code',code).limit(1);
+    .from('teams').select('id,name,color,emoji,extra_slots').eq('invite_code',code).limit(1);
   if(error||!teams||!teams.length){
     msg.style.color='#f66'; msg.textContent='Code invalide ou introuvable.'; return;
   }
@@ -10522,7 +10573,8 @@ async function doJoinPrivateTeam(){
 
   var {count:nb}=await supabaseClient
     .from('team_members').select('id',{count:'exact',head:true}).eq('team_id',team.id);
-  if(nb>=20){ msg.style.color='#f66'; msg.textContent='Cette team est complète (20/20).'; return; }
+  var cap=getTeamCapacity(team);
+  if(nb>=cap){ msg.style.color='#f66'; msg.textContent='Cette team est complète ('+nb+'/'+cap+').'; return; }
 
   var {error:errJ}=await supabaseClient.from('team_members').insert({
     player_id:currentUser.id, team_id:team.id, role:'membre'
@@ -10596,7 +10648,7 @@ async function renderTeams(){
     // 1. Charger toutes les teams avec nb membres
     var {data:teams,error:errT}=await supabaseClient
       .from('teams')
-      .select('*, team_members(count)')
+      .select('*, extra_slots, team_members(count)')
       .order('name');
     if(errT) throw errT;
 
@@ -10709,8 +10761,8 @@ async function renderTeams(){
         var requestBtn=(!isOpen&&t.private&&!hasMyTeam&&currentUser)?'<span onclick="event.stopPropagation();requestJoinTeam(\''+t.id+'\',\''+encodeURIComponent(t.name)+'\')" title="Demander à rejoindre" style="font-size:.75rem;margin-left:.3rem;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">📩</span>':'';
         var typeTag=isOpen?'':(t.private?'<span title="Team privée" style="font-size:.85rem;margin-left:.25rem">🔒</span>'+requestBtn:'');
         var subLine=isOpen
-          ?nb+' membre'+(nb>1?'s':'')+' / 20'+bonusLabel
-          :'📍 '+t.city+' · '+nb+' membre'+(nb>1?'s':'')+' / 20'+bonusLabel;
+          ?nb+' membre'+(nb>1?'s':'')+' / '+getTeamCapacity(t)+bonusLabel
+          :'📍 '+t.city+' · '+nb+' membre'+(nb>1?'s':'')+' / '+getTeamCapacity(t)+bonusLabel;
         var _bIdx=getBlasonIdx(t);
         var emblemHtml=(_bIdx>=0&&AVAIL_BLASON_SMALL[_bIdx])
           ?'<div class="tmb-blason" data-bidx="'+_bIdx+'" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="cursor:pointer;flex-shrink:0;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><img src="'+AVAIL_BLASON_SMALL[_bIdx]+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1.5px solid '+teamColor+'55;display:block;pointer-events:none"></div>'
@@ -10886,7 +10938,7 @@ async function renderTeams(){
               +(function(){var _bi2=getBlasonIdx(_myTeamData);return _bi2>=0&&AVAIL_BLASON_SMALL[_bi2]?'<img src="'+AVAIL_BLASON_SMALL[_bi2]+'" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1.5px solid '+_tc+'55;flex-shrink:0">':'<div style="width:48px;height:48px;border-radius:8px;border:1.5px solid '+_tc+'55;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;background:'+_tc+'11">'+(_myTeamData.emoji||'🏃')+'</div>';})()
               +'<div>'
                 +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--text)">'+(_myTeamData.name||'—')+'</div>'
-                +'<div style="font-size:.68rem;color:var(--muted2)">📍 '+(_myTeamData.city||'—')+' · '+(_myTeamData._nb||0)+' RP / 20'
+                +'<div style="font-size:.68rem;color:var(--muted2)">📍 '+(_myTeamData.city||'—')+' · '+(_myTeamData._nb||0)+' RP / '+getTeamCapacity(_myTeamData)
                   +(_myTeamData._bonusPct>0?' · <span style="color:var(--green)">+'+_myTeamData._bonusPct+'%</span>':'')
                 +'</div>'
               +'</div>'
@@ -11075,7 +11127,10 @@ async function loadJoinRequests(teamId){
 
 async function handleJoinRequest(requestId,playerId,teamId,accept){
   if(accept){
-    // Ajouter le joueur à la team
+    var {data:teamData}=await supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single();
+    var cap=teamData?getTeamCapacity(teamData):TEAM_BASE_SLOTS;
+    var {count:nb}=await supabaseClient.from('team_members').select('id',{count:'exact',head:true}).eq('team_id',teamId);
+    if(nb>=cap){showToast('⚠️ Team complète ('+nb+'/'+cap+') — achète des licences pour agrandir');loadJoinRequests(teamId);return;}
     await window.fetch(supabaseUrl+'/rest/v1/team_members',{
       method:'POST',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
@@ -11263,7 +11318,7 @@ async function doJoinOpenTeam(teamId, teamName){
   // Vérifier que la team a de la place
   var {count:nb}=await supabaseClient
     .from('team_members').select('id',{count:'exact',head:true}).eq('team_id',teamId);
-  if(nb>=20){showToast('⚠️ Cette Team Open est complète');loadOpenTeamsForJoin();return;}
+  if(nb>=TEAM_MAX_SLOTS){showToast('⚠️ Cette Team Open est complète');loadOpenTeamsForJoin();return;}
 
   // Rejoindre
   var {error:errJ}=await supabaseClient.from('team_members').insert({
