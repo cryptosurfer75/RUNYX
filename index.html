@@ -2844,6 +2844,7 @@ async function onLoginSuccess(user, isNew){
   }
   if(typeof checkTeamRequests==='function'){
     setTimeout(function(){ checkTeamRequests(); }, 3000);
+    if(!window._teamReqPoll) window._teamReqPoll=setInterval(function(){ checkTeamRequests(); }, 30000);
   }
   if(isNew){
     setTimeout(function(){if(typeof nav==='function') nav('dashboard');},300);
@@ -11094,11 +11095,12 @@ async function requestJoinTeam(teamId,teamNameEnc){
   var chkData=await chk.json();
   if(chkData&&chkData.length>0){showToast('📩 Demande déjà envoyée à '+teamName);return;}
   // Envoyer la demande
-  await window.fetch(supabaseUrl+'/rest/v1/team_join_requests',{
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/team_join_requests',{
     method:'POST',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
     body:JSON.stringify({team_id:teamId,player_id:currentUser.id,status:'pending'})
   });
+  if(!resp.ok){var errTxt=await resp.text();showToast('⚠️ Erreur demande : '+errTxt);return;}
   showToast('📩 Demande envoyée à '+teamName+' — en attente du capitaine');
 }
 
