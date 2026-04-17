@@ -538,14 +538,18 @@ body::before{
   .layout-sidebar-220{display:flex !important;flex-direction:column-reverse}
 
   /* Classement : compacter le tableau, éviter le retour à la ligne des noms */
+  #page-league.page{padding-left:.85rem;padding-right:.85rem}
   #league-main-panel .tbl{table-layout:fixed !important}
   #league-main-panel .tbl th,
-  #league-main-panel .tbl td{padding:.5rem .4rem}
+  #league-main-panel .tbl td{padding:.5rem .35rem}
+  #league-main-panel .tbl th:first-child,
+  #league-main-panel .tbl td:first-child{padding-left:.3rem;padding-right:.15rem;width:30px !important}
   #league-main-panel .tbl th:nth-child(3),
-  #league-main-panel .tbl td:nth-child(3){width:92px !important;text-align:right;white-space:nowrap}
+  #league-main-panel .tbl td:nth-child(3){width:100px !important;text-align:right;white-space:nowrap}
+  #league-main-panel .rank-num{width:22px}
   /* Le td contenant le joueur doit pouvoir rétrécir pour permettre l'ellipsis */
-  #league-main-panel .tbl td:nth-child(2){min-width:0;overflow:hidden}
-  #league-main-panel .tbl td:nth-child(2) > div{min-width:0;flex-wrap:nowrap}
+  #league-main-panel .tbl td:nth-child(2){min-width:0;overflow:hidden;padding-left:.2rem}
+  #league-main-panel .tbl td:nth-child(2) > div{min-width:0;flex-wrap:nowrap;gap:.4rem}
   #league-main-panel .tbl td:nth-child(2) > div > div:last-child{min-width:0;flex:1 1 auto;overflow:hidden}
   #league-main-panel .runner-name{
     min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;
@@ -659,7 +663,7 @@ select option{background:#040c1c}
     <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 1 / 4 — Identité</div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Username</label>
-      <input id="reg-username" type="text" placeholder="LucasRunner42" maxlength="15" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"></div>
+      <input id="reg-username" type="text" placeholder="LucasRunner" maxlength="12" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"></div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Nationalité</label>
       <select id="reg-nat" style="width:100%;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-size:.8rem;outline:none">
         <option value="🇫🇷">🇫🇷 France</option><option value="🇧🇪">🇧🇪 Belgique</option><option value="🇨🇭">🇨🇭 Suisse</option><option value="🇨🇦">🇨🇦 Canada</option><option value="🇬🇧">🇬🇧 Royaume-Uni</option><option value="🇩🇪">🇩🇪 Allemagne</option><option value="🇪🇸">🇪🇸 Espagne</option><option value="🇮🇹">🇮🇹 Italie</option><option value="🇵🇹">🇵🇹 Portugal</option><option value="🇺🇸">🇺🇸 États-Unis</option><option value="🇧🇷">🇧🇷 Brésil</option><option value="🇲🇦">🇲🇦 Maroc</option><option value="🇩🇿">🇩🇿 Algérie</option><option value="🇹🇳">🇹🇳 Tunisie</option><option value="🇳🇱">🇳🇱 Pays-Bas</option><option value="🇦🇹">🇦🇹 Autriche</option><option value="🇵🇱">🇵🇱 Pologne</option><option value="🇷🇴">🇷🇴 Roumanie</option><option value="🇬🇷">🇬🇷 Grèce</option><option value="🇸🇪">🇸🇪 Suède</option><option value="🇳🇴">🇳🇴 Norvège</option><option value="🇩🇰">🇩🇰 Danemark</option><option value="🇫🇮">🇫🇮 Finlande</option><option value="🇮🇪">🇮🇪 Irlande</option><option value="🇨🇿">🇨🇿 Tchéquie</option><option value="🇭🇺">🇭🇺 Hongrie</option><option value="🇭🇷">🇭🇷 Croatie</option><option value="🇷🇸">🇷🇸 Serbie</option><option value="🇧🇬">🇧🇬 Bulgarie</option><option value="🇱🇺">🇱🇺 Luxembourg</option><option value="🇲🇽">🇲🇽 Mexique</option><option value="🇦🇷">🇦🇷 Argentine</option><option value="🇨🇴">🇨🇴 Colombie</option><option value="🇨🇱">🇨🇱 Chili</option><option value="🇵🇪">🇵🇪 Pérou</option><option value="🇯🇵">🇯🇵 Japon</option><option value="🇰🇷">🇰🇷 Corée du Sud</option><option value="🇨🇳">🇨🇳 Chine</option><option value="🇮🇳">🇮🇳 Inde</option><option value="🇹🇷">🇹🇷 Turquie</option><option value="🇷🇺">🇷🇺 Russie</option><option value="🇺🇦">🇺🇦 Ukraine</option><option value="🇮🇱">🇮🇱 Israël</option><option value="🇱🇧">🇱🇧 Liban</option><option value="🇪🇬">🇪🇬 Égypte</option><option value="🇸🇳">🇸🇳 Sénégal</option><option value="🇨🇮">🇨🇮 Côte d'Ivoire</option><option value="🇨🇲">🇨🇲 Cameroun</option><option value="🇬🇭">🇬🇭 Ghana</option><option value="🇳🇬">🇳🇬 Nigeria</option><option value="🇿🇦">🇿🇦 Afrique du Sud</option><option value="🇦🇺">🇦🇺 Australie</option><option value="🇳🇿">🇳🇿 Nouvelle-Zélande</option><option value="🇹🇭">🇹🇭 Thaïlande</option><option value="🇻🇳">🇻🇳 Vietnam</option><option value="🇵🇭">🇵🇭 Philippines</option><option value="🇮🇩">🇮🇩 Indonésie</option><option value="🇸🇦">🇸🇦 Arabie Saoudite</option><option value="🇦🇪">🇦🇪 Émirats Arabes Unis</option><option value="🇶🇦">🇶🇦 Qatar</option>
@@ -1216,8 +1220,11 @@ select option{background:#040c1c}
     <div style="overflow-x:auto">
       <table class="tbl" id="hist-tbl">
         <thead><tr>
-          <th>Date</th><th>Distance</th><th>Vitesse</th><th>Dénivelé</th>
-          <th>Boost</th><th style="text-align:right">Points</th><th></th>
+          <th style="width:44px;font-size:.55rem">Date</th>
+          <th>Distance<div style="font-size:.55rem;color:var(--muted2);letter-spacing:.3px;font-weight:400;margin-top:.1rem">km</div></th>
+          <th>Vitesse<div style="font-size:.55rem;color:var(--muted2);letter-spacing:.3px;font-weight:400;margin-top:.1rem">km/h</div></th>
+          <th>Dénivelé<div style="font-size:.55rem;color:var(--muted2);letter-spacing:.3px;font-weight:400;margin-top:.1rem">m</div></th>
+          <th style="text-align:right">Points</th><th></th>
         </tr></thead>
         <tbody id="hist-tbody"></tbody>
       </table>
@@ -2662,7 +2669,7 @@ async function doRegister(){
   var pwd=document.getElementById('reg-pwd').value||'';
   // Validation username
   if(username.length<3){showHgoError('Username trop court (min 3 caractères)');return;}
-  if(username.length>15){showHgoError('Username trop long (max 15 caractères)');return;}
+  if(username.length>12){showHgoError('Username trop long (max 12 caractères)');return;}
   if(!/^[a-zA-Z0-9_-]+$/.test(username)){showHgoError('Username invalide — lettres, chiffres, tirets et underscores uniquement');return;}
   // Vérifier doublon (insensible à la casse)
   var {data:existing}=await supabaseClient.from('players').select('id').ilike('username',username).maybeSingle();
@@ -4220,13 +4227,13 @@ function renderLeaguePanel(){
     if(rankNum===1 && trend<0) trend=0;
     if(rankNum===totalInLeague && trend>0) trend=0;
     var trendHtml='';
-    if(trend>0) trendHtml='<span style="font-size:.6rem;color:var(--green);font-weight:700;margin-left:.65rem">▲'+trend+'</span>';
-    else if(trend<0) trendHtml='<span style="font-size:.6rem;color:var(--red);font-weight:700;margin-left:.65rem">▼'+Math.abs(trend)+'</span>';
-    else trendHtml='<span style="font-size:.6rem;color:var(--muted);margin-left:.65rem;letter-spacing:-.5px">=</span>';
+    if(trend>0) trendHtml='<span style="font-size:.6rem;color:var(--green);font-weight:700">▲'+trend+'</span>';
+    else if(trend<0) trendHtml='<span style="font-size:.6rem;color:var(--red);font-weight:700">▼'+Math.abs(trend)+'</span>';
+    else trendHtml='<span style="font-size:.6rem;color:var(--muted);letter-spacing:-.5px">=</span>';
     // Badge place payée — emoji bourse (compétitifs seulement, basé sur compRank)
     var isPaid=(!isStarter)&&(!isReleg)&&(!isCalib)&&(!p.buyin_debt)&&paidRanks&&medalRank<=paidRanks;
     var paidBadge=isPaid
-      ?'<span title="Place payée — gain RPC" style="font-size:.82rem;margin-left:.45rem;flex-shrink:0;vertical-align:middle;line-height:1">💰</span>'
+      ?'<span title="Place payée — gain RPC" style="font-size:.82rem;flex-shrink:0;line-height:1">💰</span>'
       :'';
     var avId='av-'+p.id+'-'+rankNum;
     return '<tr style="'+rowBg+rowStyle+'">'
@@ -4237,7 +4244,10 @@ function renderLeaguePanel(){
       +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+calibBadge+debtBadge+parrainBadge+'</div>'
       +'</div></td>'
       +'<td style="font-family:monospace;font-size:.82rem">'
-      +'<strong style="color:'+ptColor+'">'+p.pts.toLocaleString('fr')+'</strong>'+trendHtml+paidBadge
+      +'<span style="display:inline-flex;align-items:center;justify-content:flex-end;gap:.45rem;width:100%">'
+      +  '<span style="text-align:right;min-width:4ch;font-variant-numeric:tabular-nums"><strong style="color:'+ptColor+'">'+p.pts.toLocaleString('fr')+'</strong></span>'
+      +  '<span style="display:inline-flex;align-items:center;gap:.35rem;min-width:34px;justify-content:flex-start">'+trendHtml+paidBadge+'</span>'
+      +'</span>'
       +'</td></tr>';
   }
 
@@ -4346,9 +4356,9 @@ function renderLeaguePanel(){
     var myInitials=myPlayer.name.split(' ').map(function(w){return w[0];}).join('');
     var myTrend=myPlayer.trend||0;
     var myTrendHtml=myTrend>0
-      ?'<span style="font-size:.6rem;color:var(--green);font-weight:700;margin-left:.5rem">▲'+myTrend+'</span>'
-      :myTrend<0?'<span style="font-size:.6rem;color:var(--red);font-weight:700;margin-left:.5rem">▼'+Math.abs(myTrend)+'</span>'
-      :'<span style="font-size:.6rem;color:var(--muted);margin-left:.5rem">=</span>';
+      ?'<span style="font-size:.6rem;color:var(--green);font-weight:700">▲'+myTrend+'</span>'
+      :myTrend<0?'<span style="font-size:.6rem;color:var(--red);font-weight:700">▼'+Math.abs(myTrend)+'</span>'
+      :'<span style="font-size:.6rem;color:var(--muted)">=</span>';
     var myRankArr=['🥇','🥈','🥉'];
     var myRankDisp=(myRankInPanel>=1&&myRankInPanel<=3&&myRankArr[myRankInPanel-1])
       ?myRankArr[myRankInPanel-1]
@@ -4374,8 +4384,9 @@ function renderLeaguePanel(){
       +'<div style="font-weight:600;font-size:.88rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+myPlayer.name+'</div>'
       +'</div>'
       // Colonne pts — width fixe 120px identique au th du tableau
-      +'<div style="padding:.55rem .75rem;font-family:monospace;font-size:.82rem;white-space:nowrap;flex:0 0 120px">'
-      +'<strong style="color:var(--gold)">'+myPlayer.pts.toLocaleString('fr')+'</strong>'+myTrendHtml
+      +'<div style="padding:.55rem .75rem;font-family:monospace;font-size:.82rem;white-space:nowrap;flex:0 0 120px;display:flex;align-items:center;justify-content:flex-end;gap:.45rem">'
+      +'<span style="text-align:right;min-width:4ch;font-variant-numeric:tabular-nums"><strong style="color:var(--gold)">'+myPlayer.pts.toLocaleString('fr')+'</strong></span>'
+      +'<span style="display:inline-flex;align-items:center;min-width:34px;justify-content:flex-start">'+myTrendHtml+'</span>'
       +'</div>'
       +'</div>';
   }
@@ -4691,8 +4702,8 @@ async function renderHistory(page){
   var tb=document.getElementById('hist-tbody');
   var statsRow=document.getElementById('run-stats-row');
   if(!tb) return;
-  if(!currentUser){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir ton historique</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
-  tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Chargement…</td></tr>';
+  if(!currentUser){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir ton historique</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
+  tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--muted2);font-size:.82rem">Chargement…</td></tr>';
   // Si on consulte un autre RP, afficher SES courses — sinon les miennes
   var _targetUuid=(window.__viewedPlayer&&window.__viewedPlayer._uuid)||currentUser.id;
   var _isViewingOther=!!window.__viewedPlayer;
@@ -4715,7 +4726,7 @@ async function renderHistory(page){
   if(_histPage>=totalPages) _histPage=Math.max(0,totalPages-1);
   var runs=_allHistRuns.slice(_histPage*_histPerPage,(_histPage+1)*_histPerPage);
   if(error||!allRuns){tb.innerHTML='<tr><td colspan="6" style="color:var(--red);padding:.5rem;font-size:.8rem">Erreur</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
-  if(!allRuns.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Aucune course enregistrée.<br>Synchronise Strava ou attends que l\'admin ajoute tes courses.</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
+  if(!allRuns.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Aucune course enregistrée.<br>Synchronise Strava ou attends que l\'admin ajoute tes courses.</td></tr>';if(statsRow)statsRow.innerHTML='';return;}
   // Stats résumées
   if(statsRow){
     var totalKm=0,totalElv=0,totalPts=0,totalTime=0,nbRuns=allRuns.length;
@@ -4748,11 +4759,10 @@ async function renderHistory(page){
       ?'<span style="color:var(--gold);font-family:Space Mono,monospace;font-size:.72rem;font-weight:700">⚡ +10%</span>'
       :'<span style="color:var(--muted);font-size:.75rem">—</span>';
     return '<tr>'
-      +'<td style="color:var(--muted2);font-family:Space Mono,monospace;font-size:.75rem">'+date+'</td>'
-      +'<td style="font-weight:600">'+(km>0?km.toFixed(2)+' km':'—')+'</td>'
-      +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(spd>0?spd.toFixed(2)+' km/h':'—')+'</td>'
-      +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(elv>0?'↑ '+elv+' m':'—')+'</td>'
-      +'<td>'+boostCell+'</td>'
+      +'<td style="color:var(--muted2);font-family:Space Mono,monospace;font-size:.68rem;white-space:nowrap">'+date+'</td>'
+      +'<td style="font-weight:600">'+(km>0?km.toFixed(2):'—')+'</td>'
+      +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(spd>0?spd.toFixed(2):'—')+'</td>'
+      +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(elv>0?'↑ '+elv:'—')+'</td>'
       +'<td style="text-align:right"><strong style="color:var(--gold);font-family:Space Mono,monospace">'+pts.toLocaleString('fr')+'</strong></td>'
       +'<td style="text-align:center"><span onclick="showRunDetails(\''+r.id+'\')" style="cursor:pointer;font-size:.8rem" title="Détails">ℹ️</span></td>'
     +'</tr>';
@@ -4789,6 +4799,8 @@ function showRunDetails(runId){
   var pace=paceTotal>0?paceMin+':'+(paceSec<10?'0':'')+paceSec:null;
   var elv=r.elevation||0;
   var pts=r.points||0;
+  var ptsBase=km>0?Math.round(computePts(km,spd,elv,false)):pts;
+  var hadBoost=pts>ptsBase&&ptsBase>0;
   var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
 
   function row(icon,label,val,color){
@@ -4812,6 +4824,7 @@ function showRunDetails(runId){
     +row('💓','FC max',r.max_hr?r.max_hr+' bpm':null,'#ff4444')
     +row('🔥','Calories',r.calories?r.calories+' kcal':null,'#ff8040')
     +row('👟','Cadence',r.avg_cadence?Math.round(r.avg_cadence*2)+' pas/min':null,'var(--text)')
+    +row('⚡','Boost',hadBoost?'+10% appliqué':'—',hadBoost?'#f5c842':'var(--muted2)')
     +row('🏆','Points',pts.toLocaleString('fr'),'#f5c842')
     +'</div>'
     +(r.strava_activity_id
