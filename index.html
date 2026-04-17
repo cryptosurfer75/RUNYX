@@ -1238,8 +1238,17 @@ select option{background:#040c1c}
       <div id="challenges-summary" style="font-size:.65rem;color:var(--muted2)">—</div>
     </div>
     <div style="padding:.6rem .6rem 1rem">
-      <div id="challenges-filter" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
       <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
+      <div id="challenges-extra-wrap" style="display:none;margin-top:.6rem">
+        <div id="challenges-extra" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
+        <div id="challenges-pagination" style="display:flex;justify-content:center;gap:.3rem;margin-top:.85rem;flex-wrap:wrap"></div>
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:.85rem">
+        <button id="challenges-toggle-btn" onclick="toggleChallenges()" style="padding:.4rem 1rem;border-radius:6px;border:1px solid var(--border2);background:rgba(255,255,255,.03);color:var(--muted2);font-size:.72rem;font-weight:700;letter-spacing:.5px;cursor:pointer;display:none;align-items:center;gap:.4rem">
+          <span id="challenges-toggle-label">Voir tous les défis</span>
+          <span id="challenges-chevron" style="transition:transform .2s">▼</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -11493,7 +11502,6 @@ var LEAGUE_DISPLAY={};
 // BADGES — Catalogue, rendu grille, progression
 // ============================================================
 var _badgesCatalog=null; // Cache du catalogue
-var _CHALLENGES_CURRENT_FILTER='all';
 
 // Catégories et leurs labels (pour les filtres)
 var BADGE_CATEGORIES={
@@ -11652,10 +11660,15 @@ function _renderBadgeHex(b,isUnlocked){
     +'</svg>';
 }
 
+var _CHALLENGES_EXTRA_PAGE=0;
+var _CHALLENGES_PER_PAGE=8;
+
 async function renderChallenges(){
   var grid=document.getElementById('challenges-grid');
+  var extra=document.getElementById('challenges-extra');
+  var extraWrap=document.getElementById('challenges-extra-wrap');
+  var toggleBtn=document.getElementById('challenges-toggle-btn');
   var summary=document.getElementById('challenges-summary');
-  var filterBar=document.getElementById('challenges-filter');
   if(!grid) return;
 
   grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Chargement des défis…</div>';
@@ -11698,25 +11711,26 @@ async function renderChallenges(){
     morning_runs:_countTimeWindow(valid,4,7)
   };
 
-  // 6. Barre de filtres
-  var categoriesPresent={};
-  _badgesCatalog.forEach(function(b){categoriesPresent[b.category]=true;});
-  var filterHtml='<button onclick="_setChallengeFilter(\'all\')" style="padding:.25rem .6rem;border-radius:4px;border:1px solid '+(_CHALLENGES_CURRENT_FILTER==='all'?'var(--gold)':'var(--border2)')+';background:'+(_CHALLENGES_CURRENT_FILTER==='all'?'rgba(245,200,66,.15)':'transparent')+';color:'+(_CHALLENGES_CURRENT_FILTER==='all'?'var(--gold)':'var(--muted2)')+';font-size:.65rem;font-weight:700;cursor:pointer">Tous</button>';
-  var catKeys=Object.keys(BADGE_CATEGORIES).sort(function(a,b){return BADGE_CATEGORIES[a].order-BADGE_CATEGORIES[b].order;});
-  catKeys.forEach(function(k){
-    if(!categoriesPresent[k])return;
-    var active=_CHALLENGES_CURRENT_FILTER===k;
-    filterHtml+='<button onclick="_setChallengeFilter(\''+k+'\')" style="padding:.25rem .6rem;border-radius:4px;border:1px solid '+(active?'var(--gold)':'var(--border2)')+';background:'+(active?'rgba(245,200,66,.15)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.65rem;font-weight:700;cursor:pointer">'+BADGE_CATEGORIES[k].label+'</button>';
-  });
-  if(filterBar) filterBar.innerHTML=filterHtml;
-
-  // 7. Filtrage + rendu
-  var list=_badgesCatalog.filter(function(b){return _CHALLENGES_CURRENT_FILTER==='all'||b.category===_CHALLENGES_CURRENT_FILTER;});
+  // 6. Tri : débloqués d'abord (récents en premier), puis verrouillés par progression
   var nbUnlocked=Object.keys(unlockedMap).length;
   var nbTotal=_badgesCatalog.length;
   if(summary) summary.textContent=nbUnlocked+' / '+nbTotal+' débloqués';
+  var list=_badgesCatalog.slice().sort(function(a,b){
+    var aU=!!unlockedMap[a.id], bU=!!unlockedMap[b.id];
+    if(aU!==bU) return aU?-1:1;
+    if(aU){
+      return (new Date(unlockedMap[b.id])).getTime() - (new Date(unlockedMap[a.id])).getTime();
+    }
+    var aP=(stats[a.threshold_type]||0)/(a.threshold_value||1);
+    var bP=(stats[b.threshold_type]||0)/(b.threshold_value||1);
+    return bP-aP;
+  });
 
-  grid.innerHTML=list.map(function(b){
+  // 7. Split : 6 visibles + reste masqué derrière le bouton
+  var visibleList=list.slice(0,6);
+  var hiddenList=list.slice(6);
+
+  function buildCard(b){
     var isUnlocked=!!unlockedMap[b.id];
     var current=stats[b.threshold_type]||0;
     var target=b.threshold_value||1;
@@ -11754,12 +11768,58 @@ async function renderChallenges(){
                 +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,'+_mixHex(color,0.3)+','+color+');border-radius:2px;transition:width .4s"></div></div>'))
       +(rewardTxt.length?'<div style="font-size:.52rem;color:var(--muted2);margin-top:.3rem;letter-spacing:.3px">'+rewardTxt.join(' · ')+'</div>':'')
     +'</div>';
-  }).join('');
+  }
+
+  grid.innerHTML=visibleList.map(buildCard).join('');
+
+  // Pagination sur la liste COMPLÈTE — 8 blasons par page, défilement ordonné de tous les défis
+  var totalPagesCh=Math.max(1,Math.ceil(list.length/_CHALLENGES_PER_PAGE));
+  if(_CHALLENGES_EXTRA_PAGE>=totalPagesCh) _CHALLENGES_EXTRA_PAGE=0;
+  var pagedAll=list.slice(_CHALLENGES_EXTRA_PAGE*_CHALLENGES_PER_PAGE,(_CHALLENGES_EXTRA_PAGE+1)*_CHALLENGES_PER_PAGE);
+  if(extra) extra.innerHTML=pagedAll.map(buildCard).join('');
+
+  var pagEl=document.getElementById('challenges-pagination');
+  if(pagEl){
+    if(totalPagesCh<=1){pagEl.innerHTML='';}
+    else{
+      var pagHtml='';
+      for(var ci=0;ci<totalPagesCh;ci++){
+        var active=ci===_CHALLENGES_EXTRA_PAGE;
+        pagHtml+='<button onclick="_setChallengesExtraPage('+ci+')" style="width:28px;height:28px;border-radius:5px;border:1px solid '+(active?'var(--gold)':'var(--border2)')+';background:'+(active?'rgba(245,200,66,.15)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.72rem;font-weight:700;cursor:pointer">'+(ci+1)+'</button>';
+      }
+      pagEl.innerHTML=pagHtml;
+    }
+  }
+
+  if(toggleBtn){
+    toggleBtn.style.display=list.length>visibleList.length?'inline-flex':'none';
+    toggleBtn.dataset.count=list.length;
+    var lbl=document.getElementById('challenges-toggle-label');
+    var isOpen=extraWrap&&extraWrap.style.display==='block';
+    if(lbl) lbl.textContent=isOpen?'Réduire':('Voir tous les défis ('+list.length+')');
+  }
 }
 
-function _setChallengeFilter(k){
-  _CHALLENGES_CURRENT_FILTER=k;
+function _setChallengesExtraPage(p){
+  _CHALLENGES_EXTRA_PAGE=p;
   renderChallenges();
+}
+
+function toggleChallenges(){
+  var extraWrap=document.getElementById('challenges-extra-wrap');
+  var grid=document.getElementById('challenges-grid');
+  var chevron=document.getElementById('challenges-chevron');
+  var lbl=document.getElementById('challenges-toggle-label');
+  var btn=document.getElementById('challenges-toggle-btn');
+  if(!extraWrap)return;
+  var open=extraWrap.style.display==='block';
+  extraWrap.style.display=open?'none':'block';
+  if(grid) grid.style.display=open?'grid':'none';
+  if(chevron)chevron.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+  if(lbl){
+    var count=(btn&&btn.dataset.count)||'';
+    lbl.textContent=open?('Voir tous les défis'+(count?' ('+count+')':'')):'Réduire';
+  }
 }
 
 function showBadgeDetail(badgeId){
