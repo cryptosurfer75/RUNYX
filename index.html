@@ -265,7 +265,7 @@ body::before{
   box-shadow:0 0 30px rgba(245,200,66,.06);
 }
 .player-card::after{
-  content:'RL';position:absolute;right:-12px;bottom:-10px;
+  content:'SL';position:absolute;right:-12px;bottom:-10px;
   font-family:'Bebas Neue',sans-serif;font-size:6rem;letter-spacing:4px;
   color:rgba(245,200,66,.04);pointer-events:none;
 }
@@ -738,7 +738,7 @@ select option{background:#040c1c}
       <div>
         <label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Code parrainage <span style="color:#2a3550">(optionnel)</span></label>
         <div style="display:flex;gap:6px">
-          <input id="reg-code" type="text" placeholder="RL-XXXXX" maxlength="10" style="flex:1;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.18)'">
+          <input id="reg-code" type="text" placeholder="SL-XXXXX" maxlength="10" style="flex:1;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.18)'">
           <button onclick="checkCode()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,200,66,.35);background:rgba(245,200,66,.07);color:#f5c842;cursor:pointer;font-size:.7rem;font-weight:700">OK</button>
         </div>
         <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 2 💎 NYX</div>
@@ -758,7 +758,7 @@ select option{background:#040c1c}
       <div style="font-size:.72rem;color:#4a6080;margin:5px 0 9px">10 000 RPC + 5 NYX offerts pour démarrer !</div>
       <div style="background:rgba(4,12,28,.8);border:1px solid rgba(245,200,66,.16);border-radius:8px;padding:9px">
         <div style="font-size:.54rem;color:#3a5070;letter-spacing:.8px;margin-bottom:2px">TON IDENTIFIANT UNIQUE</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.92rem;color:#f5c842;letter-spacing:2px">#RL-<span id="new-id">…</span></div>
+        <div style="font-family:'Space Mono',monospace;font-size:.92rem;color:#f5c842;letter-spacing:2px">#SL-<span id="new-id">…</span></div>
       </div>
     </div>
     <button onclick="enterApp()" style="width:100%;padding:14px;border-radius:13px;border:none;border-bottom:5px solid #0c2e10;background:linear-gradient(160deg,#68d46c,#267830);font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:6px;color:#fff;text-shadow:0 2px 5px rgba(0,0,0,.5);box-shadow:0 7px 0 #0c2e10,0 12px 35px rgba(0,0,0,.65);cursor:pointer;margin-bottom:9px"
@@ -965,7 +965,7 @@ select option{background:#040c1c}
         </div>
         <div style="text-align:center">
           <div id="pc-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:2px;color:#ffffff;line-height:1.1">—</div>
-          <div id="pc-rtw-id" style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.2rem;letter-spacing:.5px">#RL-—</div>
+          <div id="pc-rtw-id" style="font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);margin-top:.2rem;letter-spacing:.5px">#SL-—</div>
           <div id="pc-premium-badge" style="display:none;margin:.3rem auto 0;padding:.15rem .55rem;border-radius:10px;background:linear-gradient(135deg,rgba(245,200,66,.28),rgba(245,200,66,.08));border:1px solid rgba(245,200,66,.55);font-family:'Bebas Neue',sans-serif;font-size:.58rem;letter-spacing:1.8px;color:#f5c842;text-shadow:0 0 8px rgba(245,200,66,.5);box-shadow:0 0 10px rgba(245,200,66,.2);width:fit-content">PREMIUM</div>
         </div>
         <!-- 3 badges sur la même ligne -->
@@ -2802,17 +2802,31 @@ async function onLoginSuccess(user, isNew){
   // Si pas de ligne dans players, la créer depuis les metadata auth
   if(!pd){
     var meta=user.user_metadata||{};
+    var _defaultUsername=meta.username||user.email.split('@')[0];
+    // Avatar par défaut : généré depuis le username (consistant, cartoon DiceBear)
+    var _defaultAvatar='https://api.dicebear.com/9.x/avataaars/svg?seed='+encodeURIComponent(_defaultUsername);
     var {data:ins}=await supabaseClient.from('players').upsert({
       id:user.id,
-      username:meta.username||user.email.split('@')[0],
+      username:_defaultUsername,
       email:user.email,
       nat:meta.nat||'🏳️',
       grade:'starter',
       league:'starter',
       trend:0,
-      avatar:null
+      avatar:_defaultAvatar
     },{onConflict:'id'}).select().maybeSingle();
     pd=ins;
+  }
+  // Rétro-compat : si un joueur existant n'a pas d'avatar (compte créé avant ce correctif),
+  // on lui en attribue un par défaut dérivé de son username.
+  if(pd&&!pd.avatar){
+    var _retroAvatar='https://api.dicebear.com/9.x/avataaars/svg?seed='+encodeURIComponent(pd.username||user.email.split('@')[0]);
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(user.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({avatar:_retroAvatar})
+    });
+    pd.avatar=_retroAvatar;
   }
   if(pd){
     // Générer RL ID séquentiel (par ordre d'inscription)
@@ -3229,7 +3243,7 @@ async function hgo(s){
   hcur=s;
   document.getElementById('hs'+s).style.display='';
   if(s===5){
-    // Afficher le RL-ID séquentiel — re-fetch depuis la DB pour être à jour
+    // Afficher le SL-ID séquentiel — re-fetch depuis la DB pour être à jour
     var _newIdEl=document.getElementById('new-id');
     if(_newIdEl) _newIdEl.textContent='…';
     var _idCheck=setInterval(function(){
@@ -3354,8 +3368,8 @@ async function checkCode(){
   var v=document.getElementById('reg-code').value.toUpperCase().trim();
   var m=document.getElementById('code-msg');
   if(!v){m.style.color='#8aaccc';m.textContent='Ton parrain reçoit 2 000 RPC + 2 💎 NYX';m.dataset.parrainUuid='';return;}
-  if(!v.startsWith('RL-')||v.length<7){m.style.color='#ff4444';m.textContent='Code invalide. Format : RL-XXXXX';m.dataset.parrainUuid='';return;}
-  var rtwCode=v.replace('RL-','');
+  if(!v.startsWith('SL-')||v.length<7){m.style.color='#ff4444';m.textContent='Code invalide. Format : SL-XXXXX';m.dataset.parrainUuid='';return;}
+  var rtwCode=v.replace('SL-','');
   m.style.color='#f0c040';m.textContent='Vérification…';
   var {data:found}=await supabaseClient.from('players').select('id,username').eq('rtw_id',rtwCode).maybeSingle();
   if(found){
@@ -3631,7 +3645,7 @@ function renderDashboard(){
     // Identité
     set('pc-name', p.name||'Joueur');
     var _rid=p.rtwId||p.id||'00000';
-    set('pc-rtw-id', '#RL-'+String(_rid).padStart(5,'0'));
+    set('pc-rtw-id', '#SL-'+String(_rid).padStart(5,'0'));
     var _pcPrem=document.getElementById('pc-premium-badge');
     if(_pcPrem){
       var _premActive=p.premium&&(!p.premiumUntil||new Date(p.premiumUntil)>new Date());
@@ -4905,7 +4919,7 @@ async function showParrainageInfo(){
   // Code parrainage du joueur consulté
   var _pName=viewedP?(viewedP.name||'?'):(window.__myPlayer?window.__myPlayer.name:'?');
   var _pRtw=viewedP?(viewedP.rtwId||'?????'):(window.__myPlayer?window.__myPlayer.rtwId:'?????');
-  var myCode='RL-'+String(_pRtw).padStart(5,'0');
+  var myCode='SL-'+String(_pRtw).padStart(5,'0');
 
   // Liste des filleuls
   var filleulHtml='';
@@ -7224,7 +7238,7 @@ async function shareRunCard(runId){
   cx.font='700 22px sans-serif';cx.fillStyle='#ffffff';
   cx.fillText(player.username,138,122);
   cx.font='400 13px monospace';cx.fillStyle='#8aaccc';
-  cx.fillText('#RL-'+(player.rtw_id||'?????')+'  '+player.nat,138,142);
+  cx.fillText('#SL-'+(player.rtw_id||'?????')+'  '+player.nat,138,142);
   cx.font='400 12px sans-serif';cx.fillStyle='#5a6080';
   cx.fillText(dateStr,138,160);
 
@@ -7261,17 +7275,18 @@ async function shareRunCard(runId){
   cx.font='700 7px sans-serif';cx.fillStyle='#fc4c02';
   cx.fillText('POWERED BY STRAVA',580,388);
 
-  // Icônes réseaux sociaux
+  // 1. Site web (premier juste sous les stats)
   cx.textAlign='center';
-  cx.font='400 11px sans-serif';cx.fillStyle='#5a6080';
-  cx.fillText('📘 Facebook  ·  📸 Instagram  ·  🐦 Twitter  ·  💬 WhatsApp',300,335);
+  cx.font='700 20px sans-serif';cx.fillStyle='#ffffff';
+  cx.fillText('speedixleague.com',300,300);
 
-  // Footer
-  cx.font='700 18px sans-serif';cx.fillStyle='#ffffff';
-  cx.fillText('speedixleague.com',300,358);
-  // Code parrainage
+  // 2. Réseaux sociaux
+  cx.font='400 11px sans-serif';cx.fillStyle='#5a6080';
+  cx.fillText('📘 Facebook  ·  📸 Instagram  ·  🐦 Twitter  ·  💬 WhatsApp',300,328);
+
+  // 3. Code parrainage
   cx.font='700 14px monospace';cx.fillStyle='#f5c842';
-  cx.fillText('Rejoins-moi : code RL-'+(player.rtw_id||'?????'),300,378);
+  cx.fillText('Rejoins-moi : code SL-'+(player.rtw_id||'?????'),300,360);
 
   // Partager ou télécharger
   cv.toBlob(async function(blob){
@@ -7282,7 +7297,7 @@ async function shareRunCard(runId){
       try{
         await navigator.share({
           title:'SPEEDIX League — '+player.username,
-          text:km+' km · '+pts+' pts · Rejoins-moi avec le code RL-'+(player.rtw_id||'?????')+' sur speedixleague.com',
+          text:km+' km · '+pts+' pts · Rejoins-moi avec le code SL-'+(player.rtw_id||'?????')+' sur speedixleague.com',
           files:[file]
         });
         showToast('📸 Partagé !');
