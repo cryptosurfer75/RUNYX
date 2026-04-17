@@ -1986,6 +1986,55 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modal Confirmation custom (remplace confirm() natif) -->
+<div class="modal" id="ask-confirm-modal">
+  <div class="modal-box" style="max-width:380px;text-align:center">
+    <div id="ask-confirm-emoji" style="font-size:2.2rem;line-height:1;margin-bottom:.5rem">❔</div>
+    <div id="ask-confirm-title" class="modal-title" style="text-align:center">Confirmation</div>
+    <div id="ask-confirm-message" style="font-size:.85rem;color:var(--text);line-height:1.55;margin:.5rem 0 1.2rem"></div>
+    <div style="display:flex;gap:.5rem">
+      <button id="ask-confirm-cancel" style="flex:1;padding:.6rem;border-radius:8px;border:1px solid var(--border2);background:rgba(255,255,255,.03);color:var(--muted2);font-weight:700;font-size:.8rem;cursor:pointer">Annuler</button>
+      <button id="ask-confirm-ok" style="flex:1;padding:.6rem;border-radius:8px;border:1.5px solid var(--gold);background:linear-gradient(175deg,rgba(245,200,66,.22),rgba(200,160,20,.12));color:var(--gold);font-weight:700;font-size:.85rem;cursor:pointer;letter-spacing:.3px">Confirmer</button>
+    </div>
+  </div>
+</div>
+<script>
+// askConfirm — remplace confirm() natif. Retourne une Promise<boolean>.
+// opts : { title, message, okLabel, cancelLabel, emoji, destructive }
+function askConfirm(message, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var modal = document.getElementById('ask-confirm-modal');
+    if(!modal) { resolve(window.confirm(message)); return; }
+    document.getElementById('ask-confirm-emoji').textContent = opts.emoji || '❔';
+    document.getElementById('ask-confirm-title').textContent = opts.title || 'Confirmation';
+    document.getElementById('ask-confirm-message').innerHTML = (message||'').replace(/\n/g,'<br>');
+    var ok = document.getElementById('ask-confirm-ok');
+    var cancel = document.getElementById('ask-confirm-cancel');
+    ok.textContent = opts.okLabel || 'Confirmer';
+    cancel.textContent = opts.cancelLabel || 'Annuler';
+    // Bouton destructif → rouge au lieu de doré
+    if(opts.destructive){
+      ok.style.borderColor = 'var(--red)';
+      ok.style.background = 'linear-gradient(175deg,rgba(255,68,68,.22),rgba(180,40,40,.12))';
+      ok.style.color = 'var(--red)';
+    } else {
+      ok.style.borderColor = 'var(--gold)';
+      ok.style.background = 'linear-gradient(175deg,rgba(245,200,66,.22),rgba(200,160,20,.12))';
+      ok.style.color = 'var(--gold)';
+    }
+    function done(val){
+      modal.classList.remove('open');
+      ok.onclick = null; cancel.onclick = null;
+      resolve(val);
+    }
+    ok.onclick = function(){ done(true); };
+    cancel.onclick = function(){ done(false); };
+    modal.classList.add('open');
+  });
+}
+</script>
+
 <!-- Modal Validation Loyer Mensuel -->
 <div class="modal" id="rent-validation-modal">
   <div class="modal-box" style="max-width:440px">
@@ -5397,7 +5446,7 @@ async function buyAcquisitionRight(){
   if(_hasAcquisitionRight){showToast('✓ Tu as déjà le droit d\'acquisition');return;}
   var w=window.__wallet||{nyx:0};
   if(w.nyx<60){showToast('⚠️ Solde insuffisant en NYX');return;}
-  if(!confirm('Veux-tu acheter un droit d\'acquisition pour 60 NYX ?\nCet achat te permet ensuite de devenir propriétaire de tes Lands.')) return;
+  if(!await askConfirm('Un droit d\'acquisition te permet de devenir propriétaire de tes Lands.\n\nCoût : <strong style="color:var(--gold)">60 NYX</strong>',{title:'Acheter un droit d\'acquisition',emoji:'🗝️',okLabel:'Acheter (60 NYX)'})) return;
   var ok=await walletDebitNyx(60,'Droit d\'acquisition Lands');
   if(!ok) return;
   await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
@@ -5429,7 +5478,7 @@ async function buyLand(landId){
   var price=getLandBuyPrice(_computeRentPeriods(land));
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
-  if(!confirm('Veux-tu acheter cette Land pour '+price+' NYX ?\nElle deviendra ta propriété définitive.')) return;
+  if(!await askConfirm('Elle deviendra ta propriété définitive — tu encaisseras les loyers de tes locataires.\n\nPrix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter cette Land',emoji:'🏡',okLabel:'Acheter ('+price+' NYX)'})) return;
   var ok=await walletDebitNyx(price,'Achat Land '+landId.substring(0,8));
   if(!ok) return;
   await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(landId),{
@@ -5513,7 +5562,7 @@ async function buyLandFromSale(saleId,landId,sellerId,price){
   if(currentUser.id===sellerId){showToast('⚠️ Tu ne peux pas acheter ta propre Land');return;}
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
-  if(!confirm('Veux-tu acheter cette Land pour '+price+' NYX ?')) return;
+  if(!await askConfirm('Prix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter cette Land',emoji:'🏡',okLabel:'Acheter ('+price+' NYX)'})) return;
   // Débiter l'acheteur
   var ok=await walletDebitNyx(price,'Achat Land '+landId.substring(0,8));
   if(!ok) return;
@@ -5541,7 +5590,7 @@ async function buyLandFromSale(saleId,landId,sellerId,price){
 
 async function releaseLand(landId){
   if(!currentUser) return;
-  if(!confirm('Veux-tu rendre disponible cette Land ?')) return;
+  if(!await askConfirm('Cette Land redeviendra libre et tu ne pourras plus la reprendre pendant 2 périodes.',{title:'Libérer cette Land',emoji:'🔓',okLabel:'Libérer',destructive:true})) return;
   // Remettre la land en libre
   await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(landId),{
     method:'PATCH',
@@ -6689,7 +6738,7 @@ async function processEndOfPeriod(){
 // ── Admin : simuler fin de période ────────────────────────────────────
 async function adminSimulateEndPeriod(){
   if(!isAdmin()){showToast('⚠️ Accès refusé');return;}
-  if(!confirm('⚠️ SIMULER LA FIN DE PÉRIODE ?\n\nCela va :\n• Figer les classements et distribuer les médailles\n• Faire monter/descendre les RP de leagues\n• Supprimer toutes les courses\n• Passer à la période suivante\n\nContinuer ?')) return;
+  if(!await askConfirm('Cette action va :\n• Figer les classements et distribuer les médailles\n• Faire monter/descendre les RP de leagues\n• Supprimer toutes les courses\n• Passer à la période suivante',{title:'Simuler la fin de période ?',emoji:'⚠️',okLabel:'Continuer',destructive:true})) return;
   await processEndOfPeriod();
 }
 
@@ -8852,7 +8901,7 @@ async function buyLicence(qty,price){
   if(!teamId){showToast('⚠️ Tu n\'es dans aucune team');return;}
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
-  if(!confirm('Acheter +'+qty+' place'+(qty>1?'s':'')+' pour '+price+' NYX ?')) return;
+  if(!await askConfirm('Prix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter +'+qty+' place'+(qty>1?'s':''),emoji:'➕',okLabel:'Acheter ('+price+' NYX)'})) return;
   var {data:team}=await supabaseClient.from('teams').select('extra_slots').eq('id',teamId).single();
   if(!team){showToast('⚠️ Team introuvable');return;}
   var current=team.extra_slots||0;
@@ -9308,7 +9357,7 @@ async function activateBoost(){
   if(b.stock<=0){showToast('⚠️ Aucun boost en réserve');openModal('boost-shop-modal');return;}
   // Popup explication la première fois
   if(!localStorage.getItem('boost-explained-'+currentUser.id)){
-    var ok=confirm('⚡ BOOST — +10% de points\n\nLe boost augmente tes points de 10% sur TOUTES les courses pendant 24h.\n\nUne fois activé, il ne peut pas être annulé.\nTu as '+b.stock+' boost'+(b.stock>1?'s':'')+' en réserve.\n\nActiver maintenant ?');
+    var ok=await askConfirm('Pendant <strong style="color:var(--gold)">24h</strong>, toutes tes courses rapporteront <strong style="color:var(--gold)">+10% de points</strong>.\n\nUne fois activé, il ne peut pas être annulé.\nTu as '+b.stock+' boost'+(b.stock>1?'s':'')+' en réserve.',{title:'Activer le Boost ?',emoji:'⚡',okLabel:'Activer'});
     if(!ok) return;
     localStorage.setItem('boost-explained-'+currentUser.id,'1');
   }
@@ -9325,7 +9374,7 @@ async function activateBoost(){
 
 async function buyBoosts(qty, cost){
   if(!currentUser) return;
-  if(!confirm('Acheter '+qty+' boost'+(qty>1?'s':'')+' pour '+cost+' NYX ?')) return;
+  if(!await askConfirm('Prix : <strong style="color:var(--gold)">'+cost+' NYX</strong>',{title:'Acheter '+qty+' boost'+(qty>1?'s':''),emoji:'⚡',okLabel:'Acheter ('+cost+' NYX)'})) return;
   var w=window.__wallet||{rpc:0,nyx:0};
   if(w.nyx<cost){showToast('⚠️ Solde insuffisant en NYX');return;}
   var b=window.__boost||{stock:0};
@@ -9496,7 +9545,7 @@ function updateStravaUI(connected){
 
 async function disconnectStrava(){
   if(!currentUser) return;
-  if(!confirm('Déconnecter Strava ? Tu pourras te reconnecter plus tard.')) return;
+  if(!await askConfirm('Tu pourras te reconnecter quand tu veux.',{title:'Déconnecter Strava',emoji:'🔌',okLabel:'Déconnecter',destructive:true})) return;
   // Révoquer le token côté Strava
   if(window.__stravaToken){
     try{
@@ -10635,7 +10684,7 @@ async function leaveTeam(teamId, teamNameEnc){
 
   if(isCap && nbMembers>1){
     // Capitaine avec d'autres membres → transférer le rôle au plus ancien
-    if(!confirm('Tu es capitaine de "'+teamName+'". En quittant, le rôle sera transféré à un autre membre.')) return;
+    if(!await askConfirm('Tu es capitaine de <strong>'+teamName+'</strong>.\n\nEn quittant, le rôle sera transféré à un autre membre.',{title:'Quitter la team ?',emoji:'🚪',okLabel:'Quitter',destructive:true})) return;
     // Trouver un autre membre
     var otherMember=membersCount.find(function(m){return m.role!=='capitaine';});
     if(otherMember){
@@ -10652,9 +10701,9 @@ async function leaveTeam(teamId, teamNameEnc){
     }
   } else if(isCap && nbMembers<=1){
     // Seul dans la team → supprimer la team
-    if(!confirm('Tu es le seul membre de "'+teamName+'". Quitter supprimera la team.')) return;
+    if(!await askConfirm('Tu es le seul membre de <strong>'+teamName+'</strong>.\n\nEn quittant, la team sera <strong style="color:var(--red)">supprimée définitivement</strong>.',{title:'Supprimer la team ?',emoji:'⚠️',okLabel:'Supprimer la team',destructive:true})) return;
   } else {
-    if(!confirm('Veux-tu quitter "'+teamName+'" ?')) return;
+    if(!await askConfirm('Tu ne profiteras plus des bonus collectifs de <strong>'+teamName+'</strong>.',{title:'Quitter la team ?',emoji:'🚪',okLabel:'Quitter',destructive:true})) return;
   }
 
   // Supprimer ma ligne team_members
@@ -10699,7 +10748,7 @@ async function openKickModal(teamId){
 
 async function kickMember(playerId, playerName, teamId){
   if(!currentUser||window.__myTeamRole!=='capitaine'){showToast('⚠️ Seul le capitaine peut expulser');return;}
-  if(!confirm('Veux-tu retirer "'+playerName+'" de la team ?')) return;
+  if(!await askConfirm('<strong>'+playerName+'</strong> sera retiré de la team.',{title:'Retirer ce joueur ?',emoji:'👋',okLabel:'Retirer',destructive:true})) return;
   var {error}=await supabaseClient.from('team_members').delete()
     .eq('team_id',teamId).eq('player_id',playerId);
   if(error){showToast('⚠️ Erreur : '+error.message);return;}
