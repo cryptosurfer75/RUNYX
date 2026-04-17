@@ -3336,13 +3336,15 @@ function showHgoError(msg){
 }
 
 // Gestion retour lien reset mot de passe (Supabase envoie #type=recovery)
+// Détecté très tôt pour empêcher l'auto-login de navigation vers le dashboard
+window.__isPasswordRecovery = window.location.hash.includes('type=recovery');
 (function(){
-  var hash=window.location.hash;
-  if(hash.includes('type=recovery')){
-    // Afficher le formulaire de nouveau mot de passe
-    window.addEventListener('DOMContentLoaded',function(){
-      showNewPasswordForm();
-    });
+  if(!window.__isPasswordRecovery) return;
+  function showForm(){ if(typeof showNewPasswordForm==='function') showNewPasswordForm(); }
+  if(document.readyState==='loading'){
+    window.addEventListener('DOMContentLoaded', showForm);
+  } else {
+    showForm();
   }
 })();
 
@@ -12331,6 +12333,9 @@ function dashShowInviteCode(){
 (async function(){
   // Gérer le retour OAuth Strava
   if(typeof handleStravaCallback==='function') handleStravaCallback();
+  // Si on vient d'un lien "mot de passe oublié" : on NE navigue PAS vers le dashboard,
+  // on laisse le formulaire "nouveau mot de passe" (géré plus haut) prendre la main.
+  if(window.__isPasswordRecovery) return;
   await checkExistingSession();
   await loadPlayersFromSupabase();
   // Ré-injecter le joueur connecté si loadPlayers l'a écrasé
