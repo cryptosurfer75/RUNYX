@@ -7909,11 +7909,19 @@ function navPcRank(direction){
 function goToPcLeague(){
   var vp=window.__viewedPlayer;
   if(vp){
-    if(!isPremium()){
-      showPremiumGate('Voir la League d\'un autre RP est réservé au Premium.');
+    var targetKey=vp.leagueKey||'starter';
+    // Free : autoriser les leagues accessibles (ma league + adjacentes),
+    // bloquer uniquement celles hors de portée.
+    if(!canAccessLeague(targetKey)){
+      if(!window.__premiumLeagueGateSeen){
+        window.__premiumLeagueGateSeen=true;
+        showPremiumGate('La consultation de toutes les Leagues est accessible avec le statut Premium.');
+      } else {
+        showToast('🔒 Passe en Premium pour consulter cette League');
+      }
       return;
     }
-    activeLeagueKey=vp.leagueKey||'starter';
+    activeLeagueKey=targetKey;
   }
   nav('league');
   if(typeof renderLeagueNav==='function') renderLeagueNav();
@@ -7921,8 +7929,30 @@ function goToPcLeague(){
   if(typeof updateLeaguePickerLabel==='function') updateLeaguePickerLabel();
 }
 function goToPcTeam(){
+  var _scrollToMyTeam=false;
+  // Récupère le team_id affiché sur la PC et compare à ma team
+  var _pcFrame=document.getElementById('pc-team-frame');
+  var _pcTeamId=_pcFrame?_pcFrame.dataset.teamId:null;
+  if(_pcTeamId&&window.__myTeamId&&_pcTeamId===window.__myTeamId){
+    // Le blason cliqué est celui de MA team → reset viewed player et scroll vers mon panneau
+    window.__viewedPlayer=null;
+    _scrollToMyTeam=true;
+  }
   // La vérif free/premium + open/private se fait dans renderTeams (on a besoin du type de team)
   nav('teams');
+  if(_scrollToMyTeam){
+    var _tries=0;
+    var _scrollTimer=setInterval(function(){
+      _tries++;
+      var mtp=document.getElementById('myteam-panel');
+      if(mtp&&mtp.style.display!=='none'&&mtp.offsetHeight>0){
+        clearInterval(_scrollTimer);
+        mtp.scrollIntoView({behavior:'smooth',block:'start'});
+      } else if(_tries>40){ // ~4s max
+        clearInterval(_scrollTimer);
+      }
+    },100);
+  }
 }
 
 function showPlayerCardByUuid(uuid){
@@ -8583,7 +8613,7 @@ function nav(page){
   if(page==='access'){
     if(typeof updatePremiumUI==='function') updatePremiumUI();
     if(currentUser&&!isPremium()){
-      setTimeout(function(){showTrialOffer();},500);
+      setTimeout(function(){showTrialOffer();},6000);
     }
   }
 }
@@ -10278,6 +10308,7 @@ async function renderTeams(){
         _pcFrame.title=_pcTeamData.name;
         _pcFrame.style.opacity='1';
         _pcFrame.style.borderColor=(_pcTeamData.color||'#4a90ff')+'55';
+        _pcFrame.dataset.teamId=_pcTeamData.id;
       } else {
         // Pas de team → SVG neutre
         _pcImg.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
