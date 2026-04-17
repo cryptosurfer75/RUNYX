@@ -1,0 +1,27 @@
+{
+  "name": "SPEEDIX League",
+  "short_name": "SPEEDIX",
+  "description": "La ligue de running connectée. Cours, gagne des points, conquiers des Lands.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060810",
+  "theme_color": "#060810",
+  "lang": "fr",
+  "categories": ["sports", "health", "fitness", "games"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
