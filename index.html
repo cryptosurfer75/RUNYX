@@ -4109,12 +4109,14 @@ function buildLeaguePicker(){
   dd.innerHTML=LEAGUES.map(l=>{
     const isActive=l.key===activeLeagueKey;
     const isMyLeague=window.__myPlayer&&l.key===window.__myPlayer.leagueKey;
+    const _locked=!canAccessLeague(l.key);
     return `<div onclick="selectLeague('${l.key}');toggleLeaguePicker()" style="
       display:flex;align-items:center;justify-content:space-between;
       padding:.55rem .9rem;cursor:pointer;
       background:${isActive?'rgba(245,200,66,.1)':'transparent'};
       border-left:3px solid ${isActive?l.color:'transparent'};
       transition:background .12s;
+      ${_locked?'opacity:.3;filter:grayscale(.75);':''}
     " onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='${isActive?'rgba(245,200,66,.1)':'transparent'}'">
       <div style="display:flex;align-items:center;gap:.5rem">
         ${isMyLeague?'<span style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span>':'<span style="width:6px"></span>'}
@@ -4143,7 +4145,7 @@ function renderLeagueNav(){
     const isMe=l.key===activeLeagueKey;
     const isCurrent=window.__myPlayer&&l.key===window.__myPlayer.leagueKey;
     var _locked=!canAccessLeague(l.key);
-    el.innerHTML+=`<div class="league-nav-item ${l.key===activeLeagueKey?'active':''}" onclick="selectLeague('${l.key}')" style="${_locked?'opacity:.4':''}">
+    el.innerHTML+=`<div class="league-nav-item ${l.key===activeLeagueKey?'active':''}" onclick="selectLeague('${l.key}')" style="${_locked?'opacity:.3;filter:grayscale(.75)':''}">
       <div style="display:flex;align-items:center;gap:.4rem">
         ${isCurrent?'<div class="ln-me"></div>':''}
         <span style="font-size:.85rem;line-height:1">${l.emoji}</span>
@@ -4169,7 +4171,14 @@ function canAccessLeague(key){
 
 function selectLeague(key){
   if(!canAccessLeague(key)){
-    showPremiumGate('La consultation de toutes les Leagues est accessible avec le statut Premium.');
+    // 1er clic sur une league verrouillée → modal Premium.
+    // Clics suivants dans la même session → simple toast vert (non intrusif).
+    if(!window.__premiumLeagueGateSeen){
+      window.__premiumLeagueGateSeen=true;
+      showPremiumGate('La consultation de toutes les Leagues est accessible avec le statut Premium.');
+    } else {
+      showToast('🔒 Passe en Premium pour consulter cette League');
+    }
     return;
   }
   activeLeagueKey=key;
@@ -6803,7 +6812,14 @@ function searchPlayers(query){
 
 function switchFeedTab(mode){
   if(mode==='friends'&&!isPremium()){
-    showPremiumGate('L\'accès à la liste Amis est disponible avec le statut Premium.');
+    // 1er clic sur l'onglet Amis verrouillé → modal Premium.
+    // Clics suivants → toast vert en bas, non intrusif.
+    if(!window.__premiumFriendsGateSeen){
+      window.__premiumFriendsGateSeen=true;
+      showPremiumGate('L\'accès à la liste Amis est disponible avec le statut Premium.');
+    } else {
+      showToast('🔒 Passe en Premium pour accéder à la liste Amis');
+    }
     return;
   }
   _feedMode=mode;
@@ -10293,10 +10309,9 @@ async function renderTeams(){
         if(_vpTeam){
           _viewedTeamIsPrivate=(_vpTeam.invite_code!==OPEN_TEAM_MARKER);
           // Free users : interdits sur teams privées, autorisés sur teams open
+          // → on masque silencieusement le panneau team ; la modal Premium s'affichera
+          //   seulement si l'utilisateur clique explicitement sur "voir la team".
           if(_viewedTeamIsPrivate && !isPremium()){
-            if(typeof showPremiumGate==='function'){
-              showPremiumGate('Voir la composition d\'une Team privée est réservé au Premium. Les Teams ouvertes sont consultables en Free.');
-            }
             _myTeamData=null; // on cache le panel
           } else {
             _myTeamData=_vpTeam;
