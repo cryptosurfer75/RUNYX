@@ -1939,6 +1939,27 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modal Validation Loyer Mensuel -->
+<div class="modal" id="rent-validation-modal">
+  <div class="modal-box" style="max-width:440px">
+    <button class="modal-close" onclick="closeModal('rent-validation-modal')">✕</button>
+    <div class="modal-title">🏠 Loyer mensuel</div>
+    <div class="modal-sub">Prélèvement entre le 5 et le 10 — valide pour continuer à louer tes Lands</div>
+    <div id="rent-validation-list" style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:.9rem;max-height:240px;overflow-y:auto"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;border-radius:7px;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.2);margin-bottom:.9rem">
+      <span style="font-size:.78rem;color:var(--muted2)">Total à prélever</span>
+      <strong id="rent-validation-total" style="color:var(--red);font-family:'Space Mono',monospace;font-size:.95rem">—</strong>
+    </div>
+    <div id="rent-validation-warn" style="font-size:.68rem;color:var(--muted2);margin-bottom:.85rem;line-height:1.4">
+      ⚠️ Passé le <strong style="color:var(--red)">10 du mois</strong>, toutes les Lands non payées seront automatiquement remises en jeu.
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button onclick="goToLandsFromRent()" style="flex:1;padding:.55rem;border-radius:7px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--muted2);font-weight:700;font-size:.78rem;cursor:pointer">Gérer mes Lands</button>
+      <button id="rent-validation-pay-btn" onclick="submitRentPayment()" style="flex:1;padding:.55rem;border-radius:7px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.82rem;cursor:pointer">Payer le loyer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Notification Parrainage -->
 <!-- Modal Boutique Boost -->
 <div class="modal" id="boost-shop-modal">
@@ -6387,42 +6408,156 @@ async function adminSimulateExploration(){
 var _exploreSelection={lands:[],playerId:null};
 
 // ── Loyer mensuel lands — auto-déduction le 5 du mois ──
+// "YYYY-MM" du mois courant (tz Europe/Paris)
+function _currentRentMonth(){
+  var today=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+  var m=today.getMonth()+1;
+  return today.getFullYear()+'-'+(m<10?'0'+m:m);
+}
+
+async function _getRentStatus(uid){
+  var {data}=await supabaseClient.from('players').select('last_rent_paid_month').eq('id',uid).maybeSingle();
+  return data?data.last_rent_paid_month:null;
+}
+
+async function _markRentPaid(uid){
+  await supabaseClient.from('players').update({last_rent_paid_month:_currentRentMonth()}).eq('id',uid);
+}
+
+async function _loadMyRentedLandsForRent(){
+  var {data:lands}=await supabaseClient.from('lands')
+    .select('id,rent_periods,stars,rented_at')
+    .eq('tenant_id',currentUser.id)
+    .eq('status','rented');
+  if(!lands||!lands.length) return {lands:[],total:0};
+  var total=0;
+  lands.forEach(function(l){
+    var rp=_computeRentPeriods(l);
+    l._cost=rp<=1?5000:rp<=6?4800:4600;
+    total+=l._cost;
+  });
+  return {lands:lands,total:total};
+}
+
 async function processMonthlyRent(){
   if(!currentUser) return;
   var today=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
   var dayOfMonth=today.getDate();
-  // Ne déclencher qu'à partir du 5 du mois
   if(dayOfMonth<5) return;
-  // Vérifier si déjà payé ce mois (stocker en localStorage)
-  var monthKey='rent-'+today.getFullYear()+'-'+(today.getMonth()+1)+'-'+currentUser.id;
-  if(localStorage.getItem(monthKey)==='paid') return;
-  // Charger mes lands en location
-  var {data:myRentedLands}=await supabaseClient.from('lands')
-    .select('id,rent_periods,stars')
-    .eq('tenant_id',currentUser.id)
-    .eq('status','rented');
-  if(!myRentedLands||!myRentedLands.length) return;
-  // Calculer le loyer total
-  var totalLoyer=0;
-  var details=[];
-  myRentedLands.forEach(function(l){
-    var rp=_computeRentPeriods(l);
-    var cost=rp<=1?5000:rp<=6?4800:4600;
-    totalLoyer+=cost;
-  });
-  // Vérifier le solde
-  var w=window.__wallet||{rpc:0,nyx:0};
-  if(w.rpc<totalLoyer){
-    showToast('⚠️ Solde insuffisant pour le loyer ('+totalLoyer.toLocaleString('fr')+' RPC). Libère des lands.');
+  var currentMonth=_currentRentMonth();
+  var lastPaid=await _getRentStatus(currentUser.id);
+  if(lastPaid===currentMonth) return;
+
+  var info=await _loadMyRentedLandsForRent();
+  if(!info.lands.length){
+    await _markRentPaid(currentUser.id); // rien à prélever → marqué OK
     return;
   }
-  // Débiter le wallet
-  var ok=await walletCredit(-totalLoyer,0,'Loyer mensuel '+myRentedLands.length+' lands');
+
+  // Entre le 5 et le 10 : demander validation
+  if(dayOfMonth<=10){
+    _openRentValidationModal(info);
+    return;
+  }
+
+  // Passé le 10 : libérer juste assez de lands (aléatoire) pour que le reste soit payable
+  await _autoSettleUnpaidRent(info);
+  await _markRentPaid(currentUser.id);
+}
+
+function _openRentValidationModal(info){
+  var listEl=document.getElementById('rent-validation-list');
+  var totalEl=document.getElementById('rent-validation-total');
+  var payBtn=document.getElementById('rent-validation-pay-btn');
+  if(!listEl||!totalEl) return;
+  listEl.innerHTML=info.lands.map(function(l){
+    var stars=l.stars?(' '+Array(l.stars+1).join('⭐')):'';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .65rem;border-radius:6px;background:rgba(4,12,28,.55);border:1px solid var(--border)">'
+      +'<span style="font-size:.75rem;color:var(--text)">Land '+l.id.substring(0,8)+stars+'</span>'
+      +'<strong style="color:var(--red);font-family:\'Space Mono\',monospace;font-size:.78rem">−'+l._cost.toLocaleString('fr')+' RPC</strong>'
+      +'</div>';
+  }).join('');
+  totalEl.textContent='−'+info.total.toLocaleString('fr')+' RPC';
+  // Activer / désactiver le bouton selon le solde
+  var w=window.__wallet||{rpc:0};
+  if(w.rpc<info.total){
+    payBtn.disabled=true;
+    payBtn.style.opacity='.5';
+    payBtn.style.cursor='not-allowed';
+    payBtn.textContent='Solde insuffisant';
+  } else {
+    payBtn.disabled=false;
+    payBtn.style.opacity='';
+    payBtn.style.cursor='pointer';
+    payBtn.textContent='Payer le loyer';
+  }
+  openModal('rent-validation-modal');
+}
+
+async function submitRentPayment(){
+  if(!currentUser) return;
+  var info=await _loadMyRentedLandsForRent();
+  if(!info.lands.length){closeModal('rent-validation-modal');return;}
+  var w=window.__wallet||{rpc:0};
+  if(w.rpc<info.total){showToast('⚠️ Solde insuffisant');return;}
+  var ok=await walletCredit(-info.total,0,'Loyer mensuel '+info.lands.length+' lands');
   if(!ok) return;
-  // Marquer comme payé ce mois
-  localStorage.setItem(monthKey,'paid');
-  showToast('🏠 Loyer prélevé : −'+totalLoyer.toLocaleString('fr')+' RPC ('+myRentedLands.length+' land'+(myRentedLands.length>1?'s':'')+')');
-  // Refresh
+  await _markRentPaid(currentUser.id);
+  closeModal('rent-validation-modal');
+  showToast('🏠 Loyer prélevé : −'+info.total.toLocaleString('fr')+' RPC ('+info.lands.length+' land'+(info.lands.length>1?'s':'')+')');
+  if(typeof renderMyLands==='function') renderMyLands();
+}
+
+function goToLandsFromRent(){
+  closeModal('rent-validation-modal');
+  if(typeof nav==='function') nav('lands');
+}
+
+async function _releaseSingleLand(landId){
+  await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(landId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({tenant_id:null,owner_id:null,status:'free',stars:0,rent_periods:0,monthly_revenue:0})
+  });
+}
+
+async function _autoSettleUnpaidRent(info){
+  // info = { lands:[{id,_cost,...}], total }
+  var w=window.__wallet||{rpc:0};
+  var balance=w.rpc||0;
+
+  // Mélange aléatoire des lands
+  var pool=info.lands.slice();
+  for(var i=pool.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;
+  }
+
+  // Libère une à une tant que le reste n'est pas payable
+  var remaining=info.total;
+  var released=[];
+  while(remaining>balance && pool.length>0){
+    var land=pool.shift();
+    await _releaseSingleLand(land.id);
+    released.push(land);
+    remaining-=land._cost;
+  }
+
+  // Débite le loyer des lands conservées
+  if(remaining>0){
+    var ok=await walletCredit(-remaining,0,'Loyer mensuel '+pool.length+' land'+(pool.length>1?'s':'')+' (après libération auto)');
+    if(!ok) return;
+  }
+
+  // Messages
+  if(released.length && pool.length){
+    showToast('⚠️ '+released.length+' Land'+(released.length>1?'s':'')+' remise'+(released.length>1?'s':'')+' en jeu · −'+remaining.toLocaleString('fr')+' RPC prélevés pour les '+pool.length+' autres');
+  } else if(released.length){
+    showToast('⚠️ '+released.length+' Land'+(released.length>1?'s':'')+' remise'+(released.length>1?'s':'')+' en jeu (solde insuffisant pour tout payer)');
+  } else {
+    showToast('🏠 Loyer prélevé : −'+remaining.toLocaleString('fr')+' RPC ('+pool.length+' land'+(pool.length>1?'s':'')+')');
+  }
+  if(typeof loadLandsOnMap==='function') loadLandsOnMap();
   if(typeof renderMyLands==='function') renderMyLands();
 }
 
