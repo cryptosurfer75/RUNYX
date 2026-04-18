@@ -6500,7 +6500,8 @@ async function processEndOfPeriod(){
       var members=allTM.filter(function(m){return m.team_id===t.id;});
       var memberPts=members.map(function(m){return ptsByPlayer[m.player_id]||0;}).sort(function(a,b){return b-a;});
       var top6=memberPts.slice(0,6);
-      var base=top6.length>0?Math.round(top6.reduce(function(s,v){return s+v;},0)/top6.length):0;
+      // Toujours diviser par 6 : les places manquantes comptent 0. Pénalise les teams incomplètes.
+      var base=top6.length>0?Math.round(top6.reduce(function(s,v){return s+v;},0)/6):0;
       var extra=Math.max(0,members.length-6);
       return {id:t.id,name:t.name,score:Math.round(base*(1+extra*2/100))};
     }).filter(function(t){return t.score>0;}).sort(function(a,b){return b.score-a.score;});
@@ -10199,7 +10200,8 @@ async function renderTeams(){
       var nb=(t.team_members&&t.team_members[0])?t.team_members[0].count:0;
       var sorted=members.slice().sort(function(a,b){return b.ptsForTeam-a.ptsForTeam;});
       var top6=sorted.slice(0,6);
-      var base=top6.length>0?Math.round(top6.reduce(function(s,m){return s+m.ptsForTeam;},0)/top6.length):0;
+      // Toujours diviser par 6 : les places manquantes comptent 0. Pénalise les teams incomplètes.
+      var base=top6.length>0?Math.round(top6.reduce(function(s,m){return s+m.ptsForTeam;},0)/6):0;
       var extraMembers=Math.max(0,nb-6);
       var bonusPct=extraMembers*2;
       t._score=Math.round(base*(1+bonusPct/100));
