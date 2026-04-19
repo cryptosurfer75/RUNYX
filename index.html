@@ -9331,18 +9331,12 @@ async function checkAndClaimStreak(){
     newPhase=phase;
     newMisses=misses;
   } else {
-    // Série brisée : on incrémente le compteur d'arrêts
-    // On compte TOUS les jours manqués (count continue à avancer) et on les marque en rouge.
-    var daysSince=lastDate?_daysBetweenISO(lastDate,today):1;
-    newMisses=misses.slice();
-    // Jours manqués = count+1 .. count+(daysSince-1)
-    for(var di=1;di<daysSince;di++) newMisses.push(count+di);
-    newCount=count+daysSince; // aujourd'hui est réclamé
+    // Série brisée : compteur "jours consécutifs" repart à 1 (aujourd'hui = J1 de la nouvelle série)
+    newCount=1;
     newPhase=phase+1;
+    newMisses=[]; // historique effacé à chaque reset
     if(newPhase>=7){
-      // Chaîne morte : on reset pour que l'affichage repart vierge
       newCount=0;
-      newMisses=[];
     }
   }
 
@@ -9409,8 +9403,7 @@ function updateStreakDisplay(count, phase, misses){
   // Bandeau streak sous la PC
   var statEl=document.getElementById('stat-streak');
   if(statEl){
-    var claimed=count-misses.length;
-    statEl.textContent=claimed+' jour'+(claimed>1?'s':'')+' réclamé'+(claimed>1?'s':'')+(misses.length?' · '+misses.length+' loupé'+(misses.length>1?'s':''):'');
+    statEl.textContent=count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'');
   }
 
   // Dots — défilement en packs (max 9 dots pour tenir sur 1 ligne mobile)
