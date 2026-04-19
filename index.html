@@ -581,12 +581,18 @@ body::before{
   #league-main-panel .runner-name{
     min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;
   }
+
+  /* Player Card : éviter que les 3 badges (grade, league, rank) poussent le blason/drapeau
+     hors écran quand les valeurs sont longues. On compresse la grille 68/1fr/64 et on force
+     la colonne centrale à pouvoir rétrécir. */
+  [style*="grid-template-columns:68px 1fr 64px"]{grid-template-columns:54px minmax(0,1fr) 54px !important;gap:.4rem !important}
+  #pc-badge-grade,#pc-badge-league,#pc-badge-rank{font-size:.56rem !important;padding:.18rem .32rem !important;letter-spacing:.8px !important}
 }
 
 @media(max-width:380px){
   .nav-tab{font-size:.6rem;padding:.22rem .4rem}
   .nav-logo{font-size:1rem;letter-spacing:2px}
-  [style*="grid-template-columns:68px 1fr 64px"]{grid-template-columns:52px 1fr 52px !important}
+  [style*="grid-template-columns:68px 1fr 64px"]{grid-template-columns:48px minmax(0,1fr) 48px !important;gap:.3rem !important}
 }
 </style>
 <style>
@@ -1102,7 +1108,7 @@ select option{background:#040c1c}
     </div>
 
     <!-- Watermark -->
-    <div style="position:absolute;right:-6px;bottom:-8px;font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:4px;color:rgba(245,200,66,.04);pointer-events:none">RL</div>
+    <div style="position:absolute;right:-6px;bottom:-8px;font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:4px;color:rgba(245,200,66,.04);pointer-events:none">SL</div>
   </div>
   </div>
 
@@ -5037,7 +5043,7 @@ function initLandsMap(){
   if(_landsMap) return;
   var container=document.getElementById('lands-map');
   if(!container) return;
-  // Centrer sur Paris par défaut
+  // Centrer sur Paris par défaut — recentré ensuite sur la dernière course (voir centerMapOnLatestRun)
   _landsMap=L.map('lands-map',{
     center:[49.8941,2.3025],
     zoom:14,
@@ -5051,6 +5057,30 @@ function initLandsMap(){
   _landsHexLayer=L.layerGroup().addTo(_landsMap);
   // Charger les lands existantes
   loadLandsOnMap();
+}
+
+// Centre la carte sur le premier point du polyline de la dernière course du joueur.
+// Permet de tomber directement sur la zone de la dernière sortie (ex: Dieppe pour un joueur
+// qui habite à Amiens). N'écrase pas une vue déjà forcée (exploration en attente, etc.).
+async function centerMapOnLatestRun(){
+  if(!_landsMap||!currentUser) return;
+  try {
+    var {data:runs}=await supabaseClient
+      .from('runs')
+      .select('polyline,run_date')
+      .eq('player_id',currentUser.id)
+      .not('polyline','is',null)
+      .order('run_date',{ascending:false})
+      .limit(1);
+    if(!runs||!runs.length||!runs[0].polyline) return;
+    var pts=decodePolyline(runs[0].polyline);
+    if(!pts||!pts.length) return;
+    // Utilise le premier point (point de départ)
+    var start=pts[0];
+    _landsMap.setView([start[0],start[1]],15);
+  } catch(e){
+    console.warn('[centerMapOnLatestRun] failed:',e);
+  }
 }
 
 var _rpColorPalette=['#ff6020','#9060f0','#e040a0','#20d0e0','#ff4444','#c07030','#60c0ff','#ff9020','#40e080','#d060d0','#80a0ff','#e8a020','#20b080','#ff6699','#8844cc'];
@@ -8621,12 +8651,18 @@ function nav(page){
   // Initialiser la carte Lands quand on y navigue
   if(page==='lands'){
     setTimeout(function(){
+      var _wasAlreadyInit=!!_landsMap;
       if(typeof initLandsMap==='function') initLandsMap();
       if(_landsMap) _landsMap.invalidateSize();
       if(typeof loadLandsOnMap==='function') loadLandsOnMap();
       if(typeof renderMyLands==='function') renderMyLands();
       if(typeof loadAcquisitionRight==='function') loadAcquisitionRight();
       if(typeof loadMapColor==='function') loadMapColor();
+      // Recentre sur la dernière course du joueur (sauf si une exploration en attente force déjà la vue)
+      var _hasRecent=window._recentExploredHexes&&window._recentExploredHexes.length>0;
+      if(!_wasAlreadyInit && !_hasRecent && typeof centerMapOnLatestRun==='function'){
+        centerMapOnLatestRun();
+      }
       // Vérifier les explorations en attente
       if(_lastExploredHexes.length>0){
         var finBtn=document.getElementById('lands-finish-btn');
