@@ -11412,8 +11412,26 @@ function _setChallengesExtraPage(p){
   renderChallenges();
 }
 
-// Met à jour les pastilles "challenge actif" (nav Feed + onglet Challenges) sans rendre
-// toute la page des défis. Appelée au login pour allumer la pastille dès l'arrivée.
+// Clés localStorage pour marquer les challenges déjà vus par ce user
+function _seenChallengesKey(){
+  return currentUser?('seen-challenges-'+currentUser.id):null;
+}
+function _getSeenChallenges(){
+  var k=_seenChallengesKey();
+  if(!k) return [];
+  try { return JSON.parse(localStorage.getItem(k)||'[]'); } catch(e) { return []; }
+}
+function _markChallengesAsSeen(ids){
+  var k=_seenChallengesKey();
+  if(!k) return;
+  var current=_getSeenChallenges();
+  var merged=Array.from(new Set(current.concat(ids)));
+  localStorage.setItem(k,JSON.stringify(merged));
+}
+
+// Met à jour les pastilles "nouveau challenge" (nav Races + onglet Challenges).
+// La pastille s'affiche UNIQUEMENT s'il existe au moins un challenge actif jamais vu
+// par ce user. Elle s'éteint quand le RP visite l'onglet Challenges.
 async function updateChallengeNavBadge(){
   if(!currentUser) return;
   try {
@@ -11426,16 +11444,19 @@ async function updateChallengeNavBadge(){
     // 2. Badges déjà débloqués
     var {data:unlocked}=await supabaseClient.from('player_badges').select('badge_id').eq('player_id',currentUser.id);
     var unlockedIds=new Set((unlocked||[]).map(function(u){return u.badge_id;}));
-    // 3. Détection d'un challenge actif (non débloqué + date non passée)
-    var hasActive=_badgesCatalog.some(function(b){
+    // 3. Liste des challenges actifs (non débloqués, non passés)
+    var activeChallenges=_badgesCatalog.filter(function(b){
       return b.threshold_type==='event_run' && !unlockedIds.has(b.id)
         && b.event_date && (b.event_date_end || b.event_date) >= today;
     });
-    // 4. Applique l'état aux pastilles
+    // 4. Filtre ceux jamais vus
+    var seenIds=new Set(_getSeenChallenges());
+    var hasUnseen=activeChallenges.some(function(b){return !seenIds.has(b.id);});
+    // 5. Applique l'état aux pastilles
     var nav=document.getElementById('feed-challenge-badge');
-    if(nav) nav.style.display=hasActive?'block':'none';
+    if(nav) nav.style.display=hasUnseen?'block':'none';
     var tab=document.getElementById('challenges-tab-events-badge');
-    if(tab) tab.style.display=hasActive?'block':'none';
+    if(tab) tab.style.display=hasUnseen?'block':'none';
   } catch(e){ console.warn('[updateChallengeNavBadge]',e); }
 }
 
@@ -11462,6 +11483,18 @@ function switchChallengesTab(tab){
       tabDefis.style.background='transparent';
       tabDefis.style.color='var(--muted2)';
     }
+  }
+  // Quand on ouvre l'onglet Challenges : on marque tous les events actifs comme "vus"
+  // → les pastilles Races + onglet Challenges s'éteignent jusqu'à l'ajout d'un nouveau challenge
+  if(tab==='events'){
+    var today=new Date().toISOString().slice(0,10);
+    var activeIds=(_badgesCatalog||[]).filter(function(b){
+      return b.threshold_type==='event_run'
+        && b.event_date && (b.event_date_end || b.event_date) >= today;
+    }).map(function(b){return b.id;});
+    if(activeIds.length) _markChallengesAsSeen(activeIds);
+    // Rafraîchir les pastilles
+    if(typeof updateChallengeNavBadge==='function') updateChallengeNavBadge();
   }
   renderChallenges();
 }
