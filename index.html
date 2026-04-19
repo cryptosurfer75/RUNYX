@@ -7253,10 +7253,20 @@ async function shareRunCard(runId){
   if(!player) return;
   var km=run.distance||0;
   var timeMin=run.time||0;
-  var spd=timeMin>0?Math.round(km/(timeMin/60)*10)/10:0;
   var elv=run.elevation||0;
   var pts=run.points||0;
   var dateStr=run.run_date?new Date(run.run_date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+  // Formate le temps : < 1h → "MM:SS" · >= 1h → "H:MM:SS"
+  var timeStr;
+  if(timeMin<=0) timeStr='—';
+  else {
+    var totalSec=Math.round(timeMin*60);
+    var h=Math.floor(totalSec/3600);
+    var m=Math.floor((totalSec-h*3600)/60);
+    var s=totalSec-h*3600-m*60;
+    var pad=function(n){return n<10?'0'+n:''+n;};
+    timeStr=(h>0)?(h+':'+pad(m)+':'+pad(s)):(m+':'+pad(s));
+  }
 
   // Créer le canvas
   var cv=document.createElement('canvas');
@@ -7331,7 +7341,7 @@ async function shareRunCard(runId){
   // Stats — 4 blocs
   var stats=[
     {label:'DISTANCE',value:km+' km',color:'#20d0e0'},
-    {label:'VITESSE',value:spd+' km/h',color:'#2ddb80'},
+    {label:'TEMPS',value:timeStr,color:'#2ddb80'},
     {label:'DÉNIVELÉ',value:elv+' m',color:'#ff8040'},
     {label:'POINTS',value:pts.toLocaleString('fr'),color:'#f5c842'}
   ];
