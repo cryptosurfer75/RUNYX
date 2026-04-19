@@ -819,8 +819,8 @@ select option{background:#040c1c}
     <button class="nav-tab active" onclick="navPlayerCard()">Player Card</button>
     <button class="nav-tab" onclick="nav('teams')" style="position:relative">Teams<span id="team-notif-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#4a90ff"></span></button>
     <button class="nav-tab"        onclick="nav('lands')">Lands</button>
-    <button class="nav-tab"        onclick="nav('points')">Races</button>
-    <button class="nav-tab" onclick="nav('social')" style="position:relative">Feed<span id="feed-challenge-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span></button>
+    <button class="nav-tab" onclick="nav('points')" style="position:relative">Races<span id="feed-challenge-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span></button>
+    <button class="nav-tab"        onclick="nav('social')">Feed</button>
     <button class="nav-tab"        onclick="nav('economy')">Market</button>
     <button class="nav-tab"        onclick="nav('access')">Premium</button>
     <button class="nav-tab" id="nav-tab-admin" onclick="nav('admin')" style="display:none;color:var(--red)">⚙ Admin</button>
@@ -11318,6 +11318,7 @@ async function renderChallenges(){
     var progressTxt;
     var eventBanner='';
     var eventBtn='';
+    var _unregBtn='';
     if(isUnlocked){
       var d=new Date(unlockedMap[b.id]);
       progressTxt='Débloqué le '+d.toLocaleDateString('fr',{day:'2-digit',month:'short'});
@@ -11341,6 +11342,8 @@ async function renderChallenges(){
         var hasParticipated=localStorage.getItem(participatedKey)==='1';
         if(hasParticipated){
           eventBtn='<div style="margin-top:.35rem;padding:.25rem .5rem;border-radius:5px;background:rgba(45,219,128,.12);border:1px solid rgba(45,219,128,.3);color:#2ddb80;font-size:.52rem;font-weight:700;letter-spacing:.3px">✓ Inscrit</div>';
+          // Croix rouge en haut à droite pour se désinscrire (seulement si inscrit + event non passé + non validé)
+          _unregBtn='<span onclick="event.stopPropagation();unregisterEvent('+b.id+',\''+(b.name||'').replace(/'/g,"\\'")+'\')" title="Se désinscrire" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ff4444;color:#fff;font-size:.7rem;font-weight:700;line-height:20px;text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);border:1.5px solid rgba(255,255,255,.15);z-index:5">✕</span>';
         } else {
           eventBtn='<button onclick="event.stopPropagation();participateEvent('+b.id+',\''+(b.name||'').replace(/'/g,"\\'")+'\')" style="margin-top:.35rem;padding:.25rem .5rem;border-radius:5px;border:1.5px solid '+color+';background:'+color+'1a;color:'+color+';font-size:.55rem;font-weight:700;cursor:pointer;letter-spacing:.3px;width:100%">PARTICIPER</button>';
         }
@@ -11358,9 +11361,10 @@ async function renderChallenges(){
     var cardShadow=isUnlocked?'box-shadow:0 4px 18px '+color+'30;':(isEvent?'box-shadow:0 2px 10px '+color+'18;':'');
     var breatheClass=isUnlocked?' badge-breathe':'';
     return '<div onclick="showBadgeDetail('+b.id+')" class="badge-card'+breatheClass+'" style="cursor:pointer;padding:'+(isEvent?'1.4rem':'0.75rem')+' .45rem .55rem;border-radius:11px;background:linear-gradient(155deg,rgba(20,25,35,.9),rgba(8,12,20,.95));border:1px solid '+cardBorder+';'+cardShadow+'text-align:center;transition:transform .15s ease;position:relative">'
+      +_unregBtn
       +eventBanner
       +'<div style="width:94px;height:108px;margin:0 auto .5rem">'+_renderBadgeHex(b,isUnlocked)+'</div>'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.3px;color:'+nameColor+';line-height:1.05;margin-bottom:.3rem;min-height:1.8em;display:flex;align-items:center;justify-content:center;padding:0 .1rem">'+b.name+'</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.3px;color:'+nameColor+';line-height:1.05;margin-bottom:.3rem;min-height:1.8em;display:flex;align-items:center;justify-content:center;padding:0 .1rem">'+(b.name||'—')+'</div>'
       +(isUnlocked
           ?'<div style="font-size:.56rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'
           : (isEvent
@@ -11472,6 +11476,16 @@ function participateEvent(badgeId,badgeName){
   if(typeof renderChallenges==='function') renderChallenges();
 }
 
+// Désinscription d'un événement : supprime le flag d'inscription, le bouton
+// "PARTICIPER" réapparaît et le RP peut re-valider plus tard.
+function unregisterEvent(badgeId,badgeName){
+  if(!currentUser) return;
+  var key='participated-'+badgeId+'-'+currentUser.id;
+  localStorage.removeItem(key);
+  showToast('🗙 Inscription retirée pour "'+(badgeName||'l\'événement')+'"');
+  if(typeof renderChallenges==='function') renderChallenges();
+}
+
 function toggleChallenges(){
   var extraWrap=document.getElementById('challenges-extra-wrap');
   var grid=document.getElementById('challenges-grid');
@@ -11497,7 +11511,7 @@ function showBadgeDetail(badgeId){
   var rewards=[];
   if(b.reward_rpc) rewards.push('+'+b.reward_rpc.toLocaleString('fr')+' RPC');
   if(b.reward_nyx) rewards.push('+'+b.reward_nyx+' 💎 NYX');
-  document.getElementById('lm-title').textContent='🎖️ '+b.name;
+  document.getElementById('lm-title').textContent='🎖️ '+(b.name||'Badge');
   document.getElementById('lm-sub').textContent='';
   document.getElementById('lm-body').innerHTML=''
     +'<div style="text-align:center;padding:1rem .5rem">'
