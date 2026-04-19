@@ -9174,24 +9174,32 @@ async function checkReferralSameTeam(teamId){
 // Phase 2 (après 1 break) : 50 RPC/jour
 // Phase 0 (après 2 breaks) : plus de bonus
 
+// phase = nombre d'arrêts accumulés (0 = jamais cassé, 7 = chaîne morte).
+// Barème : phase 0 → 300 RPC (j1-7) puis 100 RPC · phase 1 → 80 · phase 2 → 50
+// puis -10 à chaque arrêt (phase 3 = 40, 4 = 30, 5 = 20, 6 = 10, 7 = chaîne morte).
 function getStreakReward(phase, count){
-  if(phase===0) return 0;
-  if(phase===2) return 50;
-  // Phase 1
-  if(count<=7) return 300;
-  return 100;
+  if(phase>=7) return 0;
+  if(phase===0) return count<=7 ? 300 : 100;
+  if(phase===1) return 80;
+  return 70 - phase*10;
 }
 
 function getStreakMessage(phase, count, reward){
-  if(phase===0) return {emoji:'💔',title:'Série terminée',sub:'Tu as épuisé tes chances',reward:'',info:'La série de connexion est définitivement terminée.'};
+  if(phase>=7) return {emoji:'💔',title:'Série terminée',sub:'Tu as épuisé tes chances',reward:'',info:'Tu as accumulé 7 arrêts — la série de connexion est définitivement terminée.'};
   var emoji=count<=3?'🔥':count<=7?'🔥🔥':count<=14?'🔥🔥🔥':'⚡';
   var milestones={7:'🎯 1 semaine complète !',14:'💪 2 semaines !',30:'🏆 1 mois de suite !',50:'👑 50 jours !',100:'🌟 100 jours légendaire !'};
   var bonus=milestones[count]||'';
   var title=count===1?'Première connexion !':'Jour '+count+' !';
-  var sub=phase===2?'Chaîne de rattrapage · '+count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'')
-    :count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'');
-  var info=phase===2?'⚠️ Dernière chance — un jour raté = fin définitive'
-    :(count<=7?'Jours 1-7 : 300 RPC/jour · Ensuite : 100 RPC/jour de connexion continue':'100 RPC/jour · Continue la série !');
+  var sub=phase===0
+    ? count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'')
+    : 'Après '+phase+' arrêt'+(phase>1?'s':'')+' · '+count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'');
+  var info;
+  if(phase===0){
+    info=count<=7?'Jours 1-7 : 300 RPC/jour · Ensuite : 100 RPC/jour':'100 RPC/jour · Continue la série !';
+  } else {
+    var next=Math.max(0,getStreakReward(phase+1,1));
+    info='⚠️ '+reward+' RPC/jour · Un nouvel arrêt te fera passer à '+next+' RPC/jour'+(phase>=6?' (fin de série)':'');
+  }
   if(bonus) info=bonus+'<br>'+info;
   return {emoji:emoji,title:title,sub:sub,reward:'+'+reward+' RPC',info:info};
 }
@@ -9207,7 +9215,8 @@ async function checkAndClaimStreak(){
   var today=getParisTodayStr();
   var lastDate=player.streak_last_date;
   var count=player.streak_count||0;
-  var phase=player.streak_phase!=null?player.streak_phase:1;
+  // phase = nombre d'arrêts accumulés (0 = jamais cassé, 7 = chaîne morte)
+  var phase=player.streak_phase!=null?player.streak_phase:0;
 
   // Déjà réclamé aujourd'hui ?
   if(lastDate===today){
@@ -9215,9 +9224,9 @@ async function checkAndClaimStreak(){
     return;
   }
 
-  // Plus de bonus (phase 0)
-  if(phase===0){
-    updateStreakDisplay(0,0);
+  // Chaîne morte (7 arrêts ou plus)
+  if(phase>=7){
+    updateStreakDisplay(0,phase);
     return;
   }
 
@@ -9230,15 +9239,12 @@ async function checkAndClaimStreak(){
     newCount=count+1;
     newPhase=phase;
   } else {
-    // Série brisée !
-    if(phase===1){
-      // Phase 1 → Phase 2
-      newCount=1;
-      newPhase=2;
-    } else {
-      // Phase 2 → Terminé (phase 0)
+    // Série brisée : on incrémente le compteur d'arrêts
+    newCount=1;
+    newPhase=phase+1;
+    // 7 arrêts = chaîne morte définitive
+    if(newPhase>=7){
       newCount=0;
-      newPhase=0;
     }
   }
 
@@ -9317,18 +9323,20 @@ function updateStreakDisplay(count, phase){
   }
 
   // Info inline dans le bandeau streak
+  // phase = nombre d'arrêts (0 = jamais cassé, 7 = chaîne morte)
   var infoEl=document.getElementById('streak-inline-info');
   if(infoEl){
-    if(phase===0){
-      infoEl.innerHTML='❌ Série terminée';
-    } else if(phase===2){
-      infoEl.innerHTML='<span style="color:var(--orange)">⚠️ Chaîne de rattrapage</span> · <strong style="color:var(--gold)">50 RPC/jour</strong>';
-    } else {
+    if(phase>=7){
+      infoEl.innerHTML='❌ Série terminée — 7 arrêts atteints';
+    } else if(phase===0){
       if(count<=7){
         infoEl.innerHTML='Jours 1-7 : <strong style="color:var(--gold)">300 RPC/jour</strong> · Ensuite : 100 RPC/jour';
       } else {
         infoEl.innerHTML='<strong style="color:var(--gold)">100 RPC/jour</strong> · Série active depuis '+count+' jours';
       }
+    } else {
+      var curReward=(typeof getStreakReward==='function')?getStreakReward(phase,count):0;
+      infoEl.innerHTML='<span style="color:var(--orange)">⚠️ '+phase+' arrêt'+(phase>1?'s':'')+'</span> · <strong style="color:var(--gold)">'+curReward+' RPC/jour</strong>';
     }
   }
 }
