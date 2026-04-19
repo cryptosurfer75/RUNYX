@@ -3660,7 +3660,10 @@ function computePts(km,spd,elv,boost){
   // C — Points dénivelé
   const divD=12+4*(elv/(elv+1000));
   const C=(elv/d)*(A/divD);
-  const res=A+B+C;
+  let res=A+B+C;
+  // Malus marche : en dessous de 7 km/h, facteur progressif (spd/7)²
+  // Ex : 3 km/h → 18% · 5 km/h → 51% · 6 km/h → 73% · 6.9 km/h → 97% · ≥7 km/h → 100%
+  if(spd<7) res*=Math.pow(spd/7,2);
   return boost?res*1.1:res;
 }
 
