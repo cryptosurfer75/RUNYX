@@ -586,7 +586,7 @@ body::before{
      hors écran quand les valeurs sont longues. On compresse la grille 68/1fr/64 et on force
      la colonne centrale à pouvoir rétrécir. */
   [style*="grid-template-columns:68px 1fr 64px"]{grid-template-columns:54px minmax(0,1fr) 54px !important;gap:.4rem !important}
-  #pc-badge-grade,#pc-badge-league,#pc-badge-rank{font-size:.56rem !important;padding:.18rem .32rem !important;letter-spacing:.8px !important}
+  #pc-badge-grade,#pc-badge-league{font-size:.56rem !important;padding:.18rem .32rem !important;letter-spacing:.8px !important}
 }
 
 @media(max-width:380px){
@@ -820,7 +820,7 @@ select option{background:#040c1c}
     <button class="nav-tab" onclick="nav('teams')" style="position:relative">Teams<span id="team-notif-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#4a90ff"></span></button>
     <button class="nav-tab"        onclick="nav('lands')">Lands</button>
     <button class="nav-tab"        onclick="nav('points')">Races</button>
-    <button class="nav-tab"        onclick="nav('social')">Feed</button>
+    <button class="nav-tab" onclick="nav('social')" style="position:relative">Feed<span id="feed-challenge-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span></button>
     <button class="nav-tab"        onclick="nav('economy')">Market</button>
     <button class="nav-tab"        onclick="nav('access')">Premium</button>
     <button class="nav-tab" id="nav-tab-admin" onclick="nav('admin')" style="display:none;color:var(--red)">⚙ Admin</button>
@@ -881,12 +881,13 @@ select option{background:#040c1c}
       <div onclick="showParrainageInfo()" title="Mon code parrainage" style="
         width:38px;height:38px;border-radius:8px;
         background:rgba(245,200,66,.1);border:1.5px solid rgba(245,200,66,.5);
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        display:flex;align-items:center;justify-content:center;
         cursor:pointer;transition:all .18s;flex-shrink:0;position:relative;
       " onmouseover="this.style.background='rgba(245,200,66,.22)';this.style.borderColor='rgba(245,200,66,.9)'"
          onmouseout="this.style.background='rgba(245,200,66,.1)';this.style.borderColor='rgba(245,200,66,.5)'">
-        <span style="font-size:1.25rem;line-height:1">🤝</span>
-        <span style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#060810;border:1px solid rgba(245,200,66,.6);font-family:'Bebas Neue',sans-serif;font-size:.6rem;line-height:14px;color:var(--gold);display:flex;align-items:center;justify-content:center" id="parrainage-letter">·</span>
+        <!-- 🤝 par défaut (teaser sans titre) · remplacé par la lettre A/G/E/F dès qu'un titre est obtenu -->
+        <span id="parrainage-emoji" style="font-size:1.25rem;line-height:1">🤝</span>
+        <span id="parrainage-letter" style="display:none;font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:1px;line-height:1;color:var(--gold)">·</span>
       </div>
       <!-- Flèche DROITE (monter le classement = plus de points) -->
       <button onclick="navPcRank(-1)" title="Classement supérieur" style="
@@ -997,13 +998,6 @@ select option{background:#040c1c}
             font-family:'Bebas Neue',sans-serif;font-size:.62rem;letter-spacing:1px;
             color:#20c060;white-space:nowrap;flex-shrink:0;
           " id="pc-badge-league">—</div>
-          <!-- Ranking actuel uniquement -->
-          <div style="
-            padding:.22rem .45rem;border-radius:4px;
-            background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.25);
-            font-family:'Space Mono',monospace;font-size:.62rem;font-weight:700;
-            color:#ffffff;white-space:nowrap;flex-shrink:0;
-          " id="pc-badge-rank">—</div>
         </div>
       </div>
 
@@ -1103,7 +1097,7 @@ select option{background:#040c1c}
       </div>
       <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🏆</span>
-        <div><div id="stat-best-rank" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:#ffffff">#435</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Best ranking</div></div>
+        <div><div id="stat-best-rank" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:#ffffff">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Ranking actuel</div></div>
       </div>
 
     </div>
@@ -1262,9 +1256,6 @@ select option{background:#040c1c}
     <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Historique & simulateur</div>
   </div>
 
-  <!-- Stats résumées -->
-  <div id="run-stats-row" class="stat-row" style="margin-bottom:1rem"></div>
-
   <!-- Historique -->
   <div class="block" style="margin-bottom:1.25rem">
     <div class="block-header">
@@ -1288,10 +1279,18 @@ select option{background:#040c1c}
   <!-- Les Défis / Badges -->
   <div class="block" style="margin-bottom:1.25rem">
     <div class="block-header">
-      <div class="block-title">🎖️ Les <span class="hl">Défis</span></div>
+      <div class="block-title">🎖️ Mes <span class="hl">Défis</span> / <span id="challenges-challenge-label" style="color:var(--muted2)">Challenges</span></div>
       <div id="challenges-summary" style="font-size:.65rem;color:var(--muted2)">—</div>
     </div>
     <div style="padding:.6rem .6rem 1rem">
+      <!-- Onglets Défis / Challenges -->
+      <div style="display:flex;gap:.3rem;margin-bottom:.8rem;border-bottom:1px solid var(--border);padding-bottom:.45rem">
+        <button id="challenges-tab-defis" onclick="switchChallengesTab('defis')" style="flex:1;padding:.35rem .6rem;border-radius:5px;border:1px solid var(--gold);background:rgba(245,200,66,.12);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer">🎖️ Défis</button>
+        <button id="challenges-tab-events" onclick="switchChallengesTab('events')" style="flex:1;position:relative;padding:.35rem .6rem;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer">
+          🏁 Challenges
+          <span id="challenges-tab-events-badge" style="display:none;position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span>
+        </button>
+      </div>
       <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
       <div id="challenges-extra-wrap" style="display:none;margin-top:.6rem">
         <div id="challenges-extra" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
@@ -2979,6 +2978,10 @@ async function onLoginSuccess(user, isNew){
   if(typeof triggerBadgeCheck==='function'){
     setTimeout(function(){ triggerBadgeCheck(); }, 5000);
   }
+  // Allume la pastille "challenge actif" sur la nav Feed dès le login
+  if(typeof updateChallengeNavBadge==='function'){
+    setTimeout(function(){ updateChallengeNavBadge(); }, 2000);
+  }
   // Notifications parrainage — après le streak (délai plus long)
   if(typeof checkReferralNotifications==='function'){
     setTimeout(function(){ checkReferralNotifications(); }, isNew?4000:3000);
@@ -3769,10 +3772,9 @@ function renderDashboard(){
         leagueEl.style.borderColor='rgba('+hexToRgb(league.color)+',.4)';
       }
     }
-    // Badge rang global (tous les RP, toutes leagues, période actuelle)
+    // Classement global (tous les RP, toutes leagues, période actuelle) — affiché dans les stats
     var allSorted=PLAYERS.slice().sort(function(a,b){return b.pts-a.pts;});
     var globalRank=allSorted.findIndex(function(x){return x.id===p.id;})+1||'—';
-    set('pc-badge-rank','#'+globalRank);
     // Stats grille — charger depuis Supabase
     var _statUid=p._uuid||(isOwn&&currentUser?currentUser.id:null);
     set('stat-pts-cum','—');set('stat-km','—');set('stat-elv','—');
@@ -3783,7 +3785,7 @@ function renderDashboard(){
       (async function(){
         // Charger runs de la période en cours + cumulés historiques
         var {data:allR}=await supabaseClient.from('runs').select('distance,time,elevation,points').eq('player_id',_statUid).eq('period',0);
-        var {data:cumData}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated,rpc_balance').eq('id',_statUid).single();
+        var {data:cumData}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated,rpc_cumulated').eq('id',_statUid).single();
         var currentPts=0,currentKm=0,currentElv=0,currentTime=0,currentRuns=(allR||[]).length;
         (allR||[]).forEach(function(r){
           currentPts+=(r.points||0);
@@ -3804,8 +3806,8 @@ function renderDashboard(){
         set('stat-elv', totalElv>0?(totalElv.toLocaleString('fr')+' m'):'0 m');
         set('stat-sorties', nbCourses>0?nbCourses:'0');
         set('stat-heures', totalTime>0?(heures+'h'+String(minutes).padStart(2,'0')):'0 h');
-        set('stat-rpc', cumData?(cumData.rpc_balance||0).toLocaleString('fr'):'0');
-        // Best ranking = rang global actuel (sera pertinent avec plus de RP)
+        set('stat-rpc', cumData?(cumData.rpc_cumulated||0).toLocaleString('fr'):'0');
+        // Ranking actuel = position globale du joueur (évolue chaque jour)
         set('stat-best-rank', '#'+globalRank);
         // Périodes actives = périodes passées hors Starter + courante si hors Starter et courses
         var {data:palData}=await supabaseClient.from('palmares').select('period,league_key').eq('player_id',_statUid);
@@ -4973,8 +4975,17 @@ async function loadParrainageData(playerId){
   }
   _parrainageCache={count:count,titre:info.titre,lettre:info.lettre,color:info.color,filleuls:filleuls,parrainName:parrainName};
   // Mettre à jour le carré sur la PC
-  var el=document.getElementById('parrainage-letter');
-  if(el){el.textContent=info.lettre;el.style.color=info.color;}
+  // Sans titre (count < 10) → affiche le 🤝 en teaser
+  // Avec titre (A/G/E/F) → la lettre colorée remplace le 🤝
+  var elEmoji=document.getElementById('parrainage-emoji');
+  var elLetter=document.getElementById('parrainage-letter');
+  var hasTitle=info.lettre && info.lettre!=='·';
+  if(elEmoji) elEmoji.style.display=hasTitle?'none':'block';
+  if(elLetter){
+    elLetter.textContent=info.lettre;
+    elLetter.style.color=info.color;
+    elLetter.style.display=hasTitle?'block':'none';
+  }
 }
 
 async function showParrainageInfo(){
@@ -8906,9 +8917,9 @@ function getParisYesterdayStr(){
 // Charger le wallet depuis la DB et afficher dans la nav
 async function walletLoad(){
   if(!currentUser) return;
-  var {data}=await supabaseClient.from('players').select('rpc_balance,nyx_balance').eq('id',currentUser.id).single();
+  var {data}=await supabaseClient.from('players').select('rpc_balance,nyx_balance,rpc_cumulated').eq('id',currentUser.id).single();
   if(data){
-    window.__wallet={rpc:data.rpc_balance||0,nyx:data.nyx_balance||0};
+    window.__wallet={rpc:data.rpc_balance||0,nyx:data.nyx_balance||0,rpcCum:data.rpc_cumulated||0};
     walletRefreshUI();
   }
 }
@@ -8928,14 +8939,19 @@ async function walletCredit(rpc, nyx, reason){
   var w=window.__wallet||{rpc:0,nyx:0};
   var newRpc=w.rpc+(rpc||0);
   var newNyx=w.nyx+(nyx||0);
-  // XHR direct pour contourner RLS
+  // rpc_cumulated : on incrémente uniquement sur les crédits positifs
+  var payload={rpc_balance:newRpc, nyx_balance:newNyx};
+  if((rpc||0)>0){
+    var oldCum=(window.__wallet&&window.__wallet.rpcCum)||0;
+    payload.rpc_cumulated=oldCum+rpc;
+  }
   var resp=await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
     method:'PATCH',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({rpc_balance:newRpc, nyx_balance:newNyx})
+    body:JSON.stringify(payload)
   });
   if(!resp.ok){return false;}
-  window.__wallet={rpc:newRpc,nyx:newNyx};
+  window.__wallet={rpc:newRpc,nyx:newNyx,rpcCum:payload.rpc_cumulated||(window.__wallet&&window.__wallet.rpcCum)||0};
   walletRefreshUI();
   return true;
 }
@@ -9044,14 +9060,17 @@ function renderLicenceBuyButtons(){
 
 // Créditer le wallet d'un AUTRE joueur (parrainage)
 async function walletCreditOther(playerId, rpc, nyx, reason){
-  var {data}=await supabaseClient.from('players').select('rpc_balance,nyx_balance').eq('id',playerId).single();
+  var {data}=await supabaseClient.from('players').select('rpc_balance,nyx_balance,rpc_cumulated').eq('id',playerId).single();
   if(!data) return false;
   var newRpc=(data.rpc_balance||0)+(rpc||0);
   var newNyx=(data.nyx_balance||0)+(nyx||0);
+  // rpc_cumulated : incrémenté uniquement sur les crédits positifs
+  var payload={rpc_balance:newRpc,nyx_balance:newNyx};
+  if((rpc||0)>0) payload.rpc_cumulated=(data.rpc_cumulated||0)+rpc;
   var resp=await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(playerId),{
     method:'PATCH',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({rpc_balance:newRpc,nyx_balance:newNyx})
+    body:JSON.stringify(payload)
   });
   if(!resp.ok){return false;}
   return true;
@@ -11140,8 +11159,19 @@ function _renderBadgeHex(b,isUnlocked){
   var uid='bg'+b.id+(isUnlocked?'u':'l');
   var pat='pat'+uid;
   var ribbon=_badgeRibbonLabel(b);
+  // Rectangle année sous le hexagone (events seulement)
+  var yearRect='';
+  if(b.threshold_type==='event_run' && b.event_date){
+    var year=b.event_date.slice(0,4);
+    var rectFill=isUnlocked?color:'#2a303c';
+    var rectStroke=isUnlocked?_mixHex(color,0.25):'#4a5062';
+    var rectTextCol=isUnlocked?'#000':'#9098a8';
+    yearRect=''
+      +'  <rect x="35" y="100" width="30" height="12" rx="2" fill="'+rectFill+'" stroke="'+rectStroke+'" stroke-width="0.6"/>'
+      +'  <text x="50" y="109" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="8.5" font-weight="900" letter-spacing="1.5" fill="'+rectTextCol+'">'+year+'</text>';
+  }
   return ''
-    +'<svg viewBox="0 0 100 115" style="width:100%;height:100%;'+glowStyle+'">'
+    +'<svg viewBox="0 0 100 118" style="width:100%;height:100%;'+glowStyle+'">'
     +'  <defs>'
     +'    <linearGradient id="'+uid+'" x1="0" y1="0" x2="0" y2="1">'
     +'      <stop offset="0%" stop-color="'+light+'"/>'
@@ -11152,18 +11182,20 @@ function _renderBadgeHex(b,isUnlocked){
     +'      <polygon points="5,0.5 9.3,3 9.3,8.5 5,11 0.7,8.5 0.7,3" fill="none" stroke="white" stroke-opacity="0.09" stroke-width="0.35"/>'
     +'    </pattern>'
     +'  </defs>'
-    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="black" opacity="0.28" transform="translate(0 3)"/>'
-    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="url(#'+uid+')" opacity="'+hexOp+'"/>'
-    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="url(#'+pat+')"/>'
-    +'  <polygon points="50,8 92,32 92,50 50,74 8,50 8,32" fill="white" opacity="0.11"/>'
-    +'  <polygon points="50,8 92,32 92,80 50,104 8,80 8,32" fill="none" stroke="'+borderCol+'" stroke-width="1.4"/>'
-    +'  <circle cx="50" cy="56" r="24" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.28)" stroke-width="0.8"/>'
-    +'  <foreignObject x="20" y="26" width="60" height="60"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:60px;height:60px;font-size:34px;opacity:'+iconOp+';filter:'+(isUnlocked?'none':'grayscale(.7)')+'">'+(b.icon||'🏆')+'</div></foreignObject>'
+    +'  <polygon points="50,5 88,27 88,73 50,95 12,73 12,27" fill="black" opacity="0.28" transform="translate(0 3)"/>'
+    +'  <polygon points="50,5 88,27 88,73 50,95 12,73 12,27" fill="url(#'+uid+')" opacity="'+hexOp+'"/>'
+    +'  <polygon points="50,5 88,27 88,73 50,95 12,73 12,27" fill="url(#'+pat+')"/>'
+    +'  <polygon points="50,5 88,27 88,45 50,67 12,45 12,27" fill="white" opacity="0.11"/>'
+    +'  <polygon points="50,5 88,27 88,73 50,95 12,73 12,27" fill="none" stroke="'+borderCol+'" stroke-width="1.4"/>'
+    +'  <circle cx="50" cy="50" r="22" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.28)" stroke-width="0.8"/>'
+    +'  <foreignObject x="22" y="22" width="56" height="56"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:56px;height:56px;font-size:32px;opacity:'+iconOp+';filter:'+(isUnlocked?'none':'grayscale(.7)')+'">'+(b.icon||'🏆')+'</div></foreignObject>'
+    +yearRect
     +'</svg>';
 }
 
 var _CHALLENGES_EXTRA_PAGE=0;
 var _CHALLENGES_PER_PAGE=8;
+var _CHALLENGES_TAB='defis'; // 'defis' (permanents) | 'events' (challenges datés)
 
 async function renderChallenges(){
   var grid=document.getElementById('challenges-grid');
@@ -11217,8 +11249,46 @@ async function renderChallenges(){
   var nbUnlocked=Object.keys(unlockedMap).length;
   var nbTotal=_badgesCatalog.length;
   if(summary) summary.textContent=nbUnlocked+' / '+nbTotal+' débloqués';
-  var list=_badgesCatalog.slice().sort(function(a,b){
+  var _today=new Date().toISOString().slice(0,10);
+  // Detecte s'il y a au moins un challenge (event_run) actif pour faire "briller" le label
+  var _hasActiveChallenge=_badgesCatalog.some(function(b){
+    return b.threshold_type==='event_run' && !unlockedMap[b.id]
+      && b.event_date && (b.event_date_end || b.event_date) >= _today;
+  });
+  var _challengeLbl=document.getElementById('challenges-challenge-label');
+  if(_challengeLbl){
+    if(_hasActiveChallenge){
+      _challengeLbl.style.color='var(--gold)';
+      _challengeLbl.style.textShadow='0 0 10px rgba(245,200,66,.45)';
+      _challengeLbl.innerHTML='Challenges <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2ddb80;margin-left:.25rem;vertical-align:middle;animation:onlinePulse 1.6s infinite"></span>';
+    } else {
+      _challengeLbl.style.color='var(--muted2)';
+      _challengeLbl.style.textShadow='none';
+      _challengeLbl.textContent='Challenges';
+    }
+  }
+  // Pastille sur le nav Feed + sur l'onglet Challenges
+  var _feedChallengeBadge=document.getElementById('feed-challenge-badge');
+  if(_feedChallengeBadge){
+    _feedChallengeBadge.style.display=_hasActiveChallenge?'block':'none';
+  }
+  var _tabEventsBadge=document.getElementById('challenges-tab-events-badge');
+  if(_tabEventsBadge){
+    _tabEventsBadge.style.display=_hasActiveChallenge?'block':'none';
+  }
+  // Filtrage par onglet : défis permanents vs challenges événementiels
+  var list=_badgesCatalog.slice().filter(function(b){
+    var isEvent=(b.threshold_type==='event_run');
+    return _CHALLENGES_TAB==='events' ? isEvent : !isEvent;
+  }).sort(function(a,b){
     var aU=!!unlockedMap[a.id], bU=!!unlockedMap[b.id];
+    // Priorité absolue : un event non débloqué et non passé passe DEVANT tout, même les débloqués
+    var aEvA=a.threshold_type==='event_run' && !aU && a.event_date && (a.event_date_end || a.event_date) >= _today;
+    var bEvA=b.threshold_type==='event_run' && !bU && b.event_date && (b.event_date_end || b.event_date) >= _today;
+    if(aEvA!==bEvA) return aEvA?-1:1;
+    if(aEvA && bEvA){
+      return (a.event_date||'').localeCompare(b.event_date||'');
+    }
     if(aU!==bU) return aU?-1:1;
     if(aU){
       return (new Date(unlockedMap[b.id])).getTime() - (new Date(unlockedMap[a.id])).getTime();
@@ -11244,10 +11314,37 @@ async function renderChallenges(){
     if(b.reward_nyx) rewardTxt.push('<span style="color:'+(isUnlocked?'var(--green)':'var(--muted2)')+'">+'+b.reward_nyx+' 💎</span>');
     // Badges "one-shot" : pas de barre de progression, juste un message "à réaliser"
     var isBinary=(b.threshold_type==='single_run_km'||b.threshold_type==='single_run_elv_m'||b.threshold_type==='speed_over_5km'||b.threshold_type==='simultaneous_lands');
+    var isEvent=(b.threshold_type==='event_run');
     var progressTxt;
+    var eventBanner='';
+    var eventBtn='';
     if(isUnlocked){
       var d=new Date(unlockedMap[b.id]);
       progressTxt='Débloqué le '+d.toLocaleDateString('fr',{day:'2-digit',month:'short'});
+    } else if(isEvent){
+      // Badge événementiel : bandeau date + bouton Participer si à venir
+      var today=new Date().toISOString().slice(0,10);
+      var startDay=b.event_date||'';
+      var endDay=b.event_date_end||b.event_date||'';
+      var status='upcoming';
+      if(today>endDay) status='past';
+      else if(today>=startDay) status='today';
+      var eventDate=startDay?new Date(startDay).toLocaleDateString('fr',{day:'2-digit',month:'short'}):'—';
+      var bannerColor=status==='today'?'#2ddb80':(status==='past'?'#5a6080':color);
+      var bannerLabel=status==='today'?'🔥 AUJOURD\'HUI':(status==='past'?'⏱ PASSÉ':'📅 '+eventDate.toUpperCase());
+      eventBanner='<div style="position:absolute;top:0;left:0;right:0;background:'+bannerColor+';color:#000;font-family:Bebas Neue,sans-serif;font-size:.55rem;letter-spacing:1px;padding:.15rem 0;text-align:center;font-weight:900;border-top-left-radius:11px;border-top-right-radius:11px">'+bannerLabel+'</div>';
+      progressTxt=target+' km requis';
+      // Bouton Participer : uniquement sur MA PC, pas quand je consulte un autre RP
+      var isOwnPC=!window.__viewedPlayer;
+      if(isOwnPC && status!=='past'){
+        var participatedKey='participated-'+b.id+'-'+currentUser.id;
+        var hasParticipated=localStorage.getItem(participatedKey)==='1';
+        if(hasParticipated){
+          eventBtn='<div style="margin-top:.35rem;padding:.25rem .5rem;border-radius:5px;background:rgba(45,219,128,.12);border:1px solid rgba(45,219,128,.3);color:#2ddb80;font-size:.52rem;font-weight:700;letter-spacing:.3px">✓ Inscrit</div>';
+        } else {
+          eventBtn='<button onclick="event.stopPropagation();participateEvent('+b.id+',\''+(b.name||'').replace(/'/g,"\\'")+'\')" style="margin-top:.35rem;padding:.25rem .5rem;border-radius:5px;border:1.5px solid '+color+';background:'+color+'1a;color:'+color+';font-size:.55rem;font-weight:700;cursor:pointer;letter-spacing:.3px;width:100%">PARTICIPER</button>';
+        }
+      }
     } else if(isBinary){
       if(b.threshold_type==='simultaneous_lands') progressTxt=target+' Lands en 60 min';
       else progressTxt='À réaliser en 1 course';
@@ -11257,18 +11354,21 @@ async function renderChallenges(){
       else if(b.threshold_type==='streak_days') progressTxt=current+' / '+target+' j';
       else progressTxt=current+' / '+target;
     }
-    var cardBorder=isUnlocked?(color+'55'):'rgba(255,255,255,.06)';
-    var cardShadow=isUnlocked?'box-shadow:0 4px 18px '+color+'30;':'';
+    var cardBorder=isUnlocked?(color+'55'):(isEvent?(color+'44'):'rgba(255,255,255,.06)');
+    var cardShadow=isUnlocked?'box-shadow:0 4px 18px '+color+'30;':(isEvent?'box-shadow:0 2px 10px '+color+'18;':'');
     var breatheClass=isUnlocked?' badge-breathe':'';
-    return '<div onclick="showBadgeDetail('+b.id+')" class="badge-card'+breatheClass+'" style="cursor:pointer;padding:.75rem .45rem .55rem;border-radius:11px;background:linear-gradient(155deg,rgba(20,25,35,.9),rgba(8,12,20,.95));border:1px solid '+cardBorder+';'+cardShadow+'text-align:center;transition:transform .15s ease">'
+    return '<div onclick="showBadgeDetail('+b.id+')" class="badge-card'+breatheClass+'" style="cursor:pointer;padding:'+(isEvent?'1.4rem':'0.75rem')+' .45rem .55rem;border-radius:11px;background:linear-gradient(155deg,rgba(20,25,35,.9),rgba(8,12,20,.95));border:1px solid '+cardBorder+';'+cardShadow+'text-align:center;transition:transform .15s ease;position:relative">'
+      +eventBanner
       +'<div style="width:94px;height:108px;margin:0 auto .5rem">'+_renderBadgeHex(b,isUnlocked)+'</div>'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.3px;color:'+nameColor+';line-height:1.05;margin-bottom:.3rem;min-height:1.8em;display:flex;align-items:center;justify-content:center;padding:0 .1rem">'+b.name+'</div>'
       +(isUnlocked
           ?'<div style="font-size:.56rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'
-          : (isBinary
-              ?'<div style="font-size:.55rem;color:var(--muted);font-style:italic">'+progressTxt+'</div>'
-              :'<div style="font-size:.55rem;color:var(--muted);font-family:Space Mono,monospace;margin-bottom:.3rem">'+progressTxt+'</div>'
-                +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,'+_mixHex(color,0.3)+','+color+');border-radius:2px;transition:width .4s"></div></div>'))
+          : (isEvent
+              ?'<div style="font-size:.55rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'+eventBtn
+              : (isBinary
+                  ?'<div style="font-size:.55rem;color:var(--muted);font-style:italic">'+progressTxt+'</div>'
+                  :'<div style="font-size:.55rem;color:var(--muted);font-family:Space Mono,monospace;margin-bottom:.3rem">'+progressTxt+'</div>'
+                    +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,'+_mixHex(color,0.3)+','+color+');border-radius:2px;transition:width .4s"></div></div>')))
       +(rewardTxt.length?'<div style="font-size:.52rem;color:var(--muted2);margin-top:.3rem;letter-spacing:.3px">'+rewardTxt.join(' · ')+'</div>':'')
     +'</div>';
   }
@@ -11306,6 +11406,70 @@ async function renderChallenges(){
 function _setChallengesExtraPage(p){
   _CHALLENGES_EXTRA_PAGE=p;
   renderChallenges();
+}
+
+// Met à jour les pastilles "challenge actif" (nav Feed + onglet Challenges) sans rendre
+// toute la page des défis. Appelée au login pour allumer la pastille dès l'arrivée.
+async function updateChallengeNavBadge(){
+  if(!currentUser) return;
+  try {
+    var today=new Date().toISOString().slice(0,10);
+    // 1. Catalogue (cache si déjà chargé)
+    if(!_badgesCatalog){
+      var {data:cat}=await supabaseClient.from('badges').select('*').order('sort_order');
+      _badgesCatalog=cat||[];
+    }
+    // 2. Badges déjà débloqués
+    var {data:unlocked}=await supabaseClient.from('player_badges').select('badge_id').eq('player_id',currentUser.id);
+    var unlockedIds=new Set((unlocked||[]).map(function(u){return u.badge_id;}));
+    // 3. Détection d'un challenge actif (non débloqué + date non passée)
+    var hasActive=_badgesCatalog.some(function(b){
+      return b.threshold_type==='event_run' && !unlockedIds.has(b.id)
+        && b.event_date && (b.event_date_end || b.event_date) >= today;
+    });
+    // 4. Applique l'état aux pastilles
+    var nav=document.getElementById('feed-challenge-badge');
+    if(nav) nav.style.display=hasActive?'block':'none';
+    var tab=document.getElementById('challenges-tab-events-badge');
+    if(tab) tab.style.display=hasActive?'block':'none';
+  } catch(e){ console.warn('[updateChallengeNavBadge]',e); }
+}
+
+// Bascule entre l'onglet "Défis" (permanents) et "Challenges" (événements datés)
+function switchChallengesTab(tab){
+  _CHALLENGES_TAB=tab;
+  _CHALLENGES_EXTRA_PAGE=0;
+  // Mise à jour visuelle des onglets
+  var tabDefis=document.getElementById('challenges-tab-defis');
+  var tabEvents=document.getElementById('challenges-tab-events');
+  if(tabDefis&&tabEvents){
+    if(tab==='defis'){
+      tabDefis.style.borderColor='var(--gold)';
+      tabDefis.style.background='rgba(245,200,66,.12)';
+      tabDefis.style.color='var(--gold)';
+      tabEvents.style.borderColor='var(--border2)';
+      tabEvents.style.background='transparent';
+      tabEvents.style.color='var(--muted2)';
+    } else {
+      tabEvents.style.borderColor='var(--gold)';
+      tabEvents.style.background='rgba(245,200,66,.12)';
+      tabEvents.style.color='var(--gold)';
+      tabDefis.style.borderColor='var(--border2)';
+      tabDefis.style.background='transparent';
+      tabDefis.style.color='var(--muted2)';
+    }
+  }
+  renderChallenges();
+}
+
+// Marque le RP comme "inscrit" à un événement (stocké en local pour l'instant).
+// À l'avenir : remontée DB + rappel push avant la date.
+function participateEvent(badgeId,badgeName){
+  if(!currentUser) return;
+  var key='participated-'+badgeId+'-'+currentUser.id;
+  localStorage.setItem(key,'1');
+  showToast('✓ Inscrit à "'+(badgeName||'l\'événement')+'" — on te rappellera le jour J !');
+  if(typeof renderChallenges==='function') renderChallenges();
 }
 
 function toggleChallenges(){
