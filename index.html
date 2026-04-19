@@ -1140,28 +1140,25 @@ select option{background:#040c1c}
     </div>
 
 
-    <!-- Team -->
-    <div id="dash-team-block" class="block" style="display:none;border-color:rgba(74,144,255,.45);box-shadow:0 0 18px rgba(74,144,255,.1),inset 0 0 20px rgba(74,144,255,.03)">
-      <div class="block-header" style="border-color:rgba(74,144,255,.2)">
-        <div class="block-title">Ma <span class="hl">Team</span></div>
+    <!-- Mes Challenges validés -->
+    <div id="dash-challenges-block" class="block" style="display:none;border-color:rgba(245,200,66,.35);box-shadow:0 0 18px rgba(245,200,66,.08)">
+      <div class="block-header" style="border-color:rgba(245,200,66,.2);cursor:pointer" onclick="nav('points')">
+        <div class="block-title">Mes <span class="hl">Challenges</span></div>
+        <div id="dash-challenges-count" style="font-size:.65rem;color:var(--muted2)">—</div>
       </div>
       <div class="block-body-sm">
-        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-          <div id="dash-team-logo-wrap" onclick="nav('teams')" style="
-            width:44px;height:44px;border-radius:8px;
-            background:rgba(74,144,255,.08);border:1px solid rgba(74,144,255,.35);
-            cursor:pointer;transition:all .15s;flex-shrink:0;overflow:hidden;
-          " title="Aller à ma Team" onmouseover="this.style.borderColor='rgba(74,144,255,.6)'" onmouseout="this.style.borderColor='rgba(74,144,255,.35)'"><div id="dash-team-logo-inner" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:var(--muted2)">🏃</div></div>
-          <div>
-            <div id="dash-team-name" style="font-weight:700;font-size:.95rem">—</div>
-            <div id="dash-team-sub" style="font-size:.7rem;color:var(--muted2)">—</div>
-          </div>
-          <div style="margin-left:auto;text-align:right">
-            <div id="dash-team-pts" style="font-family:'Space Mono',monospace;font-size:.9rem;color:var(--gold)">—</div>
-            <div id="dash-team-rank" style="font-size:.65rem;color:var(--muted2)">—</div>
-          </div>
-        </div>
+        <div id="dash-challenges-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;align-items:start"></div>
       </div>
+    </div>
+
+    <!-- Ancien bloc Team (masqué — le blason reste à côté de l'avatar) -->
+    <div id="dash-team-block" style="display:none">
+      <div id="dash-team-logo-wrap"></div>
+      <div id="dash-team-logo-inner"></div>
+      <div id="dash-team-name"></div>
+      <div id="dash-team-sub"></div>
+      <div id="dash-team-pts"></div>
+      <div id="dash-team-rank"></div>
     </div>
 
     <!-- Activités cachées (accès via Racing) -->
@@ -3706,6 +3703,9 @@ function renderDashboard(){
   var _streakBanner=document.getElementById('streak-banner');
   if(_streakBanner) _streakBanner.style.display='block';
 
+  // Bandeau Mes Challenges (événements validés)
+  if(typeof renderMyChallenges==='function') renderMyChallenges();
+
   if(p){
     var _parrUid=p._uuid||(isOwn&&currentUser?currentUser.id:null);
     if(_parrUid&&typeof loadParrainageData==='function') loadParrainageData(_parrUid);
@@ -4985,6 +4985,90 @@ async function loadParrainageData(playerId){
     elLetter.textContent=info.lettre;
     elLetter.style.color=info.color;
     elLetter.style.display=hasTitle?'block':'none';
+  }
+}
+
+// Affiche les challenges (event_run) du RP dans le bandeau PC.
+// - Validés (badge gagné) → hexagone coloré + année
+// - Inscrits (PARTICIPER cliqué, pas encore validé) → hexagone grisé avec bandeau date en haut
+// Sur une PC d'un autre RP : uniquement les validés (pas d'accès à ses inscriptions locales).
+async function renderMyChallenges(){
+  var block=document.getElementById('dash-challenges-block');
+  var grid=document.getElementById('dash-challenges-grid');
+  var countEl=document.getElementById('dash-challenges-count');
+  if(!block||!grid) return;
+  var vp=window.__viewedPlayer;
+  var targetUuid=vp?vp._uuid:(currentUser?currentUser.id:null);
+  if(!targetUuid){ block.style.display='none'; return; }
+  try {
+    // Catalogue (cache si déjà chargé)
+    if(!_badgesCatalog){
+      var {data:cat}=await supabaseClient.from('badges').select('*').order('sort_order');
+      _badgesCatalog=cat||[];
+    }
+    // Badges débloqués du RP cible
+    var {data:unlocked}=await supabaseClient.from('player_badges').select('badge_id,earned_at').eq('player_id',targetUuid).order('earned_at',{ascending:false});
+    var unlockedMap={};
+    (unlocked||[]).forEach(function(u){unlockedMap[u.badge_id]=u.earned_at;});
+    var today=new Date().toISOString().slice(0,10);
+    var isOwn=!vp;
+    // Sur la PC d'un autre RP : on masque le bandeau (inscriptions = localStorage perso)
+    if(!isOwn){ block.style.display='none'; return; }
+
+    // Bandeau PC = planning des events à venir uniquement.
+    // Règles d'affichage :
+    //   - Event passé (date < aujourd'hui) → exclu (même validé)
+    //   - Event validé (badge gagné) → exclu (il part dans la page Challenges en mode trophée)
+    //   - Inscrit via PARTICIPER + non validé + date future → inclus
+    // Max 4, ordre chronologique (date la plus proche en premier).
+    var combined=_badgesCatalog.filter(function(b){
+      if(b.threshold_type!=='event_run') return false;
+      var endDay=b.event_date_end||b.event_date||'';
+      if(!endDay || endDay<today) return false;
+      if(unlockedMap[b.id]) return false;
+      if(!isOwn||!currentUser) return false;
+      return localStorage.getItem('participated-'+b.id+'-'+currentUser.id)==='1';
+    }).sort(function(a,b){
+      return (a.event_date||'').localeCompare(b.event_date||'');
+    }).slice(0,4);
+    block.style.display='block';
+
+    if(!combined.length){
+      if(countEl) countEl.textContent='Aucun';
+      var ctaMsg=isOwn
+        ? 'Aucun challenge en cours — va t\'inscrire au prochain !'
+        : 'Ce RP n\'a pas encore validé de challenge.';
+      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:.8rem .4rem;display:flex;flex-direction:column;align-items:center;gap:.45rem">'
+        +'<div style="font-size:1.6rem;opacity:.5">🎖️</div>'
+        +'<div style="font-size:.72rem;color:var(--muted2);line-height:1.4">'+ctaMsg+'</div>'
+        +(isOwn?'<button onclick="event.stopPropagation();nav(\'points\');setTimeout(function(){if(typeof switchChallengesTab===\'function\')switchChallengesTab(\'events\');},300);" style="padding:.35rem .75rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.12);color:var(--gold);font-family:Bebas Neue,sans-serif;font-size:.7rem;letter-spacing:1.5px;cursor:pointer;font-weight:700">VOIR LES CHALLENGES</button>':'')
+        +'</div>';
+      return;
+    }
+
+    if(countEl){
+      countEl.textContent=combined.length+' à venir';
+    }
+
+    grid.innerHTML=combined.map(function(b){
+      var color=b.color||'#f5c842';
+      var isUnlocked=!!unlockedMap[b.id];
+      var year=(b.event_date||'').slice(0,4);
+      var eventDate=b.event_date?new Date(b.event_date).toLocaleDateString('fr',{day:'2-digit',month:'short'}):'';
+      // Bandeau date en haut pour les inscrits (pas encore validés)
+      var badge=isUnlocked
+        ? ''
+        : '<div style="position:absolute;top:-4px;left:-4px;right:-4px;background:'+color+';color:#000;font-family:\'Bebas Neue\',sans-serif;font-size:.5rem;letter-spacing:.5px;padding:.08rem 0;text-align:center;font-weight:900;border-radius:3px;line-height:1">📅 '+eventDate.toUpperCase()+'</div>';
+      var nameTxt=(b.name||'').replace(/</g,'&lt;');
+      return '<div onclick="event.stopPropagation();showBadgeDetail('+b.id+')" title="'+(b.name||'').replace(/"/g,'&quot;')+(isUnlocked?' (validé)':' (inscrit)')+'" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.2rem;position:relative;padding-top:'+(isUnlocked?'0':'.6rem')+'">'
+        +badge
+        +'<div style="width:100%;aspect-ratio:1;">'+_renderBadgeHex(b,isUnlocked)+'</div>'
+        +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:.55rem;letter-spacing:.3px;color:'+(isUnlocked?color:'var(--muted2)')+';text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">'+nameTxt+'</div>'
+        +'</div>';
+    }).join('');
+  } catch(e){
+    console.warn('[renderMyChallenges]',e);
+    block.style.display='none';
   }
 }
 
@@ -9204,11 +9288,17 @@ function getStreakMessage(phase, count, reward){
   return {emoji:emoji,title:title,sub:sub,reward:'+'+reward+' RPC',info:info};
 }
 
+// Distance en jours entre 2 dates ISO "YYYY-MM-DD"
+function _daysBetweenISO(d1,d2){
+  var a=new Date(d1+'T00:00:00Z'), b=new Date(d2+'T00:00:00Z');
+  return Math.round((b-a)/86400000);
+}
+
 async function checkAndClaimStreak(){
   if(!currentUser) return;
   // Charger les données streak du joueur
   var {data:player,error}=await supabaseClient
-    .from('players').select('streak_count,streak_last_date,streak_phase')
+    .from('players').select('streak_count,streak_last_date,streak_phase,streak_misses')
     .eq('id',currentUser.id).single();
   if(error||!player) return;
 
@@ -9217,34 +9307,42 @@ async function checkAndClaimStreak(){
   var count=player.streak_count||0;
   // phase = nombre d'arrêts accumulés (0 = jamais cassé, 7 = chaîne morte)
   var phase=player.streak_phase!=null?player.streak_phase:0;
+  var misses=Array.isArray(player.streak_misses)?player.streak_misses:[];
 
   // Déjà réclamé aujourd'hui ?
   if(lastDate===today){
-    updateStreakDisplay(count,phase);
+    updateStreakDisplay(count,phase,misses);
     return;
   }
 
   // Chaîne morte (7 arrêts ou plus)
   if(phase>=7){
-    updateStreakDisplay(0,phase);
+    updateStreakDisplay(0,phase,misses);
     return;
   }
 
   // Vérifier si hier
   var yesterdayStr=getParisYesterdayStr();
 
-  var newCount, newPhase;
+  var newCount, newPhase, newMisses;
   if(lastDate===yesterdayStr || !lastDate){
     // Continuation de la série (ou première connexion)
     newCount=count+1;
     newPhase=phase;
+    newMisses=misses;
   } else {
     // Série brisée : on incrémente le compteur d'arrêts
-    newCount=1;
+    // On compte TOUS les jours manqués (count continue à avancer) et on les marque en rouge.
+    var daysSince=lastDate?_daysBetweenISO(lastDate,today):1;
+    newMisses=misses.slice();
+    // Jours manqués = count+1 .. count+(daysSince-1)
+    for(var di=1;di<daysSince;di++) newMisses.push(count+di);
+    newCount=count+daysSince; // aujourd'hui est réclamé
     newPhase=phase+1;
-    // 7 arrêts = chaîne morte définitive
     if(newPhase>=7){
+      // Chaîne morte : on reset pour que l'affichage repart vierge
       newCount=0;
+      newMisses=[];
     }
   }
 
@@ -9254,7 +9352,7 @@ async function checkAndClaimStreak(){
   await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
     method:'PATCH',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({streak_count:newCount,streak_last_date:today,streak_phase:newPhase})
+    body:JSON.stringify({streak_count:newCount,streak_last_date:today,streak_phase:newPhase,streak_misses:newMisses})
   });
 
   // Créditer les RPC via wallet
@@ -9300,24 +9398,41 @@ async function checkAndClaimStreak(){
   }
 
   // Mettre à jour l'affichage
-  updateStreakDisplay(newCount, newPhase);
+  updateStreakDisplay(newCount, newPhase, newMisses);
 }
 
-function updateStreakDisplay(count, phase){
+function updateStreakDisplay(count, phase, misses){
+  misses=Array.isArray(misses)?misses:[];
+  var missesSet={};
+  misses.forEach(function(m){missesSet[m]=true;});
+
   // Bandeau streak sous la PC
   var statEl=document.getElementById('stat-streak');
-  if(statEl) statEl.textContent=count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'');
+  if(statEl){
+    var claimed=count-misses.length;
+    statEl.textContent=claimed+' jour'+(claimed>1?'s':'')+' réclamé'+(claimed>1?'s':'')+(misses.length?' · '+misses.length+' loupé'+(misses.length>1?'s':''):'');
+  }
 
-  // Dots
+  // Dots — défilement en packs (max 9 dots pour tenir sur 1 ligne mobile)
+  // J1-9 : grandit de 1 à 9 · J10+ : reset en packs de 7 jours (3→9 dots)
+  // Jours loupés affichés en croix rouge
   var dotsEl=document.getElementById('streak-dots');
   if(dotsEl){
     var html='';
-    var show=Math.min(count,10);
-    var start=Math.max(1,count-9);
-    for(var i=start;i<=count;i++){
-      html+='<div class="streak-dot streak-done" title="Jour '+i+'">'+i+'</div>';
+    var start;
+    if(count<=9){
+      start=1;
+    } else {
+      start=10+Math.floor((count-10)/7)*7-2;
     }
-    if(count>10) html='<div style="font-size:.55rem;color:var(--muted2);align-self:center;margin-right:.15rem">…</div>'+html;
+    for(var i=start;i<=count;i++){
+      if(missesSet[i]){
+        html+='<div class="streak-dot" style="background:rgba(255,68,68,.15);border:1px solid rgba(255,68,68,.55);color:#ff6060;font-weight:900" title="Jour '+i+' loupé">✕</div>';
+      } else {
+        html+='<div class="streak-dot streak-done" title="Jour '+i+'">'+i+'</div>';
+      }
+    }
+    if(count>9) html='<div style="font-size:.55rem;color:var(--muted2);align-self:center;margin-right:.15rem">…</div>'+html;
     if(count===0) html='<div class="streak-dot streak-todo" title="Jour 1">1</div>';
     dotsEl.innerHTML=html;
   }
@@ -10408,7 +10523,9 @@ async function renderTeams(){
     var _isMyOpen=_myTeamData&&_myTeamData.invite_code===OPEN_TEAM_MARKER;
     var _dtb=document.getElementById('dash-team-block');
     var _isViewingOther=!!window.__viewedPlayer;
-    if(_dtb) _dtb.style.display=(_myTeamData&&!_isViewingOther)?'block':'none';
+    // Bandeau Ma Team supprimé de la PC (redondant avec le blason à côté de l'avatar).
+    // Le bloc #dash-team-block est gardé en display:none pour rétro-compat des IDs JS.
+    if(_dtb) _dtb.style.display='none';
     if(_myTeamData){
       var _nb=_myTeamData._nb||0;
       var _rank=1;
@@ -11285,9 +11402,18 @@ async function renderChallenges(){
     _tabEventsBadge.style.display=_hasActiveChallenge?'block':'none';
   }
   // Filtrage par onglet : défis permanents vs challenges événementiels
+  // Challenges : un event passé ET non validé est masqué définitivement
+  // (seuls les trophées gagnés et les events à venir restent visibles).
   var list=_badgesCatalog.slice().filter(function(b){
     var isEvent=(b.threshold_type==='event_run');
-    return _CHALLENGES_TAB==='events' ? isEvent : !isEvent;
+    if(_CHALLENGES_TAB==='events'){
+      if(!isEvent) return false;
+      var endDay=b.event_date_end||b.event_date||'';
+      var isPast=endDay && endDay<_today;
+      if(isPast && !unlockedMap[b.id]) return false;
+      return true;
+    }
+    return !isEvent;
   }).sort(function(a,b){
     var aU=!!unlockedMap[a.id], bU=!!unlockedMap[b.id];
     // Priorité absolue : un event non débloqué et non passé passe DEVANT tout, même les débloqués
@@ -11515,6 +11641,7 @@ function participateEvent(badgeId,badgeName){
   localStorage.setItem(key,'1');
   showToast('✓ Inscrit à "'+(badgeName||'l\'événement')+'" — on te rappellera le jour J !');
   if(typeof renderChallenges==='function') renderChallenges();
+  if(typeof renderMyChallenges==='function') renderMyChallenges();
 }
 
 // Désinscription d'un événement : supprime le flag d'inscription, le bouton
@@ -11525,6 +11652,7 @@ function unregisterEvent(badgeId,badgeName){
   localStorage.removeItem(key);
   showToast('🗙 Inscription retirée pour "'+(badgeName||'l\'événement')+'"');
   if(typeof renderChallenges==='function') renderChallenges();
+  if(typeof renderMyChallenges==='function') renderMyChallenges();
 }
 
 function toggleChallenges(){
