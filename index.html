@@ -4882,6 +4882,17 @@ function showRunDetails(runId){
   var ptsBase=km>0?Math.round(computePts(km,spd,elv,false)):pts;
   var hadBoost=pts>ptsBase&&ptsBase>0;
   var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  // Formate la durée : < 1h → "MM:SS" · >= 1h → "H:MM:SS"
+  var durationStr;
+  if(timeMin<=0) durationStr=null;
+  else {
+    var totalSec=Math.round(timeMin*60);
+    var _h=Math.floor(totalSec/3600);
+    var _m=Math.floor((totalSec-_h*3600)/60);
+    var _s=totalSec-_h*3600-_m*60;
+    var _pad=function(n){return n<10?'0'+n:''+n;};
+    durationStr=(_h>0)?(_h+':'+_pad(_m)+':'+_pad(_s)):(_m+':'+_pad(_s));
+  }
 
   function row(icon,label,val,color){
     if(!val) return '';
@@ -4898,7 +4909,7 @@ function showRunDetails(runId){
     +row('🏃','Distance',km+' km','#20d0e0')
     +row('⚡','Vitesse moyenne',spd+' km/h','#2ddb80')
     +row('🏁','Allure',pace+' min/km','var(--text)')
-    +row('⏱','Durée',timeMin+' min','var(--text)')
+    +row('⏱','Durée',durationStr,'var(--text)')
     +row('⛰️','Dénivelé positif',elv>0?elv+' m':null,'#ff8040')
     +row('❤️','FC moyenne',r.avg_hr?r.avg_hr+' bpm':null,'#ff6060')
     +row('💓','FC max',r.max_hr?r.max_hr+' bpm':null,'#ff4444')
