@@ -878,14 +878,15 @@ select option{background:#040c1c}
         transition:all .18s;
       " onmouseover="this.style.background='rgba(74,144,255,.18)'" onmouseout="this.style.background='rgba(74,144,255,.08)'">PLAYER CARD</button>
       <!-- Carré parrainage -->
-      <div onclick="showParrainageInfo()" title="Titre de parrainage" style="
+      <div onclick="showParrainageInfo()" title="Mon code parrainage" style="
         width:38px;height:38px;border-radius:8px;
         background:rgba(245,200,66,.1);border:1.5px solid rgba(245,200,66,.5);
-        display:flex;align-items:center;justify-content:center;
-        cursor:pointer;transition:all .18s;flex-shrink:0;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        cursor:pointer;transition:all .18s;flex-shrink:0;position:relative;
       " onmouseover="this.style.background='rgba(245,200,66,.22)';this.style.borderColor='rgba(245,200,66,.9)'"
          onmouseout="this.style.background='rgba(245,200,66,.1)';this.style.borderColor='rgba(245,200,66,.5)'">
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:1px;color:var(--gold);line-height:1" id="parrainage-letter">F</span>
+        <span style="font-size:1.25rem;line-height:1">🤝</span>
+        <span style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#060810;border:1px solid rgba(245,200,66,.6);font-family:'Bebas Neue',sans-serif;font-size:.6rem;line-height:14px;color:var(--gold);display:flex;align-items:center;justify-content:center" id="parrainage-letter">·</span>
       </div>
       <!-- Flèche DROITE (monter le classement = plus de points) -->
       <button onclick="navPcRank(-1)" title="Classement supérieur" style="
@@ -7061,6 +7062,16 @@ async function renderSocialFeed(){
     var spd=timeMin>0?Math.round(km/(timeMin/60)*100)/100:0;
     var elv=r.elevation||0;
     var pts=r.points||0;
+    // Chrono au format MM:SS (ou H:MM:SS si >= 1h)
+    var chrono='—';
+    if(timeMin>0){
+      var _ts=Math.round(timeMin*60);
+      var _h=Math.floor(_ts/3600);
+      var _m=Math.floor((_ts-_h*3600)/60);
+      var _s=_ts-_h*3600-_m*60;
+      var _pd=function(n){return n<10?'0'+n:''+n;};
+      chrono=(_h>0)?(_h+':'+_pd(_m)+':'+_pd(_s)):(_m+':'+_pd(_s));
+    }
     var dateStr=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
     var avatarHtml=p.avatar
       ?'<img src="'+p.avatar+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid '+gc+'">'
@@ -7130,7 +7141,7 @@ async function renderSocialFeed(){
       +'<div style="font-size:.75rem;color:var(--text)">🏃 <strong>'+km+'</strong> km</div>'
       +'<div style="font-size:.75rem;color:var(--text)">⚡ <strong>'+spd+'</strong> km/h</div>'
       +'<div style="font-size:.75rem;color:var(--text)">⛰️ <strong>'+elv+'</strong> m</div>'
-      +'<div style="font-size:.75rem;color:var(--muted2)">⏱ '+timeMin+' min</div>'
+      +'<div style="font-size:.75rem;color:var(--muted2)">⏱ '+chrono+'</div>'
       +'</div>'
       +descHtml
       +''
@@ -11231,18 +11242,19 @@ async function renderChallenges(){
     var rewardTxt=[];
     if(b.reward_rpc) rewardTxt.push('<span style="color:'+(isUnlocked?'var(--gold)':'var(--muted2)')+'">+'+b.reward_rpc.toLocaleString('fr')+' RPC</span>');
     if(b.reward_nyx) rewardTxt.push('<span style="color:'+(isUnlocked?'var(--green)':'var(--muted2)')+'">+'+b.reward_nyx+' 💎</span>');
-    var isBinary=(b.threshold_type==='single_run_km'||b.threshold_type==='single_run_elv_m'||b.threshold_type==='speed_over_5km');
+    // Badges "one-shot" : pas de barre de progression, juste un message "à réaliser"
+    var isBinary=(b.threshold_type==='single_run_km'||b.threshold_type==='single_run_elv_m'||b.threshold_type==='speed_over_5km'||b.threshold_type==='simultaneous_lands');
     var progressTxt;
     if(isUnlocked){
       var d=new Date(unlockedMap[b.id]);
       progressTxt='Débloqué le '+d.toLocaleDateString('fr',{day:'2-digit',month:'short'});
     } else if(isBinary){
-      progressTxt='À réaliser en 1 course';
+      if(b.threshold_type==='simultaneous_lands') progressTxt=target+' Lands en 60 min';
+      else progressTxt='À réaliser en 1 course';
     } else {
       if(b.threshold_type==='cumul_km') progressTxt=current.toFixed(1)+' / '+target+' km';
       else if(b.threshold_type==='cumul_elv_m') progressTxt=Math.round(current)+' / '+target+' m';
       else if(b.threshold_type==='streak_days') progressTxt=current+' / '+target+' j';
-      else if(b.threshold_type==='simultaneous_lands') progressTxt=current+' / '+target+' (60min)';
       else progressTxt=current+' / '+target;
     }
     var cardBorder=isUnlocked?(color+'55'):'rgba(255,255,255,.06)';
@@ -11460,8 +11472,15 @@ async function loadTeamMembers(teamId, teamName){
   // Exception : membre de cette team (y compris capitaine) — pas besoin d'être Premium
   var _isMember=window.__myTeamId===teamId;
   if(_isPrivate && !isPremium() && !_isMember){
-    if(typeof showPremiumGate==='function'){
-      showPremiumGate('Voir la composition d\'une Team privée est réservé au Premium. Les Teams ouvertes sont consultables en Free.');
+    // 1er clic sur une team privée verrouillée → modal Premium.
+    // Clics suivants (même session) → simple toast vert.
+    if(!window.__premiumPrivateTeamGateSeen){
+      window.__premiumPrivateTeamGateSeen=true;
+      if(typeof showPremiumGate==='function'){
+        showPremiumGate('Voir la composition d\'une Team privée est réservé au Premium. Les Teams ouvertes sont consultables en Free.');
+      }
+    } else {
+      showToast('🔒 Passe en Premium pour voir la composition des Teams privées');
     }
     return;
   }
