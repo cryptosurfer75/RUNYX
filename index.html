@@ -541,6 +541,8 @@ body::before{
 .lp-avatar{width:36px;height:36px;border-radius:50%;border:2px solid #fff;background:#0a1020;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.5)}
 .lp-avatar img{width:100%;height:100%;object-fit:cover}
 .lp-avatar-fallback{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#f5c842}
+.lp-league-badge{position:absolute;bottom:-3px;right:-6px;background:#f5c842;color:#000;font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;padding:1px 4px;border-radius:3px;border:1.5px solid #fff;letter-spacing:.3px}
+.lp-avatar{position:relative}
 .lp-pseudo{margin-top:2px;font-family:'Bebas Neue',sans-serif;font-size:.62rem;letter-spacing:1px;color:#fff;background:rgba(0,0,0,.7);padding:1px 5px;border-radius:3px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
 .lp-marker.lp-active .lp-avatar{box-shadow:0 0 0 0 rgba(74,144,255,.6),0 2px 6px rgba(0,0,0,.5);animation:lpPulse 1.6s infinite}
 .lp-marker.lp-paused .lp-avatar{border-color:#888;opacity:.7}
@@ -1949,6 +1951,17 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modal récap croisements après FINISH -->
+<div class="modal" id="cross-summary-modal">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" onclick="closeModal('cross-summary-modal')">✕</button>
+    <div class="modal-title">🤝 <span class="hl">Croisements</span></div>
+    <div id="cross-summary-sub" class="modal-sub">—</div>
+    <div id="cross-summary-list" style="display:flex;flex-direction:column;gap:.5rem;max-height:60vh;overflow-y:auto;padding:.25rem"></div>
+    <button onclick="closeModal('cross-summary-modal')" style="width:100%;margin-top:.85rem;padding:.65rem;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;border:none;border-radius:8px;cursor:pointer">OK</button>
+  </div>
+</div>
+
 <!-- Modal sélection avatar -->
 <div class="modal" id="avatar-picker-modal">
   <div class="modal-box" style="max-width:400px;max-height:85vh;overflow-y:auto">
@@ -2594,7 +2607,7 @@ function askConfirm(message, opts){
       </div>
     </div>
 
-    <div class="block rules-fullwidth" style="border-color:rgba(255,68,68,.35);grid-column:span 2">
+    <div class="block rules-fullwidth" style="border-color:rgba(255,68,68,.35);grid-column:1 / -1">
       <div class="block-header" style="border-color:rgba(255,68,68,.2);background:rgba(255,68,68,.04)">
         <div class="block-title">🏴‍☠️ Île du <span style="color:var(--red)">Pirate</span> — Tolérance zéro</div>
       </div>
@@ -10424,10 +10437,10 @@ async function saveCapturedRun(captured, runName){
   var pts=Math.round(computePts(km,spd,elv,hasBoost));
   var runDate=new Date(captured.startedAt||Date.now()).toISOString();
 
-  // 1. Insert run
+  // 1. Insert run (return=representation pour récupérer le run_id)
   var runResp=await fetch(supabaseUrl+'/rest/v1/runs',{
     method:'POST',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=representation'},
     body:JSON.stringify({
       player_id:currentUser.id,
       points:pts,
@@ -10442,6 +10455,8 @@ async function saveCapturedRun(captured, runName){
     })
   });
   if(!runResp.ok){throw new Error('Échec sauvegarde run ('+runResp.status+')');}
+  var runRows=await runResp.json();
+  var runId=(runRows&&runRows[0])?runRows[0].id:null;
 
   // 2. Crédit RPC (8 RPC par point gagné — même règle que l'import Strava)
   if(typeof walletCredit==='function'){
@@ -10506,7 +10521,7 @@ async function saveCapturedRun(captured, runName){
     body:JSON.stringify({player_id:currentUser.id})
   }).catch(function(){});
 
-  return {points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
+  return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
 }
 
 // Sauvegarde la préférence "Partager ma position en course" dans Supabase
@@ -10552,11 +10567,13 @@ var LivePositions=(function(){
 
   var _channel=null;
   var _senderInt=null;
-  var _otherMarkers={};               // { player_id: {marker, lat, lng, lastAlertAt, isPaused, username, avatar} }
+  var _otherMarkers={};               // { player_id: {marker, lat, lng, lastAlertAt, isPaused, username, avatar, league} }
   var _myLastFix=null;                // {lat, lng} pour calcul distances
-  var _myProfile={username:null, avatar:null};
+  var _myProfile={username:null, avatar:null, league:null};
   var _isSending=false;
   var _audioCtx=null;
+  var _crossingsBuffer=[];            // historique des croisements de la run en cours
+                                      // [{ crossed_player_id, username, avatar, league, distance_m, lat, lng, crossed_at }]
 
   function _haversineKmLP(lat1,lng1,lat2,lng2){
     var R=6371;
@@ -10587,25 +10604,38 @@ var LivePositions=(function(){
   function _vibrate(){
     try{if(navigator.vibrate) navigator.vibrate([180,80,180]);}catch(e){}
   }
-  function _alertCross(other){
+  function _alertCross(other,distM){
     _vibrate();_playPing();
+    var leagueLbl=other.league?' ('+other.league.toUpperCase()+')':'';
     if(typeof showToast==='function'){
-      showToast('🤝 Tu croises '+(other.username||'un autre RP')+' à proximité !');
+      showToast('🤝 Tu croises '+(other.username||'un autre RP')+leagueLbl+' à proximité !');
     }
+    // Buffer pour récap au FINISH (1 seule entrée par paire/run grâce au cooldown)
+    _crossingsBuffer.push({
+      crossed_player_id:other._pid||null,
+      crossed_username:other.username||null,
+      crossed_avatar:other.avatar||null,
+      crossed_league:other.league||null,
+      distance_m:Math.round(distM||0),
+      lat:other.lat,lng:other.lng,
+      crossed_at:new Date().toISOString()
+    });
   }
 
-  // Crée un divIcon Leaflet pour un autre RP (avatar circulaire + pseudo dessous)
+  // Crée un divIcon Leaflet pour un autre RP (avatar circulaire + pseudo + league)
   function _makeMarkerIcon(other){
     var avatarSrc=other.avatar||'';
     var pulseClass=other.isPaused?'lp-paused':'lp-active';
+    var leagueLbl=other.league?other.league.toUpperCase():'';
     var html=
       '<div class="lp-marker '+pulseClass+'">'
         +'<div class="lp-avatar">'
           +(avatarSrc?'<img src="'+avatarSrc+'" alt="">':'<div class="lp-avatar-fallback">'+((other.username||'?').charAt(0).toUpperCase())+'</div>')
+        +(leagueLbl?'<div class="lp-league-badge">'+leagueLbl+'</div>':'')
         +'</div>'
         +'<div class="lp-pseudo">'+(other.username||'RP')+(other.isPaused?' ⏸':'')+'</div>'
       +'</div>';
-    return L.divIcon({html:html,className:'lp-marker-wrap',iconSize:[44,56],iconAnchor:[22,28]});
+    return L.divIcon({html:html,className:'lp-marker-wrap',iconSize:[44,60],iconAnchor:[22,30]});
   }
 
   // Met à jour ou crée le marker d'un autre RP, et déclenche l'alerte
@@ -10630,10 +10660,12 @@ var LivePositions=(function(){
     }
     var existing=_otherMarkers[row.player_id];
     var data={
+      _pid:row.player_id,
       lat:row.lat, lng:row.lng,
       isPaused:!!row.is_paused,
       username:row.username||(existing?existing.username:null),
       avatar:row.avatar||(existing?existing.avatar:null),
+      league:row.league||(existing?existing.league:null),
       lastAlertAt:existing?existing.lastAlertAt:0
     };
     if(existing){
@@ -10655,7 +10687,7 @@ var LivePositions=(function(){
       var entry=_otherMarkers[row.player_id];
       if(dM<ALERT_DISTANCE_M && (Date.now()-entry.lastAlertAt)>ALERT_COOLDOWN_MS){
         entry.lastAlertAt=Date.now();
-        _alertCross(entry);
+        _alertCross(entry,dM);
       }
     }
   }
@@ -10723,10 +10755,13 @@ var LivePositions=(function(){
         if(dM/1000>VIEW_RADIUS_KM){_removeOther(pid);return;}
         if(dM<ALERT_DISTANCE_M && (Date.now()-o.lastAlertAt)>ALERT_COOLDOWN_MS){
           o.lastAlertAt=Date.now();
-          _alertCross(o);
+          _alertCross(o,dM);
         }
       });
     },
+    // Récupère le buffer des croisements de la run en cours (pour insert au FINISH)
+    getCrossings:function(){return _crossingsBuffer.slice();},
+    clearCrossings:function(){_crossingsBuffer=[];},
     // Démarre SENDER : UPSERT toutes les 8s, en lisant la dernière position
     // depuis getLastFixFn (callback fournie par l'UI live-run, qui pointe sur
     // RunTracker.getLastFix). Si la course est en pause → un seul UPSERT
@@ -10736,6 +10771,8 @@ var LivePositions=(function(){
       _isSending=true;
       _myProfile.username=profile.username||null;
       _myProfile.avatar=profile.avatar||null;
+      _myProfile.league=profile.league||null;
+      _crossingsBuffer=[]; // reset pour cette run
       var pushOnce=async function(isPaused){
         var fix=getLastFixFn&&getLastFixFn();
         if(!fix) return;
@@ -10745,7 +10782,8 @@ var LivePositions=(function(){
             lat:fix.lat, lng:fix.lng,
             is_paused:!!isPaused,
             username:_myProfile.username,
-            avatar:_myProfile.avatar
+            avatar:_myProfile.avatar,
+            league:_myProfile.league
           },{onConflict:'player_id'});
         }catch(e){console.warn('[LP] upsert fail',e);}
       };
@@ -10916,7 +10954,7 @@ function confirmStartLiveRun(){
   // Démarre le sender si l'utilisateur a coché le partage pour cette course
   if(shareThisRun && typeof LivePositions!=='undefined' && window.__myPlayer){
     LivePositions.startSending(
-      {username:window.__myPlayer.name, avatar:window.__myPlayer.avatar},
+      {username:window.__myPlayer.name, avatar:window.__myPlayer.avatar, league:window.__myPlayer.leagueKey},
       function(){return RunTracker.getLastFix();}
     );
   }
@@ -10994,9 +11032,36 @@ async function stopLiveRun(){
     showToast('⚠️ Distance trop faible, course non sauvegardée');
     return;
   }
+  // Récupère le buffer des croisements AVANT que stopSending nettoie quoi que ce soit
+  var crossings=(typeof LivePositions!=='undefined')?LivePositions.getCrossings():[];
   try{
     var summary=await saveCapturedRun(captured,'Course du '+new Date().toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}));
-    showToast('🏁 '+summary.points+' pts · '+summary.nbLands+' Lands · +'+(summary.points*8).toLocaleString('fr')+' RPC');
+    var nbCross=crossings.length;
+    var crossLbl=nbCross>0?(' · 🤝 '+nbCross+' RP'):'';
+    showToast('🏁 '+summary.points+' pts · '+summary.nbLands+' Lands · +'+(summary.points*8).toLocaleString('fr')+' RPC'+crossLbl);
+    // Insert des croisements (1 ligne par paire, ON CONFLICT géré par UNIQUE)
+    if(crossings.length && summary.runId){
+      try{
+        var rows=crossings.map(function(c){
+          return {
+            run_id:summary.runId,
+            player_id:currentUser.id,
+            crossed_player_id:c.crossed_player_id,
+            crossed_username:c.crossed_username,
+            crossed_avatar:c.crossed_avatar,
+            crossed_league:c.crossed_league,
+            distance_m:c.distance_m,
+            lat:c.lat, lng:c.lng,
+            crossed_at:c.crossed_at
+          };
+        });
+        // upsert avec onConflict pour éviter doublon paire/run
+        await supabaseClient.from('run_crossings').upsert(rows,{onConflict:'run_id,player_id,crossed_player_id'});
+      }catch(e){console.warn('crossings insert fail',e);}
+      // Affiche le récap visuel après le toast
+      _showCrossSummary(crossings);
+    }
+    if(typeof LivePositions!=='undefined') LivePositions.clearCrossings();
     // Refresh UI : dashboard, carte, historique
     try{
       if(typeof renderDashboard==='function') renderDashboard();
@@ -11007,6 +11072,28 @@ async function stopLiveRun(){
     console.error('saveCapturedRun error',e);
     showToast('⚠️ Erreur sauvegarde : '+e.message);
   }
+}
+
+// Affiche le récap des RP croisés pendant la course (post-FINISH).
+function _showCrossSummary(crossings){
+  if(!crossings||!crossings.length) return;
+  var sub=document.getElementById('cross-summary-sub');
+  var list=document.getElementById('cross-summary-list');
+  if(!sub||!list) return;
+  sub.textContent='Tu as croisé '+crossings.length+' RP pendant cette course';
+  list.innerHTML=crossings.map(function(c){
+    var avatar=c.crossed_avatar
+      ? '<img src="'+c.crossed_avatar+'" style="width:42px;height:42px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;flex-shrink:0">'
+      : '<div style="width:42px;height:42px;border-radius:50%;border:2px solid var(--gold);background:#0a1020;display:flex;align-items:center;justify-content:center;font-family:Bebas Neue,sans-serif;color:var(--gold);flex-shrink:0">'+((c.crossed_username||'?').charAt(0).toUpperCase())+'</div>';
+    var league=c.crossed_league?'<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:var(--gold);font-family:Space Mono,monospace;font-size:.6rem;font-weight:700;margin-left:.5rem">'+c.crossed_league.toUpperCase()+'</span>':'';
+    return '<div style="display:flex;align-items:center;gap:.75rem;padding:.55rem .7rem;background:rgba(74,144,255,.05);border:1px solid rgba(74,144,255,.18);border-radius:8px">'
+      +avatar
+      +'<div style="flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;font-weight:700;color:var(--text);font-size:.9rem">'
+        +(c.crossed_username||'RP')+league
+      +'</div>'
+    +'</div>';
+  }).join('');
+  openModal('cross-summary-modal');
 }
 
 function openJoinTeamModal(){
