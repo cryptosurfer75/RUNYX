@@ -1184,22 +1184,6 @@ select option{background:#040c1c}
     <!-- Activités cachées (accès via Racing) -->
     <table class="tbl" id="dash-activities" style="display:none"></table>
 
-    <!-- Préférences confidentialité -->
-    <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.25)">
-      <div class="block-header"><div class="block-title">⚙️ <span class="hl">Préférences</span></div></div>
-      <div class="block-body-sm">
-        <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.4rem 0">
-          <input type="checkbox" id="pref-share-live" onchange="saveSharePreference()" style="width:18px;height:18px;accent-color:#4a90ff;cursor:pointer;flex-shrink:0;margin-top:1px">
-          <div style="flex:1">
-            <div style="font-size:.78rem;font-weight:600;color:var(--text)">🛰️ Partager ma position en course</div>
-            <div style="font-size:.65rem;color:var(--muted2);line-height:1.45;margin-top:2px">
-              Si activé, les autres RP qui courent dans un rayon de 5 km autour de toi pourront voir ton avatar et ton pseudo sur leur carte. Tu peux toujours décocher au cas par cas avant chaque course. Désactivé = invisible pour les autres.
-            </div>
-          </div>
-        </label>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -1951,6 +1935,26 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modal d'intro Live Tracking (affichée une seule fois à la 1ère utilisation du GPS) -->
+<div class="modal" id="live-intro-modal">
+  <div class="modal-box" style="max-width:440px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;color:var(--gold);text-align:center;margin-bottom:1rem">🛰️ LIVE TRACKING</div>
+    <div style="font-size:.82rem;color:var(--text);line-height:1.7;margin-bottom:1rem">
+      Pendant ta course, tu peux voir les <strong style="color:var(--gold)">autres RP</strong> qui courent à moins de <strong style="color:var(--text)">5 km autour de toi</strong> sur la carte.<br><br>
+      Si tu passes à moins de 100 m d'un autre RP, ton téléphone <strong style="color:var(--text)">vibre</strong> 📳 et un <strong style="color:var(--text)">son</strong> 🔔 te prévient.<br><br>
+      <em style="color:var(--muted2)">Tu choisis librement si tu veux apparaître aux autres. Ta position n'est jamais stockée ni exploitée.</em>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:.6rem;padding:.7rem .85rem;background:rgba(74,144,255,.08);border:1px solid rgba(74,144,255,.3);border-radius:8px;cursor:pointer;margin-bottom:1rem">
+      <input type="checkbox" id="intro-share-checkbox" style="width:18px;height:18px;accent-color:#4a90ff;cursor:pointer;flex-shrink:0;margin-top:1px">
+      <div style="flex:1">
+        <div style="font-size:.78rem;font-weight:700;color:var(--text)">Partager ma position par défaut</div>
+        <div style="font-size:.65rem;color:var(--muted2);line-height:1.5;margin-top:2px">Pseudo + avatar + league visibles par les autres RP à proximité. Tu pourras changer d'avis avant chaque course et dans les Règles.</div>
+      </div>
+    </label>
+    <button onclick="closeLiveIntro()" style="width:100%;padding:.75rem;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:3px;border:none;border-radius:8px;cursor:pointer;box-shadow:0 4px 16px rgba(45,138,50,.3)">OK, C'EST PARTI 🏃</button>
+  </div>
+</div>
+
 <!-- Modal récap croisements après FINISH -->
 <div class="modal" id="cross-summary-modal">
   <div class="modal-box" style="max-width:420px">
@@ -2619,6 +2623,25 @@ function askConfirm(message, opts){
         <strong style="color:var(--text)">2ème triche</strong> — exil prolongé de <strong style="color:var(--text)">6 périodes</strong>.<br>
         💀 <strong style="color:var(--text)">3ème triche</strong> — perte de l'ID unique, de la Player Card, de toutes les Lands et de l'intégralité des acquis dans le jeu.<br><br>
         <em style="color:var(--muted)">SPEEDIX met en valeur les athlètes honnêtes et fair-play. Chaque effort est récompensé parce que tu le mérites.</em>
+      </div>
+    </div>
+
+    <div class="block rules-fullwidth" style="border-color:rgba(74,144,255,.35);grid-column:1 / -1">
+      <div class="block-header" style="border-color:rgba(74,144,255,.2);background:rgba(74,144,255,.04)">
+        <div class="block-title">⚙️ <span class="hl">Préférences — Confidentialité</span></div>
+      </div>
+      <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
+        <label style="display:flex;align-items:flex-start;gap:.75rem;cursor:pointer;padding:.25rem 0">
+          <input type="checkbox" id="pref-share-live" onchange="saveSharePreference()" style="width:20px;height:20px;accent-color:#4a90ff;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1">
+            <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:.2rem">🛰️ Partager ma position en course</div>
+            <div style="font-size:.75rem;color:var(--muted2);line-height:1.7">
+              Si activé, les autres RP qui courent dans un rayon de <strong style="color:var(--text)">5 km</strong> autour de toi peuvent voir ton <strong style="color:var(--text)">avatar</strong>, ton <strong style="color:var(--text)">pseudo</strong> et ta <strong style="color:var(--text)">league</strong> sur leur carte en temps réel. Aucune donnée de performance n'est partagée.<br><br>
+              Tu peux <strong style="color:var(--text)">décocher au cas par cas</strong> avant chaque course depuis l'écran de départ, même si la préférence ici est activée.<br><br>
+              <em style="color:var(--muted)">Désactivé = invisible pour les autres. Ta position n'est jamais stockée ni partagée.</em>
+            </div>
+          </div>
+        </label>
       </div>
     </div>
 
@@ -8876,6 +8899,10 @@ function nav(page){
     if(typeof renderHistory==='function') renderHistory();
     if(typeof renderChallenges==='function') renderChallenges();
   }
+  if(page==='rules'){
+    // Sync la checkbox de préférence partage position avec la valeur en mémoire
+    if(typeof syncSharePrefCheckbox==='function') syncSharePrefCheckbox();
+  }
   const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin'];
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
   // Initialiser la carte Lands quand on y navigue
@@ -10833,13 +10860,47 @@ function _formatDuration(ms){
   return pad(h)+':'+pad(m)+':'+pad(sec);
 }
 
-// Phase 1 — WARMUP : ouvre la modal et démarre le GPS pour verrouiller
-// le signal, sans encore enregistrer la course. Le bouton START devient
-// actif dès que le premier fix GPS arrive.
+// Entrée publique : vérifie si l'utilisateur a déjà vu l'intro Live Tracking.
+// Si non → affiche le modal d'intro. Sinon → démarre direct le warmup GPS.
 async function startLiveRun(){
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
   if(RunTracker.isActive()){openModal('live-run-modal');return;}
   if(!navigator.geolocation){showToast('⚠️ GPS non supporté sur ce navigateur');return;}
+  // 1ère utilisation ? On montre l'intro une fois puis jamais plus.
+  var introSeen=localStorage.getItem('speedix_live_intro_shown');
+  if(!introSeen){
+    var introChk=document.getElementById('intro-share-checkbox');
+    // Pré-coche selon la préférence permanente actuelle (probablement false au 1er run)
+    if(introChk) introChk.checked=!!(window.__myPlayer&&window.__myPlayer.shareLivePosition);
+    openModal('live-intro-modal');
+    return;
+  }
+  _startLiveRunWarmup();
+}
+
+// Callback du bouton OK de l'intro : persiste le choix partage permanent,
+// marque l'intro comme vue, puis enchaîne sur le warmup GPS.
+async function closeLiveIntro(){
+  var chk=document.getElementById('intro-share-checkbox');
+  var wantShare=chk?chk.checked:false;
+  // Ne sauve que si la valeur change (évite un call API inutile si OFF et déjà OFF)
+  if(window.__myPlayer && window.__myPlayer.shareLivePosition!==wantShare){
+    try{
+      await supabaseClient.from('players').update({share_live_position:wantShare}).eq('id',currentUser.id);
+      window.__myPlayer.shareLivePosition=wantShare;
+    }catch(e){console.warn('intro save pref fail',e);}
+  }
+  localStorage.setItem('speedix_live_intro_shown','1');
+  closeModal('live-intro-modal');
+  // Sync la checkbox dans les Règles pour qu'elle reflète la nouvelle valeur
+  if(typeof syncSharePrefCheckbox==='function') syncSharePrefCheckbox();
+  // Enchaîne sur le warmup GPS classique
+  _startLiveRunWarmup();
+}
+
+// Warmup GPS effectif (séparé de startLiveRun pour pouvoir être appelé
+// aussi depuis closeLiveIntro après que l'intro a été validée).
+async function _startLiveRunWarmup(){
   // Reset UI vers l'état warmup
   document.getElementById('lr-timer').textContent='00:00:00';
   document.getElementById('lr-status').textContent='📡 Recherche du signal GPS…';
@@ -12385,15 +12446,11 @@ async function renderChallenges(){
       _challengeLbl.textContent='Challenges';
     }
   }
-  // Pastille sur le nav Feed + sur l'onglet Challenges
-  var _feedChallengeBadge=document.getElementById('feed-challenge-badge');
-  if(_feedChallengeBadge){
-    _feedChallengeBadge.style.display=_hasActiveChallenge?'block':'none';
-  }
-  var _tabEventsBadge=document.getElementById('challenges-tab-events-badge');
-  if(_tabEventsBadge){
-    _tabEventsBadge.style.display=_hasActiveChallenge?'block':'none';
-  }
+  // Pastilles "nouveau challenge" → délégué entièrement à updateChallengeNavBadge()
+  // qui filtre selon les challenges déjà vus (évite le spam à chaque connexion).
+  // Cette fonction lit la liste "vue" en localStorage et n'allume la pastille
+  // que pour les challenges encore jamais consultés.
+  if(typeof updateChallengeNavBadge==='function') updateChallengeNavBadge();
   // Filtrage par onglet : défis permanents vs challenges événementiels
   // Challenges : un event passé ET non validé est masqué définitivement
   // (seuls les trophées gagnés et les events à venir restent visibles).
