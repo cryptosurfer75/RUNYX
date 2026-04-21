@@ -733,7 +733,7 @@ select option{background:#040c1c}
     <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 2 / 4 — Compte</div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">E-mail</label>
-      <input id="reg-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.76rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"></div>
+      <input id="reg-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Rajdhani',sans-serif;font-weight:500;font-size:.85rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"></div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Mot de passe</label>
       <div style="position:relative"><input id="reg-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 36px 10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"><span onclick="var p=document.getElementById('reg-pwd');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁':'👁‍🗨'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:.8rem;user-select:none">👁</span></div></div>
     </div>
@@ -845,6 +845,7 @@ select option{background:#040c1c}
       <div id="pc-period-info" style="font-size:.78rem;color:var(--muted2);margin-top:.1rem"></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end">
+      <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .85rem;border-radius:6px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;box-shadow:0 2px 10px rgba(45,138,50,.4)">🏃 NOUVELLE COURSE</button>
       <button onclick="openModal('sync-modal')" title="Synchroniser tes activités Strava" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer">⚡ POWERED BY STRAVA</button>
       <button onclick="openModal('sync-modal')" title="Synchroniser tes activités Garmin (bientôt)" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#007cc3;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY GARMIN</button>
     </div>
@@ -1865,6 +1866,47 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modal LIVE RUN — capture GPS native -->
+<div class="modal" id="live-run-modal">
+  <div class="modal-box" style="max-width:480px;padding:0;overflow:hidden">
+    <!-- Header avec timer -->
+    <div style="background:linear-gradient(180deg,#f5c842,#b8860b);color:#000;padding:.85rem;text-align:center;position:relative">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:3px;opacity:.7">EN COURSE</div>
+      <div id="lr-timer" style="font-family:'Space Mono',monospace;font-size:2.4rem;font-weight:700;line-height:1.1">00:00:00</div>
+      <div id="lr-status" style="font-size:.6rem;letter-spacing:1px;opacity:.85;margin-top:.2rem">📡 Recherche du signal GPS…</div>
+    </div>
+    <!-- Stats grid -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(74,144,255,.18)">
+      <div style="background:#0a1020;padding:.7rem .3rem;text-align:center">
+        <div style="font-size:.52rem;color:var(--muted2);letter-spacing:1px">DISTANCE</div>
+        <div id="lr-km" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#fff;line-height:1.1">0,00 km</div>
+      </div>
+      <div style="background:#0a1020;padding:.7rem .3rem;text-align:center">
+        <div style="font-size:.52rem;color:var(--muted2);letter-spacing:1px">VITESSE</div>
+        <div id="lr-spd" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#fff;line-height:1.1">— km/h</div>
+      </div>
+      <div style="background:#0a1020;padding:.7rem .3rem;text-align:center">
+        <div style="font-size:.52rem;color:var(--muted2);letter-spacing:1px">D+</div>
+        <div id="lr-elv" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#fff;line-height:1.1">+0 m</div>
+      </div>
+    </div>
+    <!-- Points estimés -->
+    <div style="background:rgba(245,200,66,.05);padding:.45rem;text-align:center;border-bottom:1px solid rgba(245,200,66,.15)">
+      <span style="font-size:.65rem;color:var(--muted2)">Estimation : </span>
+      <span id="lr-pts" style="color:var(--gold);font-weight:700;font-family:'Space Mono',monospace">0 pts</span>
+    </div>
+    <!-- Map live -->
+    <div id="lr-map" style="height:300px;background:#000"></div>
+    <!-- Boutons START / FINISH (un seul visible à la fois) -->
+    <div style="padding:.8rem">
+      <button id="lr-start-btn" onclick="confirmStartLiveRun()" disabled style="width:100%;padding:.95rem;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:4px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(45,138,50,.4);opacity:.4">🏃 START (GPS…)</button>
+      <button id="lr-stop-btn" onclick="stopLiveRun()" style="display:none;width:100%;padding:.95rem;background:linear-gradient(180deg,#ff4040,#c8102e);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:4px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(200,16,46,.4)">🛑 FINISH</button>
+      <button id="lr-cancel-btn" onclick="cancelLiveRun()" style="width:100%;margin-top:.45rem;padding:.45rem;background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--muted2);font-size:.7rem;border-radius:8px;cursor:pointer">Annuler</button>
+      <div id="lr-hint" style="text-align:center;margin-top:.5rem;font-size:.6rem;color:var(--muted2)">Mets-toi à ton point de départ et attends le verrouillage GPS</div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal sélection avatar -->
 <div class="modal" id="avatar-picker-modal">
   <div class="modal-box" style="max-width:400px;max-height:85vh;overflow-y:auto">
@@ -2721,7 +2763,7 @@ function showLoginScreen(){
     '<div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:18px;display:flex;flex-direction:column;gap:10px;margin-bottom:9px">'+
       '<div style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:3px;color:#f5c842;text-align:center">CONNEXION</div>'+
       '<div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Email</label>'+
-      '<input id="login-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Space Mono,monospace;font-size:.76rem;outline:none"></div>'+
+      '<input id="login-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Rajdhani,sans-serif;font-weight:500;font-size:.85rem;outline:none"></div>'+
       '<div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Mot de passe</label>'+
       '<input id="login-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Space Mono,monospace;font-size:.8rem;outline:none"></div>'+
       '<button onclick="showForgotPassword()" style="background:none;border:none;color:#4a90ff;font-size:.72rem;cursor:pointer;font-family:Space Mono,monospace;text-align:right;text-decoration:underline;padding:2px 0;margin-top:-4px">Mot de passe oublié ?</button>'+
@@ -2757,7 +2799,7 @@ function showForgotPassword(){
       '<div style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:3px;color:#f5c842;text-align:center">MOT DE PASSE OUBLIÉ</div>'+
       '<div style="font-size:.6rem;color:#8aaccc;text-align:center;line-height:1.5;font-family:Space Mono,monospace">Saisis ton email — tu recevras un lien pour réinitialiser ton mot de passe.</div>'+
       '<div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Email</label>'+
-      '<input id="reset-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Space Mono,monospace;font-size:.76rem;outline:none"></div>'+
+      '<input id="reset-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Rajdhani,sans-serif;font-weight:500;font-size:.85rem;outline:none"></div>'+
       '<div id="reset-msg" style="font-size:.65rem;text-align:center;display:none;font-family:Space Mono,monospace"></div>'+
     '</div>'+
     '<button onclick="doResetPassword()" id="reset-btn" style="width:100%;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#4a90ff,#1a5abf);color:#fff;font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;margin-bottom:6px">ENVOYER LE LIEN →</button>'+
@@ -8595,7 +8637,7 @@ function renderGrades(){
 ============================================================ */
 function buyPack(type, amount, price){
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
-  var label=type==='rpc'?amount.toLocaleString('fr')+' RPC':amount+' NYX';
+  var label=type==='rpc'?amount.toLocaleString('de-DE')+' RPC':amount+' NYX';
   var emoji=type==='rpc'?'🪙':'💎';
   document.getElementById('lm-title').textContent=emoji+' Acheter '+label;
   document.getElementById('lm-body').innerHTML=
@@ -8612,7 +8654,7 @@ function buyPack(type, amount, price){
 function renderEconomy(){
   const rpcBuy=[[10000,'2,49€'],[50000,'9,99€'],[100000,'19,99€'],[500000,'79,99€']];
   const elRpcBuy=document.getElementById('rpc-buy');
-  if(elRpcBuy) elRpcBuy.innerHTML=rpcBuy.map(r=>`<div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>${r[0].toLocaleString('fr')} RPC</span><button onclick="buyPack('rpc',${r[0]},'${r[1]}')" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(245,200,66,.4);background:linear-gradient(175deg,rgba(245,200,66,.12),rgba(245,200,66,.04));color:var(--gold);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(245,200,66,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(245,200,66,.25),rgba(245,200,66,.1))';this.style.boxShadow='0 2px 8px rgba(245,200,66,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(245,200,66,.12),rgba(245,200,66,.04))';this.style.boxShadow='0 1px 4px rgba(245,200,66,.15)'">${r[1]}</button></div>`).join('');
+  if(elRpcBuy) elRpcBuy.innerHTML=rpcBuy.map(r=>`<div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>${r[0].toLocaleString('de-DE')} RPC</span><button onclick="buyPack('rpc',${r[0]},'${r[1]}')" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(245,200,66,.4);background:linear-gradient(175deg,rgba(245,200,66,.12),rgba(245,200,66,.04));color:var(--gold);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(245,200,66,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(245,200,66,.25),rgba(245,200,66,.1))';this.style.boxShadow='0 2px 8px rgba(245,200,66,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(245,200,66,.12),rgba(245,200,66,.04))';this.style.boxShadow='0 1px 4px rgba(245,200,66,.15)'">${r[1]}</button></div>`).join('');
   const nyxBuy=[[10,'1,29€'],[50,'4,99€'],[100,'9,99€'],[500,'44,99€']];
   const elNyxBuy=document.getElementById('nyx-buy');
   if(elNyxBuy) elNyxBuy.innerHTML=nyxBuy.map(r=>`<div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>${r[0]} NYX</span><button onclick="buyPack('nyx',${r[0]},'${r[1]}')" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(45,219,128,.4);background:linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04));color:var(--green);font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(45,219,128,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(45,219,128,.25),rgba(45,219,128,.1))';this.style.boxShadow='0 2px 8px rgba(45,219,128,.25)'" onmouseout="this.style.background='linear-gradient(175deg,rgba(45,219,128,.12),rgba(45,219,128,.04))';this.style.boxShadow='0 1px 4px rgba(45,219,128,.15)'">${r[1]}</button></div>`).join('');
@@ -10094,6 +10136,459 @@ function decodePolyline(encoded){
     points.push([lat/1e5,lng/1e5]);
   }
   return points;
+}
+
+// Encode tableau de [lat,lng] en polyline Google. Réciproque de decodePolyline.
+// Utilisé pour stocker dans runs.polyline les courses capturées en GPS natif.
+function encodePolyline(points){
+  function enc(n){
+    var v=n<0?~(n<<1):(n<<1),s='';
+    while(v>=0x20){s+=String.fromCharCode((0x20|(v&0x1f))+63);v>>>=5;}
+    s+=String.fromCharCode(v+63);
+    return s;
+  }
+  var lastLat=0,lastLng=0,result='';
+  for(var i=0;i<points.length;i++){
+    var latE5=Math.round(points[i][0]*1e5);
+    var lngE5=Math.round(points[i][1]*1e5);
+    result+=enc(latE5-lastLat);
+    result+=enc(lngE5-lastLng);
+    lastLat=latE5;lastLng=lngE5;
+  }
+  return result;
+}
+
+// Distance haversine en METRES (la version km existe déjà ailleurs sous _haversineKm)
+function _haversineM(lat1,lng1,lat2,lng2){
+  var R=6371000;
+  var toRad=function(d){return d*Math.PI/180;};
+  var dLat=toRad(lat2-lat1);
+  var dLng=toRad(lng2-lng1);
+  var a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+/* ============================================================
+   RUN TRACKER — Capture GPS native pour course en direct
+   ────────────────────────────────────────────────────────────
+   Façade unique, indépendante de la source GPS. Aujourd'hui :
+   navigator.geolocation côté PWA. Demain (wrap Capacitor) :
+   on swap juste l'implémentation _startWatch / _stopWatch
+   par @capacitor-community/background-geolocation, le reste
+   du code continue d'utiliser RunTracker.start/stop sans
+   savoir d'où viennent les points.
+============================================================ */
+var RunTracker=(function(){
+  var _state='idle';            // 'idle' | 'armed' | 'tracking'
+  var _watchId=null;
+  var _wakeLock=null;
+  var _onPoint=null;            // callback live (utilisé par l'UI)
+  var _onLock=null;             // callback dès qu'on a un point GPS valide (verrouillage)
+  var _points=[];               // [{lat, lng, alt, t, acc}] — uniquement en mode 'tracking'
+  var _startedAt=0;             // ms epoch
+  var _stats={km:0,elv:0,spdInst:0,spdAvg:0,durMs:0};
+  var _lastAccepted=null;       // dernier point gardé pour delta
+  var _lastAlt=null;            // dernière altitude pour cumul positif
+  var _lastFix=null;             // dernière position connue (même en armed) pour status
+
+  function _resetStats(){
+    _points=[];_lastAccepted=null;_lastAlt=null;
+    _stats={km:0,elv:0,spdInst:0,spdAvg:0,durMs:0};
+  }
+
+  // Filtre + agrégation à chaque point reçu
+  function _ingest(pos){
+    if(!pos||!pos.coords) return;
+    var c=pos.coords;
+    var acc=c.accuracy||999;
+    // Rejet précision trop faible (>30m de marge d'erreur = on jette)
+    if(acc>30) return;
+    var pt={lat:c.latitude,lng:c.longitude,alt:c.altitude,t:pos.timestamp||Date.now(),acc:acc};
+    _lastFix=pt;
+    // En mode 'armed' : on signale juste que le GPS est verrouillé, sans accumuler
+    if(_state==='armed'){
+      if(_onLock) _onLock(pt);
+      return;
+    }
+    if(_state!=='tracking') return;
+    if(_lastAccepted){
+      var dM=_haversineM(_lastAccepted.lat,_lastAccepted.lng,pt.lat,pt.lng);
+      // Filtre micro-mouvements (bruit GPS au repos) : <3m on garde pas
+      if(dM<3) return;
+      _stats.km+=dM/1000;
+      // Vitesse instantanée (sur ce delta)
+      var dtH=(pt.t-_lastAccepted.t)/3600000;
+      if(dtH>0) _stats.spdInst=(dM/1000)/dtH;
+      // Dénivelé positif cumulé (uniquement les montées)
+      if(_lastAlt!=null && pt.alt!=null){
+        var dAlt=pt.alt-_lastAlt;
+        if(dAlt>0.5) _stats.elv+=dAlt; // seuil 0.5m pour filtrer le bruit baro
+      }
+    }
+    _lastAccepted=pt;
+    if(pt.alt!=null) _lastAlt=pt.alt;
+    _points.push(pt);
+    _stats.durMs=Date.now()-_startedAt;
+    var durH=_stats.durMs/3600000;
+    if(durH>0) _stats.spdAvg=_stats.km/durH;
+    if(_onPoint) _onPoint(pt,_stats);
+  }
+
+  function _onGpsError(err){
+    console.warn('[RunTracker] GPS error',err);
+    var msg='⚠️ Erreur GPS';
+    if(err && err.code===1) msg='⚠️ Permission GPS refusée. Active-la dans les réglages du navigateur.';
+    else if(err && err.code===2) msg='⚠️ Position GPS indisponible (ciel dégagé requis)';
+    else if(err && err.code===3) msg='⚠️ GPS timeout — déplace-toi pour activer le signal';
+    if(typeof showToast==='function') showToast(msg);
+    var statusEl=document.getElementById('lr-status');
+    if(statusEl) statusEl.textContent=msg;
+  }
+  function _startWatch(){
+    if(!navigator.geolocation){throw new Error('Geolocation non supportée');}
+    _watchId=navigator.geolocation.watchPosition(
+      _ingest, _onGpsError,
+      {enableHighAccuracy:true,maximumAge:0,timeout:30000}
+    );
+  }
+  function _stopWatch(){
+    if(_watchId!=null){navigator.geolocation.clearWatch(_watchId);_watchId=null;}
+  }
+
+  // Wake Lock : empêche l'écran de s'éteindre. Auto-libéré si l'app passe
+  // en arrière-plan → on ré-acquiert au retour visible.
+  async function _acquireWakeLock(){
+    if(!('wakeLock' in navigator)) return;
+    try{
+      _wakeLock=await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release',function(){_wakeLock=null;});
+    }catch(e){console.warn('[RunTracker] wakeLock fail',e);}
+  }
+  async function _releaseWakeLock(){
+    if(_wakeLock){try{await _wakeLock.release();}catch(e){}_wakeLock=null;}
+  }
+  function _onVisChange(){
+    if(document.visibilityState==='visible' && _state==='tracking' && !_wakeLock){
+      _acquireWakeLock();
+    }
+  }
+
+  return {
+    isActive:function(){return _state==='tracking';},
+    isArmed:function(){return _state==='armed';},
+    getState:function(){return _state;},
+    getLastFix:function(){return _lastFix?Object.assign({},_lastFix):null;},
+    getStats:function(){return Object.assign({},_stats);},
+    getPoints:function(){return _points.slice();},
+    onPoint:function(cb){_onPoint=cb;},
+    onLock:function(cb){_onLock=cb;},
+    // arm() : démarre le watch GPS pour verrouiller le signal sans accumuler.
+    // Permet à l'utilisateur de voir "GPS prêt" avant d'appuyer sur START.
+    arm:async function(){
+      if(_state!=='idle') return;
+      _resetStats();
+      _lastFix=null;
+      _startWatch();
+      await _acquireWakeLock();
+      document.addEventListener('visibilitychange',_onVisChange);
+      _state='armed';
+    },
+    // start() : passe en mode enregistrement. Reset les stats et fixe l'origine
+    // du chrono. À appeler quand le user clique le bouton START.
+    start:function(){
+      if(_state==='tracking') return;
+      // Si pas encore armé (cas direct), on appelle arm() d'abord (côté caller)
+      _resetStats();
+      _startedAt=Date.now();
+      _state='tracking';
+    },
+    stop:async function(){
+      if(_state==='idle') return null;
+      _stopWatch();
+      await _releaseWakeLock();
+      document.removeEventListener('visibilitychange',_onVisChange);
+      var wasTracking=(_state==='tracking');
+      _state='idle';
+      _onPoint=null;_onLock=null;
+      if(!wasTracking) return null; // arm sans start = on ne sauve rien
+      // Snapshot final
+      var pts=_points.map(function(p){return [p.lat,p.lng];});
+      return {
+        points:pts,
+        polyline:pts.length>1?encodePolyline(pts):null,
+        km:Math.round(_stats.km*100)/100,
+        elv:Math.round(_stats.elv),
+        durMs:_stats.durMs,
+        timeMin:Math.round((_stats.durMs/60000)*10)/10,
+        spdAvg:Math.round(_stats.spdAvg*10)/10,
+        startedAt:_startedAt
+      };
+    }
+  };
+})();
+
+// Sauvegarde une course capturée par RunTracker dans Supabase :
+// run + land_passages + crédit RPC + check badges. Mêmes mécaniques que
+// l'import Strava client mais sans densification (capture native déjà dense).
+async function saveCapturedRun(captured, runName){
+  if(!currentUser){throw new Error('Pas connecté');}
+  if(!captured||!captured.points||captured.points.length<2){
+    throw new Error('Pas assez de points GPS');
+  }
+  var km=captured.km, elv=captured.elv, timeMin=captured.timeMin;
+  var spd=timeMin>0?(km/(timeMin/60)):0;
+  var hasBoost=(typeof isBoostActive==='function')?isBoostActive():false;
+  var pts=Math.round(computePts(km,spd,elv,hasBoost));
+  var runDate=new Date(captured.startedAt||Date.now()).toISOString();
+
+  // 1. Insert run
+  var runResp=await fetch(supabaseUrl+'/rest/v1/runs',{
+    method:'POST',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({
+      player_id:currentUser.id,
+      points:pts,
+      distance:Math.round(km*100)/100,
+      time:Math.round(timeMin*10)/10,
+      elevation:Math.round(elv),
+      run_date:runDate,
+      period:0,
+      name:runName||'Course PWA',
+      polyline:captured.polyline,
+      flagged:false
+    })
+  });
+  if(!runResp.ok){throw new Error('Échec sauvegarde run ('+runResp.status+')');}
+
+  // 2. Crédit RPC (8 RPC par point gagné — même règle que l'import Strava)
+  if(typeof walletCredit==='function'){
+    await walletCredit(pts*8, 0, 'Course '+(runName||'PWA')+' · '+pts+' pts');
+  }
+
+  // 3. Hexes H3 + passages
+  var nbLands=0, totalRpcLand=0;
+  if(typeof h3!=='undefined' && captured.points.length>0){
+    var hexSet=new Set();
+    captured.points.forEach(function(p){
+      try{hexSet.add(h3.latLngToCell(p[0],p[1],H3_RESOLUTION));}catch(e){}
+    });
+    var hexes=Array.from(hexSet);
+    var today=getParisTodayStr();
+    nbLands=hexes.length;
+    for(var i=0;i<hexes.length;i++){
+      var hexId=hexes[i];
+      // Land existe ? sinon on la crée
+      var lr=await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=id,stars,owner_id,tenant_id',{
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+      });
+      var lj=await lr.json();
+      if(!lj||!lj.length){
+        var ll=h3.cellToLatLng(hexId);
+        await fetch(supabaseUrl+'/rest/v1/lands',{
+          method:'POST',
+          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
+        });
+      }
+      // Passage déjà fait aujourd'hui ?
+      var pr=await fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today+'&select=id',{
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+      });
+      var pj=await pr.json();
+      if(!pj||!pj.length){
+        var land=(lj&&lj[0])||null;
+        var rpcEarned=[3,6,9,12][(land?land.stars:0)||0];
+        await fetch(supabaseUrl+'/rest/v1/land_passages',{
+          method:'POST',
+          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
+        });
+        // Si la land appartient à un autre joueur → on le crédite
+        var landOwner=land?(land.owner_id||land.tenant_id):null;
+        if(landOwner && landOwner!==currentUser.id && typeof walletCreditOther==='function'){
+          await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+          totalRpcLand+=rpcEarned;
+        }
+      }
+    }
+    // Marquer pour rendu carte
+    if(!window._recentExploredHexes) window._recentExploredHexes=[];
+    window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
+  }
+
+  // 4. Trigger badge check côté serveur (fire-and-forget)
+  fetch(supabaseUrl+'/functions/v1/check-badges',{
+    method:'POST',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({player_id:currentUser.id})
+  }).catch(function(){});
+
+  return {points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
+}
+
+/* ============================================================
+   LIVE RUN UI — pilote la modal de course en direct
+============================================================ */
+var _liveRunMap=null;
+var _liveRunPoly=null;
+var _liveRunMarker=null;
+var _liveRunTimerInt=null;
+
+function _formatDuration(ms){
+  var s=Math.floor(ms/1000);
+  var h=Math.floor(s/3600);
+  var m=Math.floor((s%3600)/60);
+  var sec=s%60;
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  return pad(h)+':'+pad(m)+':'+pad(sec);
+}
+
+// Phase 1 — WARMUP : ouvre la modal et démarre le GPS pour verrouiller
+// le signal, sans encore enregistrer la course. Le bouton START devient
+// actif dès que le premier fix GPS arrive.
+async function startLiveRun(){
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  if(RunTracker.isActive()){openModal('live-run-modal');return;}
+  if(!navigator.geolocation){showToast('⚠️ GPS non supporté sur ce navigateur');return;}
+  // Reset UI vers l'état warmup
+  document.getElementById('lr-timer').textContent='00:00:00';
+  document.getElementById('lr-status').textContent='📡 Recherche du signal GPS…';
+  document.getElementById('lr-km').textContent='0,00 km';
+  document.getElementById('lr-spd').textContent='— km/h';
+  document.getElementById('lr-elv').textContent='+0 m';
+  document.getElementById('lr-pts').textContent='0 pts';
+  var startBtn=document.getElementById('lr-start-btn');
+  var stopBtn=document.getElementById('lr-stop-btn');
+  var cancelBtn=document.getElementById('lr-cancel-btn');
+  var hint=document.getElementById('lr-hint');
+  startBtn.style.display='';startBtn.disabled=true;startBtn.style.opacity='.4';startBtn.textContent='🏃 START (GPS…)';
+  stopBtn.style.display='none';
+  cancelBtn.style.display='';
+  hint.textContent='Mets-toi à ton point de départ et attends le verrouillage GPS';
+  // Open modal AVANT de créer la map (sinon Leaflet calcule mal la taille)
+  openModal('live-run-modal');
+  // Init map
+  setTimeout(function(){
+    if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
+    _liveRunMap=L.map('lr-map',{zoomControl:false,attributionControl:false}).setView([46.6,2.2],5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',{maxZoom:19}).addTo(_liveRunMap);
+    _liveRunPoly=L.polyline([],{color:'#f5c842',weight:4,opacity:.9}).addTo(_liveRunMap);
+    _liveRunMarker=null;
+    setTimeout(function(){_liveRunMap&&_liveRunMap.invalidateSize();},150);
+  },50);
+
+  // Callback "lock" : déclenché à chaque fix GPS valide pendant le warmup.
+  // On active le bouton START, on centre la carte, on affiche un marker
+  // discret (gris) à la position courante.
+  RunTracker.onLock(function(pt){
+    document.getElementById('lr-status').textContent='✅ GPS prêt · ±'+Math.round(pt.acc)+' m — clique START quand tu es prêt';
+    startBtn.disabled=false;startBtn.style.opacity='1';startBtn.textContent='🏃 START';
+    if(_liveRunMap){
+      try{
+        if(!_liveRunMarker){
+          _liveRunMarker=L.circleMarker([pt.lat,pt.lng],{radius:7,color:'#fff',fillColor:'#888',fillOpacity:.85,weight:2}).addTo(_liveRunMap);
+          _liveRunMap.setView([pt.lat,pt.lng],16);
+        }else{
+          _liveRunMarker.setLatLng([pt.lat,pt.lng]);
+        }
+      }catch(e){}
+    }
+  });
+
+  try{
+    await RunTracker.arm();
+  }catch(e){
+    showToast('⚠️ '+e.message);
+    closeModal('live-run-modal');
+  }
+}
+
+// Phase 2 — RUNNING : appelée quand l'utilisateur clique START.
+// Bascule RunTracker en mode enregistrement (chrono démarre, distance
+// commence à compter à partir de maintenant) et change l'UI.
+function confirmStartLiveRun(){
+  if(!RunTracker.isArmed()){
+    showToast('⚠️ GPS pas encore prêt, attends quelques secondes');
+    return;
+  }
+  // UI : cache START + cancel, montre FINISH
+  document.getElementById('lr-start-btn').style.display='none';
+  document.getElementById('lr-cancel-btn').style.display='none';
+  document.getElementById('lr-stop-btn').style.display='';
+  document.getElementById('lr-hint').textContent='Garde l\'écran allumé pour ne rien perdre';
+  // Marker passe en doré (course active)
+  if(_liveRunMarker){
+    try{_liveRunMarker.setStyle({fillColor:'#f5c842',fillOpacity:1});}catch(e){}
+  }
+  // Callback "point" : déclenché à chaque point GPS pendant l'enregistrement.
+  RunTracker.onPoint(function(pt,stats){
+    document.getElementById('lr-status').textContent='✅ GPS · ±'+Math.round(pt.acc)+' m';
+    document.getElementById('lr-km').textContent=stats.km.toFixed(2).replace('.',',')+' km';
+    document.getElementById('lr-spd').textContent=stats.spdAvg.toFixed(1).replace('.',',')+' km/h';
+    document.getElementById('lr-elv').textContent='+'+Math.round(stats.elv)+' m';
+    var spd=stats.km>0 && stats.durMs>0?(stats.km/(stats.durMs/3600000)):0;
+    var ptsEst=stats.km>0?Math.round(computePts(stats.km,spd,stats.elv,false)):0;
+    document.getElementById('lr-pts').textContent=ptsEst.toLocaleString('fr')+' pts';
+    if(_liveRunMap){
+      try{
+        _liveRunPoly.addLatLng([pt.lat,pt.lng]);
+        _liveRunMarker.setLatLng([pt.lat,pt.lng]);
+        _liveRunMap.panTo([pt.lat,pt.lng],{animate:true,duration:0.5});
+      }catch(e){}
+    }
+  });
+  // Timer indépendant des points GPS
+  _liveRunTimerInt=setInterval(function(){
+    var stats=RunTracker.getStats();
+    document.getElementById('lr-timer').textContent=_formatDuration(stats.durMs);
+  },500);
+  RunTracker.start();
+}
+
+// Annuler avant d'avoir cliqué START : ferme proprement le tracker (sans
+// rien sauvegarder) et la modal.
+async function cancelLiveRun(){
+  await RunTracker.stop();
+  closeModal('live-run-modal');
+  if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
+}
+
+async function stopLiveRun(){
+  if(!RunTracker.isActive()){closeModal('live-run-modal');return;}
+  var stats=RunTracker.getStats();
+  // Garde-fou : courses trop courtes = on demande confirmation
+  if(stats.km<0.3){
+    if(!confirm('Course très courte ('+stats.km.toFixed(2)+' km). Vraiment terminer ?')) return;
+  }
+  // Désactive le bouton pour éviter double-clic
+  var btn=document.getElementById('lr-stop-btn');
+  if(btn){btn.disabled=true;btn.textContent='💾 Enregistrement…';btn.style.opacity='.7';}
+  if(_liveRunTimerInt){clearInterval(_liveRunTimerInt);_liveRunTimerInt=null;}
+  var captured=await RunTracker.stop();
+  closeModal('live-run-modal');
+  if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
+  if(btn){btn.disabled=false;btn.textContent='🛑 TERMINER';btn.style.opacity='1';}
+  if(!captured||!captured.points||captured.points.length<2){
+    showToast('⚠️ Pas assez de points GPS, course non sauvegardée');
+    return;
+  }
+  if(captured.km<0.1){
+    showToast('⚠️ Distance trop faible, course non sauvegardée');
+    return;
+  }
+  try{
+    var summary=await saveCapturedRun(captured,'Course du '+new Date().toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}));
+    showToast('🏁 '+summary.points+' pts · '+summary.nbLands+' Lands · +'+(summary.points*8).toLocaleString('fr')+' RPC');
+    // Refresh UI : dashboard, carte, historique
+    try{
+      if(typeof renderDashboard==='function') renderDashboard();
+      if(typeof renderHistory==='function') renderHistory();
+      if(typeof loadLandsOnMap==='function') loadLandsOnMap();
+    }catch(e){console.warn('refresh post-run partial fail',e);}
+  }catch(e){
+    console.error('saveCapturedRun error',e);
+    showToast('⚠️ Erreur sauvegarde : '+e.message);
+  }
 }
 
 function openJoinTeamModal(){

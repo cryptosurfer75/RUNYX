@@ -3,7 +3,7 @@
 // cache-first pour les assets statiques (icônes, logos, CDN).
 // Bump CACHE_VERSION à chaque release significative pour invalider l'ancien cache.
 
-const CACHE_VERSION = 'speedix-v1';
+const CACHE_VERSION = 'speedix-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
