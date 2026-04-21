@@ -533,6 +533,23 @@ body::before{
 .modal-sub{font-size:.78rem;color:var(--muted2);margin-bottom:1.1rem}
 .modal-close{position:absolute;top:.85rem;right:.9rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem}
 .modal-close:hover{color:var(--text)}
+/* ============================================================
+   LIVE POSITIONS — markers des autres RP sur la carte
+============================================================ */
+.lp-marker-wrap{background:none!important;border:none!important}
+.lp-marker{display:flex;flex-direction:column;align-items:center;pointer-events:none;transform:translateY(-12px)}
+.lp-avatar{width:36px;height:36px;border-radius:50%;border:2px solid #fff;background:#0a1020;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.lp-avatar img{width:100%;height:100%;object-fit:cover}
+.lp-avatar-fallback{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#f5c842}
+.lp-pseudo{margin-top:2px;font-family:'Bebas Neue',sans-serif;font-size:.62rem;letter-spacing:1px;color:#fff;background:rgba(0,0,0,.7);padding:1px 5px;border-radius:3px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+.lp-marker.lp-active .lp-avatar{box-shadow:0 0 0 0 rgba(74,144,255,.6),0 2px 6px rgba(0,0,0,.5);animation:lpPulse 1.6s infinite}
+.lp-marker.lp-paused .lp-avatar{border-color:#888;opacity:.7}
+.lp-marker.lp-paused .lp-pseudo{color:#aaa}
+@keyframes lpPulse{
+  0%{box-shadow:0 0 0 0 rgba(74,144,255,.6),0 2px 6px rgba(0,0,0,.5)}
+  70%{box-shadow:0 0 0 12px rgba(74,144,255,0),0 2px 6px rgba(0,0,0,.5)}
+  100%{box-shadow:0 0 0 0 rgba(74,144,255,0),0 2px 6px rgba(0,0,0,.5)}
+}
 
 /* ============================================================
    TOAST
@@ -1164,6 +1181,22 @@ select option{background:#040c1c}
 
     <!-- Activités cachées (accès via Racing) -->
     <table class="tbl" id="dash-activities" style="display:none"></table>
+
+    <!-- Préférences confidentialité -->
+    <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.25)">
+      <div class="block-header"><div class="block-title">⚙️ <span class="hl">Préférences</span></div></div>
+      <div class="block-body-sm">
+        <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.4rem 0">
+          <input type="checkbox" id="pref-share-live" onchange="saveSharePreference()" style="width:18px;height:18px;accent-color:#4a90ff;cursor:pointer;flex-shrink:0;margin-top:1px">
+          <div style="flex:1">
+            <div style="font-size:.78rem;font-weight:600;color:var(--text)">🛰️ Partager ma position en course</div>
+            <div style="font-size:.65rem;color:var(--muted2);line-height:1.45;margin-top:2px">
+              Si activé, les autres RP qui courent dans un rayon de 5 km autour de toi pourront voir ton avatar et ton pseudo sur leur carte. Tu peux toujours décocher au cas par cas avant chaque course. Désactivé = invisible pour les autres.
+            </div>
+          </div>
+        </label>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -1899,7 +1932,11 @@ select option{background:#040c1c}
     <div id="lr-map" style="height:300px;background:#000"></div>
     <!-- Boutons (visibles selon la phase) -->
     <div style="padding:.8rem">
-      <!-- Phase WARMUP : START seul -->
+      <!-- Phase WARMUP : option partage + START -->
+      <label id="lr-share-row" style="display:flex;align-items:center;gap:.5rem;padding:.6rem .75rem;margin-bottom:.55rem;background:rgba(74,144,255,.08);border:1px solid rgba(74,144,255,.2);border-radius:8px;cursor:pointer;font-size:.72rem;color:var(--text)">
+        <input type="checkbox" id="lr-share-checkbox" style="width:18px;height:18px;accent-color:#4a90ff;cursor:pointer;flex-shrink:0">
+        <span>🛰️ Partager ma position avec les autres RP pendant cette course</span>
+      </label>
       <button id="lr-start-btn" onclick="confirmStartLiveRun()" disabled style="width:100%;padding:.95rem;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:4px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(45,138,50,.4);opacity:.4">🏃 START (GPS…)</button>
       <!-- Phase RUNNING : PAUSE + FINISH côte à côte -->
       <div id="lr-running-actions" style="display:none;gap:.5rem">
@@ -2960,7 +2997,8 @@ async function onLoginSuccess(user, isNew){
       pts:0, ptsCum:0, km:0, courses:0, source:'strava',
       trend:pd.trend||0, avatar:pd.avatar||null, parrain:null,
       rtwId:rtwId, competitive:pd.competitive||false,
-      premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:pd.premium_trial||false
+      premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:pd.premium_trial||false,
+      shareLivePosition:!!pd.share_live_position
     };
     var exi=PLAYERS.findIndex(function(p){return p.id===1;});
     if(exi>=0)PLAYERS[exi]=window.__myPlayer; else PLAYERS.unshift(window.__myPlayer);
@@ -4210,6 +4248,8 @@ function renderDashboard(){
       <td style="color:var(--muted2);font-size:.75rem">${(pts*20).toLocaleString('fr')}</td></tr>`;
   }).join('');
   tb.innerHTML=head+'<tbody>'+rows+'</tbody>';
+  // Sync l'état de la checkbox de partage avec la préférence en mémoire
+  if(typeof syncSharePrefCheckbox==='function') syncSharePrefCheckbox();
 }
 
 /* ============================================================
@@ -10469,6 +10509,275 @@ async function saveCapturedRun(captured, runName){
   return {points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
 }
 
+// Sauvegarde la préférence "Partager ma position en course" dans Supabase
+// + met à jour le cache local (window.__myPlayer) pour qu'il soit utilisé
+// par défaut au prochain warmup.
+async function saveSharePreference(){
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  var chk=document.getElementById('pref-share-live');
+  if(!chk) return;
+  var newVal=!!chk.checked;
+  try{
+    await supabaseClient.from('players').update({share_live_position:newVal}).eq('id',currentUser.id);
+    if(window.__myPlayer) window.__myPlayer.shareLivePosition=newVal;
+    showToast(newVal?'🛰️ Position partagée pendant tes courses':'🔒 Position privée');
+  }catch(e){
+    console.warn('saveSharePreference fail',e);
+    showToast('⚠️ Impossible de sauver la préférence');
+  }
+}
+
+// Synchronise l'état de la checkbox de la PC avec la valeur en mémoire
+// (à appeler au render du dashboard ou au login).
+function syncSharePrefCheckbox(){
+  var chk=document.getElementById('pref-share-live');
+  if(!chk) return;
+  chk.checked=!!(window.__myPlayer&&window.__myPlayer.shareLivePosition);
+}
+
+/* ============================================================
+   LIVE POSITIONS — partage temps réel des RP en course
+   ────────────────────────────────────────────────────────────
+   Sender : UPSERT position toutes les 8s pendant tracking.
+   Receiver : subscribe Supabase Realtime, render markers
+   des autres RP dans un rayon de 5 km, vibration + ping
+   audio si croisement <100m (cooldown 5 min/RP).
+============================================================ */
+var LivePositions=(function(){
+  var VIEW_RADIUS_KM=5;
+  var ALERT_DISTANCE_M=100;
+  var ALERT_COOLDOWN_MS=5*60*1000;
+  var SENDER_INTERVAL_MS=8000;
+  var STALE_AFTER_MS=10*60*1000;     // positions plus vieilles = ignorées
+
+  var _channel=null;
+  var _senderInt=null;
+  var _otherMarkers={};               // { player_id: {marker, lat, lng, lastAlertAt, isPaused, username, avatar} }
+  var _myLastFix=null;                // {lat, lng} pour calcul distances
+  var _myProfile={username:null, avatar:null};
+  var _isSending=false;
+  var _audioCtx=null;
+
+  function _haversineKmLP(lat1,lng1,lat2,lng2){
+    var R=6371;
+    var toRad=function(d){return d*Math.PI/180;};
+    var dLat=toRad(lat2-lat1);
+    var dLng=toRad(lng2-lng1);
+    var a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+
+  // Ping audio synthétisé (pas besoin d'asset). Fonctionne après
+  // 1ère interaction utilisateur (clic START), donc OK.
+  function _playPing(){
+    try{
+      if(!_audioCtx) _audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      var t=_audioCtx.currentTime;
+      var osc=_audioCtx.createOscillator();
+      var gain=_audioCtx.createGain();
+      osc.connect(gain);gain.connect(_audioCtx.destination);
+      osc.frequency.setValueAtTime(880,t);                 // La5
+      osc.frequency.exponentialRampToValueAtTime(1320,t+0.15); // monte vers Mi6
+      gain.gain.setValueAtTime(0.001,t);
+      gain.gain.exponentialRampToValueAtTime(0.35,t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001,t+0.45);
+      osc.start(t);osc.stop(t+0.5);
+    }catch(e){console.warn('[LP] audio fail',e);}
+  }
+  function _vibrate(){
+    try{if(navigator.vibrate) navigator.vibrate([180,80,180]);}catch(e){}
+  }
+  function _alertCross(other){
+    _vibrate();_playPing();
+    if(typeof showToast==='function'){
+      showToast('🤝 Tu croises '+(other.username||'un autre RP')+' à proximité !');
+    }
+  }
+
+  // Crée un divIcon Leaflet pour un autre RP (avatar circulaire + pseudo dessous)
+  function _makeMarkerIcon(other){
+    var avatarSrc=other.avatar||'';
+    var pulseClass=other.isPaused?'lp-paused':'lp-active';
+    var html=
+      '<div class="lp-marker '+pulseClass+'">'
+        +'<div class="lp-avatar">'
+          +(avatarSrc?'<img src="'+avatarSrc+'" alt="">':'<div class="lp-avatar-fallback">'+((other.username||'?').charAt(0).toUpperCase())+'</div>')
+        +'</div>'
+        +'<div class="lp-pseudo">'+(other.username||'RP')+(other.isPaused?' ⏸':'')+'</div>'
+      +'</div>';
+    return L.divIcon({html:html,className:'lp-marker-wrap',iconSize:[44,56],iconAnchor:[22,28]});
+  }
+
+  // Met à jour ou crée le marker d'un autre RP, et déclenche l'alerte
+  // si on passe sous le seuil de croisement.
+  function _upsertOther(row){
+    if(!row||!row.player_id) return;
+    if(row.player_id===(window.currentUser&&window.currentUser.id)) return; // soi-même, ignore
+    if(!window._liveRunMap) return;
+    // Filtre fraîcheur
+    if(row.updated_at){
+      var age=Date.now()-new Date(row.updated_at).getTime();
+      if(age>STALE_AFTER_MS) return;
+    }
+    // Filtre distance (rayon 5km autour de moi)
+    if(_myLastFix){
+      var distKm=_haversineKmLP(_myLastFix.lat,_myLastFix.lng,row.lat,row.lng);
+      if(distKm>VIEW_RADIUS_KM){
+        // Hors zone : on retire le marker s'il existait
+        _removeOther(row.player_id);
+        return;
+      }
+    }
+    var existing=_otherMarkers[row.player_id];
+    var data={
+      lat:row.lat, lng:row.lng,
+      isPaused:!!row.is_paused,
+      username:row.username||(existing?existing.username:null),
+      avatar:row.avatar||(existing?existing.avatar:null),
+      lastAlertAt:existing?existing.lastAlertAt:0
+    };
+    if(existing){
+      existing.marker.setLatLng([data.lat,data.lng]);
+      // Refresh icon si pause toggle ou avatar/pseudo changent
+      if(existing.isPaused!==data.isPaused){
+        existing.marker.setIcon(_makeMarkerIcon(data));
+      }
+      Object.assign(existing,data);
+    }else{
+      var icon=_makeMarkerIcon(data);
+      var marker=L.marker([data.lat,data.lng],{icon:icon,interactive:false}).addTo(window._liveRunMap);
+      data.marker=marker;
+      _otherMarkers[row.player_id]=data;
+    }
+    // Détection croisement
+    if(_myLastFix){
+      var dM=_haversineKmLP(_myLastFix.lat,_myLastFix.lng,row.lat,row.lng)*1000;
+      var entry=_otherMarkers[row.player_id];
+      if(dM<ALERT_DISTANCE_M && (Date.now()-entry.lastAlertAt)>ALERT_COOLDOWN_MS){
+        entry.lastAlertAt=Date.now();
+        _alertCross(entry);
+      }
+    }
+  }
+  function _removeOther(playerId){
+    var ex=_otherMarkers[playerId];
+    if(!ex) return;
+    try{window._liveRunMap&&window._liveRunMap.removeLayer(ex.marker);}catch(e){}
+    delete _otherMarkers[playerId];
+  }
+  function _clearAllOthers(){
+    Object.keys(_otherMarkers).forEach(_removeOther);
+  }
+
+  // Hydrate les markers existants au démarrage (ceux déjà en course
+  // au moment où on rejoint) — Realtime ne nous donne pas l'historique.
+  async function _initialFetch(){
+    if(typeof supabaseClient==='undefined') return;
+    var cutoff=new Date(Date.now()-STALE_AFTER_MS).toISOString();
+    var {data,error}=await supabaseClient.from('live_positions')
+      .select('player_id,lat,lng,is_paused,username,avatar,updated_at')
+      .gte('updated_at',cutoff);
+    if(error){console.warn('[LP] initial fetch fail',error);return;}
+    (data||[]).forEach(_upsertOther);
+  }
+
+  // Subscribe Realtime sur live_positions (INSERT, UPDATE, DELETE)
+  function _subscribeRealtime(){
+    if(typeof supabaseClient==='undefined') return;
+    if(_channel) return;
+    _channel=supabaseClient.channel('live-positions-rt')
+      .on('postgres_changes',{event:'*',schema:'public',table:'live_positions'},function(payload){
+        if(payload.eventType==='DELETE'){
+          if(payload.old&&payload.old.player_id) _removeOther(payload.old.player_id);
+          return;
+        }
+        if(payload.new) _upsertOther(payload.new);
+      })
+      .subscribe();
+  }
+
+  return {
+    // Démarre RECEIVER (toujours actif pendant la modal de course, même si on
+    // ne partage pas soi-même — voir les autres ne dépend pas de partager).
+    startReceiving:async function(){
+      _otherMarkers={};
+      _subscribeRealtime();
+      await _initialFetch();
+    },
+    // Arrête receiver, nettoie markers et channel.
+    stopReceiving:async function(){
+      _clearAllOthers();
+      if(_channel){
+        try{supabaseClient.removeChannel(_channel);}catch(e){}
+        _channel=null;
+      }
+    },
+    // À appeler à chaque update GPS local pour recalculer les distances aux autres
+    // (déclenche les alertes de croisement et le filtre 5km).
+    updateMyPosition:function(lat,lng){
+      _myLastFix={lat:lat,lng:lng};
+      // Re-vérifie tous les markers existants (filtre 5km + alert)
+      Object.keys(_otherMarkers).forEach(function(pid){
+        var o=_otherMarkers[pid];
+        var dM=_haversineKmLP(lat,lng,o.lat,o.lng)*1000;
+        if(dM/1000>VIEW_RADIUS_KM){_removeOther(pid);return;}
+        if(dM<ALERT_DISTANCE_M && (Date.now()-o.lastAlertAt)>ALERT_COOLDOWN_MS){
+          o.lastAlertAt=Date.now();
+          _alertCross(o);
+        }
+      });
+    },
+    // Démarre SENDER : UPSERT toutes les 8s, en lisant la dernière position
+    // depuis getLastFixFn (callback fournie par l'UI live-run, qui pointe sur
+    // RunTracker.getLastFix). Si la course est en pause → un seul UPSERT
+    // avec is_paused=true puis on arrête le ticker.
+    startSending:async function(profile, getLastFixFn){
+      if(_isSending) return;
+      _isSending=true;
+      _myProfile.username=profile.username||null;
+      _myProfile.avatar=profile.avatar||null;
+      var pushOnce=async function(isPaused){
+        var fix=getLastFixFn&&getLastFixFn();
+        if(!fix) return;
+        try{
+          await supabaseClient.from('live_positions').upsert({
+            player_id:window.currentUser.id,
+            lat:fix.lat, lng:fix.lng,
+            is_paused:!!isPaused,
+            username:_myProfile.username,
+            avatar:_myProfile.avatar
+          },{onConflict:'player_id'});
+        }catch(e){console.warn('[LP] upsert fail',e);}
+      };
+      // 1er push immédiat (si fix dispo)
+      pushOnce(false);
+      _senderInt=setInterval(function(){pushOnce(false);},SENDER_INTERVAL_MS);
+      // Expose pushOnce pour pause/resume
+      LivePositions._pushOnce=pushOnce;
+    },
+    pauseSending:function(){
+      // Une dernière update is_paused=true puis on arrête le ticker
+      if(LivePositions._pushOnce) LivePositions._pushOnce(true);
+      if(_senderInt){clearInterval(_senderInt);_senderInt=null;}
+    },
+    resumeSending:function(){
+      if(!_isSending) return;
+      if(_senderInt) return;
+      // On repart sur le ticker normal
+      if(LivePositions._pushOnce) LivePositions._pushOnce(false);
+      _senderInt=setInterval(function(){LivePositions._pushOnce&&LivePositions._pushOnce(false);},SENDER_INTERVAL_MS);
+    },
+    stopSending:async function(){
+      if(!_isSending) return;
+      _isSending=false;
+      if(_senderInt){clearInterval(_senderInt);_senderInt=null;}
+      try{
+        await supabaseClient.from('live_positions').delete().eq('player_id',window.currentUser.id);
+      }catch(e){console.warn('[LP] delete fail',e);}
+    }
+  };
+})();
+
 /* ============================================================
    LIVE RUN UI — pilote la modal de course en direct
 ============================================================ */
@@ -10504,10 +10813,17 @@ async function startLiveRun(){
   var runningActions=document.getElementById('lr-running-actions');
   var cancelBtn=document.getElementById('lr-cancel-btn');
   var hint=document.getElementById('lr-hint');
+  var shareRow=document.getElementById('lr-share-row');
+  var shareChk=document.getElementById('lr-share-checkbox');
   startBtn.style.display='';startBtn.disabled=true;startBtn.style.opacity='.4';startBtn.textContent='🏃 START (GPS…)';
   runningActions.style.display='none';
   cancelBtn.style.display='';
   hint.textContent='Mets-toi à ton point de départ et attends le verrouillage GPS';
+  // Toggle de partage : default = préférence permanente du joueur
+  if(shareChk){
+    shareChk.checked=!!(window.__myPlayer&&window.__myPlayer.shareLivePosition);
+  }
+  if(shareRow) shareRow.style.display='flex';
   // Open modal AVANT de créer la map (sinon Leaflet calcule mal la taille)
   openModal('live-run-modal');
   // Init map
@@ -10536,10 +10852,19 @@ async function startLiveRun(){
         }
       }catch(e){}
     }
+    // Live tracking : on connait notre position → on alimente le receiver
+    // pour qu'il filtre les autres RP à 5km autour de nous
+    if(typeof LivePositions!=='undefined') LivePositions.updateMyPosition(pt.lat,pt.lng);
   });
 
   try{
     await RunTracker.arm();
+    // Démarre le receiver dès le warmup → on voit les autres RP
+    // pendant qu'on attend de start, c'est plus fun
+    if(typeof LivePositions!=='undefined'){
+      window._liveRunMap; // ref pour le module
+      await LivePositions.startReceiving();
+    }
   }catch(e){
     showToast('⚠️ '+e.message);
     closeModal('live-run-modal');
@@ -10554,9 +10879,15 @@ function confirmStartLiveRun(){
     showToast('⚠️ GPS pas encore prêt, attends quelques secondes');
     return;
   }
-  // UI : cache START + cancel, montre PAUSE + FINISH
+  // Lit le toggle de partage AVANT de cacher la ligne
+  var shareThisRun=false;
+  var shareChk=document.getElementById('lr-share-checkbox');
+  if(shareChk) shareThisRun=shareChk.checked;
+  // UI : cache START + cancel + share row, montre PAUSE + FINISH
   document.getElementById('lr-start-btn').style.display='none';
   document.getElementById('lr-cancel-btn').style.display='none';
+  var shareRow=document.getElementById('lr-share-row');
+  if(shareRow) shareRow.style.display='none';
   document.getElementById('lr-running-actions').style.display='flex';
   document.getElementById('lr-hint').textContent='Garde l\'écran allumé pour ne rien perdre';
   // Marker passe en doré (course active)
@@ -10579,7 +10910,16 @@ function confirmStartLiveRun(){
         _liveRunMap.panTo([pt.lat,pt.lng],{animate:true,duration:0.5});
       }catch(e){}
     }
+    // Live tracking : MAJ position pour le filtre 5km + détection croisement
+    if(typeof LivePositions!=='undefined') LivePositions.updateMyPosition(pt.lat,pt.lng);
   });
+  // Démarre le sender si l'utilisateur a coché le partage pour cette course
+  if(shareThisRun && typeof LivePositions!=='undefined' && window.__myPlayer){
+    LivePositions.startSending(
+      {username:window.__myPlayer.name, avatar:window.__myPlayer.avatar},
+      function(){return RunTracker.getLastFix();}
+    );
+  }
   // Timer indépendant des points GPS
   _liveRunTimerInt=setInterval(function(){
     var stats=RunTracker.getStats();
@@ -10592,6 +10932,7 @@ function confirmStartLiveRun(){
 // rien sauvegarder) et la modal.
 async function cancelLiveRun(){
   await RunTracker.stop();
+  if(typeof LivePositions!=='undefined') await LivePositions.stopReceiving();
   closeModal('live-run-modal');
   if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
 }
@@ -10611,6 +10952,7 @@ function togglePauseLiveRun(){
     btn.style.boxShadow='0 4px 16px rgba(245,200,66,.3)';
     if(hint) hint.textContent='Garde l\'écran allumé pour ne rien perdre';
     if(_liveRunMarker){try{_liveRunMarker.setStyle({fillColor:'#f5c842',fillOpacity:1});}catch(e){}}
+    if(typeof LivePositions!=='undefined') LivePositions.resumeSending();
   }else{
     RunTracker.pause();
     btn.textContent='▶ REPRENDRE';
@@ -10620,6 +10962,7 @@ function togglePauseLiveRun(){
     if(hint) hint.textContent='⏸ Course en pause — chrono et distance figés';
     if(statusEl) statusEl.textContent='⏸ EN PAUSE';
     if(_liveRunMarker){try{_liveRunMarker.setStyle({fillColor:'#888',fillOpacity:.6});}catch(e){}}
+    if(typeof LivePositions!=='undefined') LivePositions.pauseSending();
   }
 }
 
@@ -10635,6 +10978,11 @@ async function stopLiveRun(){
   if(btn){btn.disabled=true;btn.textContent='💾 Enregistrement…';btn.style.opacity='.7';}
   if(_liveRunTimerInt){clearInterval(_liveRunTimerInt);_liveRunTimerInt=null;}
   var captured=await RunTracker.stop();
+  // Coupe le live tracking : DELETE notre position + unsubscribe Realtime
+  if(typeof LivePositions!=='undefined'){
+    await LivePositions.stopSending();
+    await LivePositions.stopReceiving();
+  }
   closeModal('live-run-modal');
   if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
   if(btn){btn.disabled=false;btn.textContent='🛑 FINISH';btn.style.opacity='1';}
