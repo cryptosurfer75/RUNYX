@@ -3009,7 +3009,20 @@ async function doRegister(){
     var codeMsgEl=document.getElementById('code-msg');
     if(codeMsgEl&&codeMsgEl.dataset.parrainUuid) parrainUuid=codeMsgEl.dataset.parrainUuid;
     var regAv=window._regAvatar||null;
-    var insertData={id:playerId, username:username, email:email, nat:nat, grade:'starter', league:'starter', trend:0, avatar:regAv};
+    // Attribue un rtw_id séquentiel dès l'inscription (sinon hs5 affiche "…"
+    // tant que l'utilisateur n'a pas cliqué ENTRER → onLoginSuccess qui le setait)
+    var newRtwId=null;
+    try{
+      var maxResp=await window.fetch(supabaseUrl+'/rest/v1/players?rtw_id=not.is.null&select=rtw_id&order=rtw_id.desc&limit=1',{
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+      });
+      var maxData=await maxResp.json();
+      var lastNum=(maxData&&maxData[0]&&maxData[0].rtw_id)?(parseInt(maxData[0].rtw_id,10)||0):0;
+      newRtwId=String(lastNum+1).padStart(5,'0');
+    }catch(e){console.warn('[register] rtw_id calc fail',e);}
+    var insertData={id:playerId, username:username, email:email, nat:nat, grade:'starter', league:'starter', trend:0, avatar:regAv,
+      streak_phase:0, streak_count:0, streak_misses:[]};
+    if(newRtwId) insertData.rtw_id=newRtwId;
     if(parrainUuid) insertData.referred_by=parrainUuid;
     var {data:ins,error:insErr}=await supabaseClient.from('players').upsert(insertData,{onConflict:'id'}).select();
   }
@@ -13206,12 +13219,36 @@ function dashShowInviteCode(){
   </div>
 </div>
 
-<!-- Service Worker PWA -->
+<!-- Service Worker PWA — avec auto-update forcé -->
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('/service-worker.js').catch(function(err){
+    navigator.serviceWorker.register('/service-worker.js').then(function(reg){
+      // Check for new version every 60 seconds
+      setInterval(function(){ reg.update().catch(function(){}); }, 60000);
+      // Détection d'une nouvelle version installée → on demande au nouveau SW
+      // de prendre le contrôle immédiatement, puis le reload est déclenché
+      // par l'événement controllerchange ci-dessous.
+      reg.addEventListener('updatefound', function(){
+        var newSW = reg.installing;
+        if (!newSW) return;
+        newSW.addEventListener('statechange', function(){
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            // Un SW est déjà actif (ancien) + nouveau prêt → transition
+            newSW.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    }).catch(function(err){
       console.warn('[SW] registration failed:', err);
+    });
+    // Quand le nouveau SW prend le contrôle, on recharge la page pour que
+    // l'utilisateur voie la nouvelle version sans manipulation manuelle.
+    var _refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (_refreshing) return;
+      _refreshing = true;
+      window.location.reload();
     });
   });
 }
