@@ -2967,6 +2967,9 @@ async function doRegister(){
 }
 
 async function onLoginSuccess(user, isNew){
+  // Nettoyage défensif : si un autre user était en session, on efface son état
+  // en mémoire AVANT de setter le nouveau currentUser, pour éviter toute fuite.
+  if(typeof _clearUserScopedState==='function') _clearUserScopedState();
   currentUser=user;
   // Nettoyer PLAYERS : supprimer les doublons avec le même id Supabase ou même username
   var userUuid=user.id;
@@ -3535,9 +3538,40 @@ function showApp(){
   hp.style.opacity='0';
   setTimeout(function(){hp.style.display='none';},400);
 }
+// Nettoyage des globals scopés au user. CRITIQUE : appelé au logout ET login
+// pour éviter qu'un user voie le tracé / les données d'un autre sur le même
+// navigateur sans rechargement.
+function _clearUserScopedState(){
+  try{
+    // État exploration / passages (ceux qui fuitaient entre users)
+    window._recentExploredHexes=[];
+    window._myPassageLandIds=[];
+    window._hidePassages=undefined;
+    if(typeof _lastExploredHexes!=='undefined') _lastExploredHexes=[];
+    window._rpColorMap={};
+    // Identité joueur en mémoire
+    window.__myPlayer=null;
+    window.__viewedPlayer=null;
+    // État course en direct (si une course était en cours, on arrête proprement)
+    try{
+      if(typeof RunTracker!=='undefined' && RunTracker.isActive()) RunTracker.stop();
+      if(typeof LivePositions!=='undefined'){
+        LivePositions.stopSending && LivePositions.stopSending();
+        LivePositions.stopReceiving && LivePositions.stopReceiving();
+        LivePositions.clearCrossings && LivePositions.clearCrossings();
+      }
+    }catch(e){}
+    // Cartes Leaflet : laisser le layer vide (sera rechargé au prochain render)
+    if(typeof _landsHexLayer!=='undefined' && _landsHexLayer){
+      try{_landsHexLayer.clearLayers();}catch(e){}
+    }
+  }catch(e){console.warn('[_clearUserScopedState] fail',e);}
+}
+
 async function disconnectApp(){
   await supabaseClient.auth.signOut();
   currentUser=null;
+  _clearUserScopedState();
   for(var i=1;i<=5;i++){var el=document.getElementById('hs'+i);if(el)el.style.display=i===1?'':'none';}
   hcur=1;
   var m=document.getElementById('rtw-menu');if(m)m.style.display='none';
@@ -6409,11 +6443,12 @@ async function finishExploration(){
       body:JSON.stringify({pending_exploration:null})
     });
   }
-  // Supprimer les lands free (non louées/achetées) de la DB
-  await window.fetch(supabaseUrl+'/rest/v1/lands?status=eq.free',{
-    method:'DELETE',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
-  });
+  // ⚠️ NE PAS supprimer les lands free globalement — avant, un DELETE non
+  //   scopé utilisateur ciblait toutes les lands status='free', ce qui aurait
+  //   pu écraser les explorations des autres joueurs. Les lands free restent
+  //   sur la carte globale, consultables et louables par n'importe quel RP
+  //   (c'est par design : une land explorée devient une ressource partagée).
+  //   Le "masquage" du tracé est purement côté affichage via _hidePassages.
   // Flag pour ne plus afficher les passages sur la carte
   window._hidePassages=true;
   _lastExploredHexes=[];
