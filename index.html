@@ -674,7 +674,7 @@ if(localStorage.getItem('rl_access')==='ok'){
 }
 </script>
 
-<div id="home-page" style="position:fixed;inset:0;z-index:9999;background:#020408;display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div id="home-page" style="position:fixed;inset:0;z-index:9999;background:#020408;display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:0;-webkit-overflow-scrolling:touch">
 
 <style>
 @keyframes shine{0%{left:-120%}45%,100%{left:130%}}
@@ -748,11 +748,13 @@ select option{background:#040c1c}
         <option value="🇫🇷">🇫🇷 France</option><option value="🇧🇪">🇧🇪 Belgique</option><option value="🇨🇭">🇨🇭 Suisse</option><option value="🇨🇦">🇨🇦 Canada</option><option value="🇬🇧">🇬🇧 Royaume-Uni</option><option value="🇩🇪">🇩🇪 Allemagne</option><option value="🇪🇸">🇪🇸 Espagne</option><option value="🇮🇹">🇮🇹 Italie</option><option value="🇵🇹">🇵🇹 Portugal</option><option value="🇺🇸">🇺🇸 États-Unis</option><option value="🇧🇷">🇧🇷 Brésil</option><option value="🇲🇦">🇲🇦 Maroc</option><option value="🇩🇿">🇩🇿 Algérie</option><option value="🇹🇳">🇹🇳 Tunisie</option><option value="🇳🇱">🇳🇱 Pays-Bas</option><option value="🇦🇹">🇦🇹 Autriche</option><option value="🇵🇱">🇵🇱 Pologne</option><option value="🇷🇴">🇷🇴 Roumanie</option><option value="🇬🇷">🇬🇷 Grèce</option><option value="🇸🇪">🇸🇪 Suède</option><option value="🇳🇴">🇳🇴 Norvège</option><option value="🇩🇰">🇩🇰 Danemark</option><option value="🇫🇮">🇫🇮 Finlande</option><option value="🇮🇪">🇮🇪 Irlande</option><option value="🇨🇿">🇨🇿 Tchéquie</option><option value="🇭🇺">🇭🇺 Hongrie</option><option value="🇭🇷">🇭🇷 Croatie</option><option value="🇷🇸">🇷🇸 Serbie</option><option value="🇧🇬">🇧🇬 Bulgarie</option><option value="🇱🇺">🇱🇺 Luxembourg</option><option value="🇲🇽">🇲🇽 Mexique</option><option value="🇦🇷">🇦🇷 Argentine</option><option value="🇨🇴">🇨🇴 Colombie</option><option value="🇨🇱">🇨🇱 Chili</option><option value="🇵🇪">🇵🇪 Pérou</option><option value="🇯🇵">🇯🇵 Japon</option><option value="🇰🇷">🇰🇷 Corée du Sud</option><option value="🇨🇳">🇨🇳 Chine</option><option value="🇮🇳">🇮🇳 Inde</option><option value="🇹🇷">🇹🇷 Turquie</option><option value="🇷🇺">🇷🇺 Russie</option><option value="🇺🇦">🇺🇦 Ukraine</option><option value="🇮🇱">🇮🇱 Israël</option><option value="🇱🇧">🇱🇧 Liban</option><option value="🇪🇬">🇪🇬 Égypte</option><option value="🇸🇳">🇸🇳 Sénégal</option><option value="🇨🇮">🇨🇮 Côte d'Ivoire</option><option value="🇨🇲">🇨🇲 Cameroun</option><option value="🇬🇭">🇬🇭 Ghana</option><option value="🇳🇬">🇳🇬 Nigeria</option><option value="🇿🇦">🇿🇦 Afrique du Sud</option><option value="🇦🇺">🇦🇺 Australie</option><option value="🇳🇿">🇳🇿 Nouvelle-Zélande</option><option value="🇹🇭">🇹🇭 Thaïlande</option><option value="🇻🇳">🇻🇳 Vietnam</option><option value="🇵🇭">🇵🇭 Philippines</option><option value="🇮🇩">🇮🇩 Indonésie</option><option value="🇸🇦">🇸🇦 Arabie Saoudite</option><option value="🇦🇪">🇦🇪 Émirats Arabes Unis</option><option value="🇶🇦">🇶🇦 Qatar</option>
       </select></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:9px">
-      <button onclick="hgo(1)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
-      <button onclick="hgo(3)" style="flex:1;padding:10px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.92rem;letter-spacing:3px;cursor:pointer">CONTINUER →</button>
+    <div style="position:sticky;bottom:0;background:linear-gradient(to top,#020408 70%,rgba(2,4,8,0));padding-top:12px;padding-bottom:8px;margin-top:4px;z-index:10">
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <button onclick="hgo(1)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
+        <button onclick="hgo(3)" style="flex:1;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;box-shadow:0 4px 14px rgba(45,138,50,.25)">CONTINUER →</button>
+      </div>
+      <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot active" data-s="2"></div><div class="sdot" data-s="3"></div><div class="sdot" data-s="4"></div><div class="sdot" data-s="5"></div></div>
     </div>
-    <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot active" data-s="2"></div><div class="sdot" data-s="3"></div><div class="sdot" data-s="4"></div><div class="sdot" data-s="5"></div></div>
   </div>
 
   <div id="hs3" class="hstep" style="display:none">
@@ -763,11 +765,13 @@ select option{background:#040c1c}
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Mot de passe</label>
       <div style="position:relative"><input id="reg-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 36px 10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"><span onclick="var p=document.getElementById('reg-pwd');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁':'👁‍🗨'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:.8rem;user-select:none">👁</span></div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:9px">
-      <button onclick="hgo(2)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
-      <button onclick="hgo(4)" style="flex:1;padding:10px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.92rem;letter-spacing:3px;cursor:pointer">CONTINUER →</button>
+    <div style="position:sticky;bottom:0;background:linear-gradient(to top,#020408 70%,rgba(2,4,8,0));padding-top:12px;padding-bottom:8px;margin-top:4px;z-index:10">
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <button onclick="hgo(2)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
+        <button onclick="hgo(4)" style="flex:1;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;box-shadow:0 4px 14px rgba(45,138,50,.25)">CONTINUER →</button>
+      </div>
+      <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot" data-s="2"></div><div class="sdot active" data-s="3"></div><div class="sdot" data-s="4"></div><div class="sdot" data-s="5"></div></div>
     </div>
-    <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot" data-s="2"></div><div class="sdot active" data-s="3"></div><div class="sdot" data-s="4"></div><div class="sdot" data-s="5"></div></div>
   </div>
 
   <div id="hs4" class="hstep" style="display:none">
@@ -794,11 +798,14 @@ select option{background:#040c1c}
         <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 2 💎 NYX</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:9px">
-      <button onclick="hgo(3)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
-      <button onclick="hgo(5)" style="flex:1;padding:10px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.92rem;letter-spacing:3px;cursor:pointer">CONTINUER →</button>
+    <!-- Barre d'actions sticky : toujours accessible même sur petits écrans -->
+    <div style="position:sticky;bottom:0;background:linear-gradient(to top,#020408 70%,rgba(2,4,8,0));padding-top:12px;padding-bottom:8px;margin-top:4px;z-index:10">
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <button onclick="hgo(3)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
+        <button onclick="hgo(5)" style="flex:1;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;box-shadow:0 4px 14px rgba(45,138,50,.25)">CONTINUER →</button>
+      </div>
+      <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot" data-s="2"></div><div class="sdot" data-s="3"></div><div class="sdot active" data-s="4"></div><div class="sdot" data-s="5"></div></div>
     </div>
-    <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot" data-s="2"></div><div class="sdot" data-s="3"></div><div class="sdot active" data-s="4"></div><div class="sdot" data-s="5"></div></div>
   </div>
 
   <div id="hs5" class="hstep" style="display:none">
