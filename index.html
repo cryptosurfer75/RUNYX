@@ -772,25 +772,26 @@ select option{background:#040c1c}
 
   <div id="hs4" class="hstep" style="display:none">
     <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 3 / 4 — Bonus</div>
-      <div>
-        <label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Code parrainage <span style="color:#2a3550">(optionnel)</span></label>
-        <div style="display:flex;gap:6px">
-          <input id="reg-code" type="text" placeholder="SL-XXXXX" maxlength="10" style="flex:1;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.18)'">
-          <button onclick="checkCode()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,200,66,.35);background:rgba(245,200,66,.07);color:#f5c842;cursor:pointer;font-size:.7rem;font-weight:700">OK</button>
-        </div>
-        <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 2 💎 NYX</div>
-      </div>
-      <!-- Cases obligatoires : âge + CGU/RGPD (bloque CONTINUER si non cochées) -->
-      <div style="border-top:1px solid rgba(74,144,255,.12);padding-top:10px;margin-top:4px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 3 / 4</div>
+      <!-- Cases obligatoires : âge + CGU/RGPD (en 1er pour que CONTINUER soit accessible rapidement) -->
+      <div style="display:flex;flex-direction:column;gap:7px">
         <label style="display:flex;align-items:flex-start;gap:.5rem;cursor:pointer;font-size:.7rem;color:#a8c2e0;line-height:1.4">
           <input type="checkbox" id="reg-age" style="width:16px;height:16px;accent-color:#4a90ff;flex-shrink:0;margin-top:1px;cursor:pointer">
           <span>Je certifie avoir <strong style="color:#f5c842">18 ans ou plus</strong>.</span>
         </label>
         <label style="display:flex;align-items:flex-start;gap:.5rem;cursor:pointer;font-size:.7rem;color:#a8c2e0;line-height:1.4">
           <input type="checkbox" id="reg-cgu" style="width:16px;height:16px;accent-color:#4a90ff;flex-shrink:0;margin-top:1px;cursor:pointer">
-          <span>J'accepte les <a href="#" onclick="event.preventDefault();closeModal&&closeModal('any');document.getElementById('hs1').style.display='none';nav('legal');" style="color:#f5c842;text-decoration:underline">CGU, CGV</a> et la <a href="#" onclick="event.preventDefault();nav('legal');" style="color:#f5c842;text-decoration:underline">Politique de confidentialité</a>.</span>
+          <span>J'accepte les <a href="#" onclick="event.preventDefault();nav('legal');" style="color:#f5c842;text-decoration:underline">CGU, CGV</a> et la <a href="#" onclick="event.preventDefault();nav('legal');" style="color:#f5c842;text-decoration:underline">Politique de confidentialité</a>.</span>
         </label>
+      </div>
+      <!-- Code parrainage optionnel (en 2e car plus rare) -->
+      <div style="border-top:1px solid rgba(74,144,255,.1);padding-top:8px">
+        <label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Code parrainage <span style="color:#2a3550">(optionnel)</span></label>
+        <div style="display:flex;gap:6px">
+          <input id="reg-code" type="text" placeholder="SL-XXXXX" maxlength="10" style="flex:1;padding:9px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.18)'">
+          <button onclick="checkCode()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,200,66,.35);background:rgba(245,200,66,.07);color:#f5c842;cursor:pointer;font-size:.7rem;font-weight:700">OK</button>
+        </div>
+        <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 2 💎 NYX</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:9px">
@@ -3048,7 +3049,12 @@ async function onLoginSuccess(user, isNew){
       grade:'starter',
       league:'starter',
       trend:0,
-      avatar:_defaultAvatar
+      avatar:_defaultAvatar,
+      // Streak : défaut explicite = 0 (pas encore cassé) pour éviter toute
+      // ambiguïté si la colonne DB n'a pas de DEFAULT.
+      streak_phase:0,
+      streak_count:0,
+      streak_misses:[]
     },{onConflict:'id'}).select().maybeSingle();
     pd=ins;
   }
@@ -4052,7 +4058,7 @@ function renderDashboard(){
         if(sp){
           var sc=sp.streak_count||0;
           set('stat-streak', sc+' jour'+(sc>1?'s':'')+' consécutif'+(sc>1?'s':''));
-          updateStreakDisplay(sc, sp.streak_phase!=null?sp.streak_phase:1);
+          updateStreakDisplay(sc, sp.streak_phase!=null?sp.streak_phase:0);
         }
       })();
     } else if(!isOwn) {
@@ -4064,7 +4070,7 @@ function renderDashboard(){
         if(sp){
           var sc=sp.streak_count||0;
           set('stat-streak', sc+' jour'+(sc>1?'s':'')+' consécutif'+(sc>1?'s':''));
-          updateStreakDisplay(sc, sp.streak_phase!=null?sp.streak_phase:1);
+          updateStreakDisplay(sc, sp.streak_phase!=null?sp.streak_phase:0);
         }
       })();
     }
