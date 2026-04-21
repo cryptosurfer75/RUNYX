@@ -10576,12 +10576,17 @@ async function saveCapturedRun(captured, runName){
     window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
   }
 
-  // 4. Trigger badge check côté serveur (fire-and-forget)
-  fetch(supabaseUrl+'/functions/v1/check-badges',{
-    method:'POST',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({player_id:currentUser.id})
-  }).catch(function(){});
+  // 4. Trigger badge check côté serveur (fire-and-forget) — l'Edge Function
+  //    exige un JWT user valide, on lit donc le vrai access_token de la session.
+  try{
+    var {data:{session:_sess}}=await supabaseClient.auth.getSession();
+    var _userJwt=_sess?_sess.access_token:supabaseKey;
+    fetch(supabaseUrl+'/functions/v1/check-badges',{
+      method:'POST',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+_userJwt,'Content-Type':'application/json'},
+      body:JSON.stringify({})
+    }).catch(function(){});
+  }catch(e){console.warn('check-badges trigger fail',e);}
 
   return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
 }
@@ -12791,10 +12796,12 @@ async function triggerBadgeCheck(){
   if(!currentUser||_badgeCheckInFlight) return;
   _badgeCheckInFlight=true;
   try{
+    var {data:{session:_sess}}=await supabaseClient.auth.getSession();
+    var _userJwt=_sess?_sess.access_token:supabaseKey;
     var resp=await window.fetch(supabaseUrl+'/functions/v1/check-badges',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({player_id:currentUser.id})
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+_userJwt,'Content-Type':'application/json'},
+      body:JSON.stringify({})
     });
     var data=await resp.json();
     if(data&&data.ok&&data.new_badges&&data.new_badges.length){
