@@ -1,9 +1,12 @@
 // SPEEDIX League — Service Worker
 // Stratégie : network-first pour index.html (pour ne pas servir une version figée),
 // cache-first pour les assets statiques (icônes, logos, CDN).
-// Bump CACHE_VERSION à chaque release significative pour invalider l'ancien cache.
+// ▸ Bump CACHE_VERSION à chaque release significative pour invalider l'ancien cache.
+// ▸ Le client (index.html) détecte l'installation d'un nouveau SW, lui envoie
+//   SKIP_WAITING, et recharge automatiquement dès que le nouveau prend le
+//   contrôle — les utilisateurs ont ainsi la nouvelle version sans refresh manuel.
 
-const CACHE_VERSION = 'speedix-v2';
+const CACHE_VERSION = 'speedix-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -25,7 +28,16 @@ self.addEventListener('install', event => {
       });
     })
   );
-  self.skipWaiting();
+  // On ne skipWaiting QUE sur demande du client (message SKIP_WAITING), pour
+  // éviter d'interrompre l'utilisateur au milieu d'une action. Le client envoie
+  // ce message uniquement quand il a détecté qu'il y a bien un nouveau SW prêt.
+});
+
+// ── Message : SKIP_WAITING demandé par le client → on prend la main ──────
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // ── Activate : nettoie les vieux caches d'une version précédente ─────────
