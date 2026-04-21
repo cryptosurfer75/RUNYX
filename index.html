@@ -1897,10 +1897,15 @@ select option{background:#040c1c}
     </div>
     <!-- Map live -->
     <div id="lr-map" style="height:300px;background:#000"></div>
-    <!-- Boutons START / FINISH (un seul visible à la fois) -->
+    <!-- Boutons (visibles selon la phase) -->
     <div style="padding:.8rem">
+      <!-- Phase WARMUP : START seul -->
       <button id="lr-start-btn" onclick="confirmStartLiveRun()" disabled style="width:100%;padding:.95rem;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:4px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(45,138,50,.4);opacity:.4">🏃 START (GPS…)</button>
-      <button id="lr-stop-btn" onclick="stopLiveRun()" style="display:none;width:100%;padding:.95rem;background:linear-gradient(180deg,#ff4040,#c8102e);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:4px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(200,16,46,.4)">🛑 FINISH</button>
+      <!-- Phase RUNNING : PAUSE + FINISH côte à côte -->
+      <div id="lr-running-actions" style="display:none;gap:.5rem">
+        <button id="lr-pause-btn" onclick="togglePauseLiveRun()" style="flex:0 0 40%;padding:.95rem;background:linear-gradient(180deg,#f5c842,#b8860b);color:#000;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(245,200,66,.3)">⏸ PAUSE</button>
+        <button id="lr-stop-btn" onclick="stopLiveRun()" style="flex:1;padding:.95rem;background:linear-gradient(180deg,#ff4040,#c8102e);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:4px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(200,16,46,.4)">🛑 FINISH</button>
+      </div>
       <button id="lr-cancel-btn" onclick="cancelLiveRun()" style="width:100%;margin-top:.45rem;padding:.45rem;background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--muted2);font-size:.7rem;border-radius:8px;cursor:pointer">Annuler</button>
       <div id="lr-hint" style="text-align:center;margin-top:.5rem;font-size:.6rem;color:var(--muted2)">Mets-toi à ton point de départ et attends le verrouillage GPS</div>
     </div>
@@ -10179,7 +10184,7 @@ function _haversineM(lat1,lng1,lat2,lng2){
    savoir d'où viennent les points.
 ============================================================ */
 var RunTracker=(function(){
-  var _state='idle';            // 'idle' | 'armed' | 'tracking'
+  var _state='idle';            // 'idle' | 'armed' | 'tracking' | 'paused'
   var _watchId=null;
   var _wakeLock=null;
   var _onPoint=null;            // callback live (utilisé par l'UI)
@@ -10190,10 +10195,20 @@ var RunTracker=(function(){
   var _lastAccepted=null;       // dernier point gardé pour delta
   var _lastAlt=null;            // dernière altitude pour cumul positif
   var _lastFix=null;             // dernière position connue (même en armed) pour status
+  var _pausedAt=0;              // ms epoch du début de la pause courante
+  var _totalPausedMs=0;         // cumul des temps de pause depuis le start
 
   function _resetStats(){
     _points=[];_lastAccepted=null;_lastAlt=null;
     _stats={km:0,elv:0,spdInst:0,spdAvg:0,durMs:0};
+    _pausedAt=0;_totalPausedMs=0;
+  }
+
+  // Durée effective de course (exclut les pauses)
+  function _currentDurMs(){
+    if(_state==='paused') return _pausedAt-_startedAt-_totalPausedMs;
+    if(_state==='tracking') return Date.now()-_startedAt-_totalPausedMs;
+    return _stats.durMs;
   }
 
   // Filtre + agrégation à chaque point reçu
@@ -10210,6 +10225,10 @@ var RunTracker=(function(){
       if(_onLock) _onLock(pt);
       return;
     }
+    // En mode 'paused' : on conserve le lock mais on ignore complètement le point
+    // (pas d'accumulation distance/dénivelé, pas d'ajout au tracé). Le marker
+    // sur la carte se fige → signal visuel clair que la pause est active.
+    if(_state==='paused') return;
     if(_state!=='tracking') return;
     if(_lastAccepted){
       var dM=_haversineM(_lastAccepted.lat,_lastAccepted.lng,pt.lat,pt.lng);
@@ -10228,7 +10247,7 @@ var RunTracker=(function(){
     _lastAccepted=pt;
     if(pt.alt!=null) _lastAlt=pt.alt;
     _points.push(pt);
-    _stats.durMs=Date.now()-_startedAt;
+    _stats.durMs=_currentDurMs();
     var durH=_stats.durMs/3600000;
     if(durH>0) _stats.spdAvg=_stats.km/durH;
     if(_onPoint) _onPoint(pt,_stats);
@@ -10274,14 +10293,37 @@ var RunTracker=(function(){
   }
 
   return {
-    isActive:function(){return _state==='tracking';},
+    isActive:function(){return _state==='tracking'||_state==='paused';},
     isArmed:function(){return _state==='armed';},
+    isPaused:function(){return _state==='paused';},
     getState:function(){return _state;},
     getLastFix:function(){return _lastFix?Object.assign({},_lastFix):null;},
-    getStats:function(){return Object.assign({},_stats);},
+    getStats:function(){
+      // durMs calculé à la volée pour qu'il soit cohérent même en pause
+      return Object.assign({},_stats,{durMs:_currentDurMs()});
+    },
     getPoints:function(){return _points.slice();},
     onPoint:function(cb){_onPoint=cb;},
     onLock:function(cb){_onLock=cb;},
+    // pause() : suspend l'accumulation. Le chrono se fige, distance/dénivelé
+    // arrêtent de monter, le marker sur la carte ne bouge plus. Le GPS reste
+    // actif en arrière-plan pour ne pas perdre le signal.
+    pause:function(){
+      if(_state!=='tracking') return;
+      _pausedAt=Date.now();
+      _state='paused';
+    },
+    // resume() : reprend l'enregistrement. On reset _lastAccepted pour ne pas
+    // créer un faux delta de distance entre le point d'avant-pause et le 1er
+    // point d'après (l'utilisateur peut s'être déplacé pendant la pause).
+    // Le chrono reprend à la valeur figée (pas de saut).
+    resume:function(){
+      if(_state!=='paused') return;
+      _totalPausedMs+=Date.now()-_pausedAt;
+      _pausedAt=0;
+      _lastAccepted=null; // pas de delta avec le pre-pause
+      _state='tracking';
+    },
     // arm() : démarre le watch GPS pour verrouiller le signal sans accumuler.
     // Permet à l'utilisateur de voir "GPS prêt" avant d'appuyer sur START.
     arm:async function(){
@@ -10307,19 +10349,20 @@ var RunTracker=(function(){
       _stopWatch();
       await _releaseWakeLock();
       document.removeEventListener('visibilitychange',_onVisChange);
-      var wasTracking=(_state==='tracking');
+      var wasRunning=(_state==='tracking'||_state==='paused');
+      // Fige la durée finale (utile si on stop pendant une pause)
+      var finalDurMs=_currentDurMs();
       _state='idle';
       _onPoint=null;_onLock=null;
-      if(!wasTracking) return null; // arm sans start = on ne sauve rien
-      // Snapshot final
+      if(!wasRunning) return null; // arm sans start = on ne sauve rien
       var pts=_points.map(function(p){return [p.lat,p.lng];});
       return {
         points:pts,
         polyline:pts.length>1?encodePolyline(pts):null,
         km:Math.round(_stats.km*100)/100,
         elv:Math.round(_stats.elv),
-        durMs:_stats.durMs,
-        timeMin:Math.round((_stats.durMs/60000)*10)/10,
+        durMs:finalDurMs,
+        timeMin:Math.round((finalDurMs/60000)*10)/10,
         spdAvg:Math.round(_stats.spdAvg*10)/10,
         startedAt:_startedAt
       };
@@ -10511,10 +10554,10 @@ function confirmStartLiveRun(){
     showToast('⚠️ GPS pas encore prêt, attends quelques secondes');
     return;
   }
-  // UI : cache START + cancel, montre FINISH
+  // UI : cache START + cancel, montre PAUSE + FINISH
   document.getElementById('lr-start-btn').style.display='none';
   document.getElementById('lr-cancel-btn').style.display='none';
-  document.getElementById('lr-stop-btn').style.display='';
+  document.getElementById('lr-running-actions').style.display='flex';
   document.getElementById('lr-hint').textContent='Garde l\'écran allumé pour ne rien perdre';
   // Marker passe en doré (course active)
   if(_liveRunMarker){
@@ -10551,6 +10594,33 @@ async function cancelLiveRun(){
   await RunTracker.stop();
   closeModal('live-run-modal');
   if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
+}
+
+// Toggle pause / reprise pendant la course. Le chrono se fige, la distance
+// arrête de monter, le marker freeze. Le GPS reste actif en arrière-plan
+// pour ne pas perdre le verrouillage.
+function togglePauseLiveRun(){
+  var btn=document.getElementById('lr-pause-btn');
+  var hint=document.getElementById('lr-hint');
+  var statusEl=document.getElementById('lr-status');
+  if(RunTracker.isPaused()){
+    RunTracker.resume();
+    btn.textContent='⏸ PAUSE';
+    btn.style.background='linear-gradient(180deg,#f5c842,#b8860b)';
+    btn.style.color='#000';
+    btn.style.boxShadow='0 4px 16px rgba(245,200,66,.3)';
+    if(hint) hint.textContent='Garde l\'écran allumé pour ne rien perdre';
+    if(_liveRunMarker){try{_liveRunMarker.setStyle({fillColor:'#f5c842',fillOpacity:1});}catch(e){}}
+  }else{
+    RunTracker.pause();
+    btn.textContent='▶ REPRENDRE';
+    btn.style.background='linear-gradient(180deg,#5ecb62,#2d8a32)';
+    btn.style.color='#fff';
+    btn.style.boxShadow='0 4px 16px rgba(45,138,50,.4)';
+    if(hint) hint.textContent='⏸ Course en pause — chrono et distance figés';
+    if(statusEl) statusEl.textContent='⏸ EN PAUSE';
+    if(_liveRunMarker){try{_liveRunMarker.setStyle({fillColor:'#888',fillOpacity:.6});}catch(e){}}
+  }
 }
 
 async function stopLiveRun(){
