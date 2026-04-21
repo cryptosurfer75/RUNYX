@@ -1870,10 +1870,10 @@ select option{background:#040c1c}
 <div class="modal" id="live-run-modal">
   <div class="modal-box" style="max-width:480px;padding:0;overflow:hidden">
     <!-- Header avec timer -->
-    <div style="background:linear-gradient(180deg,#f5c842,#b8860b);color:#000;padding:.85rem;text-align:center;position:relative">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:3px;opacity:.7">EN COURSE</div>
-      <div id="lr-timer" style="font-family:'Space Mono',monospace;font-size:2.4rem;font-weight:700;line-height:1.1">00:00:00</div>
-      <div id="lr-status" style="font-size:.6rem;letter-spacing:1px;opacity:.85;margin-top:.2rem">📡 Recherche du signal GPS…</div>
+    <div style="background:linear-gradient(180deg,#f5c842,#b8860b);color:#000;padding:1.1rem .85rem .9rem;text-align:center;position:relative">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:3px;opacity:.7;margin-bottom:.25rem">EN COURSE</div>
+      <div id="lr-timer" style="font-family:'Space Mono',monospace;font-size:2.4rem;font-weight:700;line-height:1.25">00:00:00</div>
+      <div id="lr-status" style="font-size:.6rem;letter-spacing:1px;opacity:.85;margin-top:.3rem">📡 Recherche du signal GPS…</div>
     </div>
     <!-- Stats grid -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(74,144,255,.18)">
@@ -10501,11 +10501,11 @@ async function startLiveRun(){
   document.getElementById('lr-elv').textContent='+0 m';
   document.getElementById('lr-pts').textContent='0 pts';
   var startBtn=document.getElementById('lr-start-btn');
-  var stopBtn=document.getElementById('lr-stop-btn');
+  var runningActions=document.getElementById('lr-running-actions');
   var cancelBtn=document.getElementById('lr-cancel-btn');
   var hint=document.getElementById('lr-hint');
   startBtn.style.display='';startBtn.disabled=true;startBtn.style.opacity='.4';startBtn.textContent='🏃 START (GPS…)';
-  stopBtn.style.display='none';
+  runningActions.style.display='none';
   cancelBtn.style.display='';
   hint.textContent='Mets-toi à ton point de départ et attends le verrouillage GPS';
   // Open modal AVANT de créer la map (sinon Leaflet calcule mal la taille)
@@ -10637,7 +10637,7 @@ async function stopLiveRun(){
   var captured=await RunTracker.stop();
   closeModal('live-run-modal');
   if(_liveRunMap){try{_liveRunMap.remove();}catch(e){}_liveRunMap=null;}
-  if(btn){btn.disabled=false;btn.textContent='🛑 TERMINER';btn.style.opacity='1';}
+  if(btn){btn.disabled=false;btn.textContent='🛑 FINISH';btn.style.opacity='1';}
   if(!captured||!captured.points||captured.points.length<2){
     showToast('⚠️ Pas assez de points GPS, course non sauvegardée');
     return;
