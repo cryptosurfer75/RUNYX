@@ -577,6 +577,12 @@ body::before{
   .layout-3col{grid-template-columns:1fr 1fr !important}
   .form-grid{grid-template-columns:1fr 1fr !important}
 
+  /* Mobile navbar : on cache les onglets (trop à l'étroit avec BETA chip),
+     on garde uniquement logo déroulant + BETA + Admin (si admin) + RPC/NYX.
+     Les onglets restent accessibles via le menu du logo (hamburger-like). */
+  .nav-tabs{display:none !important}
+  #mobile-admin-btn.is-admin{display:inline-flex !important}
+
   /* LEAGUE page : sur mobile on utilise le dropdown, on masque la nav complète,
      et on place le classement principal avant le Prize Pool */
   #league-mobile-selector{display:block !important}
@@ -860,6 +866,8 @@ select option{background:#040c1c}
     </div>
   </div>
   <button id="beta-chip" onclick="openModal('beta-modal')" title="SPEEDIX est en Beta — clique pour en savoir plus" style="display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .5rem;border-radius:10px;border:1px solid rgba(74,144,255,.5);background:rgba(74,144,255,.1);color:#4a90ff;font-family:'Bebas Neue',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-right:.5rem;white-space:nowrap">● BETA</button>
+  <!-- Bouton Admin visible UNIQUEMENT sur mobile (les onglets sont cachés en mobile), et uniquement pour les admins — mis à jour dynamiquement par initAdminPanel() -->
+  <button id="mobile-admin-btn" onclick="nav('admin')" title="Panel Admin" style="display:none;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:10px;border:1px solid rgba(255,68,68,.5);background:rgba(255,68,68,.1);color:#ff6060;font-family:'Bebas Neue',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-right:.4rem;white-space:nowrap">⚙ ADMIN</button>
   <div class="nav-tabs">
     <button class="nav-tab"        onclick="nav('league')">League</button>
     <button class="nav-tab active" onclick="navPlayerCard()">Player Card</button>
@@ -8014,9 +8022,14 @@ function adminSetupCollapsibleBlocks(){
 }
 
 async function initAdminPanel(){
-  // Afficher l'onglet admin si c'est l'admin
+  // Afficher l'onglet admin (desktop) + bouton admin mobile si c'est l'admin
   var tabEl=document.getElementById('nav-tab-admin');
   if(tabEl) tabEl.style.display=isAdmin()?'inline-block':'none';
+  var mobileBtn=document.getElementById('mobile-admin-btn');
+  if(mobileBtn){
+    if(isAdmin()) mobileBtn.classList.add('is-admin');
+    else mobileBtn.classList.remove('is-admin');
+  }
   if(!isAdmin()) return;
   updateAdminOnlineCounter();
   adminSetupCollapsibleBlocks();
