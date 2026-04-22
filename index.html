@@ -5683,11 +5683,24 @@ async function showLandDetail(landId){
     statusLine='Statut : <strong style="color:var(--text)">Libre</strong>';
   }
 
+  // Nombre de passages ce mois (du 1er du mois courant à aujourd'hui)
+  var nbPassages=0;
+  try{
+    var _now=new Date();
+    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0,10);
+    var _passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_firstOfMonth+'&select=id',{
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json','Prefer':'count=exact'}
+    });
+    var _passList=await _passResp.json();
+    nbPassages=Array.isArray(_passList)?_passList.length:0;
+  }catch(e){}
+
   var body='<div style="font-size:.82rem;color:var(--muted2);line-height:2">'
     +statusLine+'<br>'
     +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
     +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
     +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
+    +'Passages ce mois : <strong style="color:var(--cyan)">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
     +'Rendement ce mois : <strong style="color:var(--gold)">'+(land.monthly_revenue||0).toLocaleString('fr')+' RPC</strong>'
   +'</div>';
 
@@ -10686,11 +10699,25 @@ async function saveCapturedRun(captured, runName){
           headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
           body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
         });
-        // Si la land appartient à un autre joueur → on le crédite
+        // Si la land appartient à un autre joueur → on le crédite + on incrémente le rendement mensuel
         var landOwner=land?(land.owner_id||land.tenant_id):null;
         if(landOwner && landOwner!==currentUser.id && typeof walletCreditOther==='function'){
           await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
           totalRpcLand+=rpcEarned;
+          // Met à jour monthly_revenue sur la land (sans race : on relit la
+          // valeur courante avant d'ajouter)
+          try{
+            var revResp=await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=monthly_revenue',{
+              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+            });
+            var revData=await revResp.json();
+            var curRev=(revData&&revData[0]&&revData[0].monthly_revenue)||0;
+            await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
+              method:'PATCH',
+              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+              body:JSON.stringify({monthly_revenue:curRev+rpcEarned})
+            });
+          }catch(e){console.warn('[saveCapturedRun] monthly_revenue update fail',e);}
         }
       }
     }
