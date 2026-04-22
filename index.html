@@ -684,6 +684,48 @@ if(localStorage.getItem('rl_access')==='ok'){
 }
 </script>
 
+<!-- ── MAINTENANCE GATE ── -->
+<!-- Affiché si app_settings.maintenance_mode = true (toggle depuis le dashboard
+     Supabase). Bloque l'accès à toute l'app jusqu'à ce que l'admin re-toggle. -->
+<div id="maintenance-gate" style="display:none;position:fixed;inset:0;z-index:99998;background:#060810;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center;gap:1rem">
+  <div style="font-size:4rem;line-height:1">🛠️</div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:4px;color:#f5c842">MAINTENANCE</div>
+  <div id="maintenance-message" style="font-family:'Rajdhani',sans-serif;font-size:1rem;color:#a0b0c0;max-width:360px;line-height:1.5">Maintenance en cours, on revient vite 🛠️</div>
+  <button onclick="location.reload()" style="margin-top:1rem;padding:.7rem 1.5rem;border-radius:8px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:#f5c842;font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;cursor:pointer">RÉESSAYER</button>
+</div>
+
+<script>
+// ── Check maintenance mode très tôt — avant toute interaction utilisateur ──
+// Lit app_settings.maintenance_mode depuis Supabase. Si true → affiche la page
+// maintenance et bloque tout. Recheck toutes les 60 sec pour détecter le retour
+// à la normale sans que l'user ait à recharger.
+(function(){
+  var SUPA_URL='https://eqzvptszeaumsbljwift.supabase.co';
+  var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxenZwdHN6ZWF1bXNibGp3aWZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MjM3MTcsImV4cCI6MjA5MDk5OTcxN30.wn2iJ3grAlLHTUZYiwlSBaCHvwCW86kTQ8eWNH484Lk';
+  function checkMaintenance(){
+    fetch(SUPA_URL+'/rest/v1/app_settings?key=eq.main&select=maintenance_mode,maintenance_message,runs_disabled,registration_disabled',{
+      headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}
+    }).then(function(r){return r.json();}).then(function(d){
+      if(!Array.isArray(d)||!d[0]) return;
+      var s=d[0];
+      // Cache global (utilisé par les autres checks : saveCapturedRun, doRegister)
+      window.__appSettings=s;
+      var gate=document.getElementById('maintenance-gate');
+      if(!gate) return;
+      if(s.maintenance_mode){
+        var msg=document.getElementById('maintenance-message');
+        if(msg && s.maintenance_message) msg.textContent=s.maintenance_message;
+        gate.style.display='flex';
+      } else {
+        gate.style.display='none';
+      }
+    }).catch(function(){/* silent : si Supabase down on n'aggrave pas */});
+  }
+  checkMaintenance();
+  setInterval(checkMaintenance, 60000);
+})();
+</script>
+
 <div id="home-page" style="position:fixed;inset:0;z-index:9999;background:#020408;display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:0;-webkit-overflow-scrolling:touch">
 
 <style>
@@ -3018,6 +3060,11 @@ async function doResetPassword(){
 }
 
 async function doRegister(){
+  // Kill switch : si l'admin a fermé les inscriptions
+  if(window.__appSettings && window.__appSettings.registration_disabled){
+    showHgoError('Inscriptions temporairement fermées. Reviens un peu plus tard 🙏');
+    return false;
+  }
   var username=(document.getElementById('reg-username').value||'').trim();
   var nat=document.getElementById('reg-nat').value||'🇫🇷';
   var email=(document.getElementById('reg-email').value||'').trim();
@@ -9352,6 +9399,14 @@ async function walletCredit(rpc, nyx, reason){
   if(!resp.ok){return false;}
   window.__wallet={rpc:newRpc,nyx:newNyx,rpcCum:payload.rpc_cumulated||(window.__wallet&&window.__wallet.rpcCum)||0};
   walletRefreshUI();
+  // Audit log (fire-and-forget) — RLS autorise l'insert sur ses propres lignes
+  try{
+    if((rpc||0)!==0||(nyx||0)!==0){
+      supabaseClient.from('wallet_tx').insert({
+        player_id:currentUser.id, rpc_delta:rpc||0, nyx_delta:nyx||0, reason:reason||null
+      }).then(function(){}).catch(function(){});
+    }
+  }catch(e){}
   return true;
 }
 
@@ -9369,6 +9424,14 @@ async function walletDebitNyx(amount, reason){
   if(!resp.ok){return false;}
   window.__wallet.nyx=newNyx;
   walletRefreshUI();
+  // Audit log (fire-and-forget)
+  try{
+    if(amount>0){
+      supabaseClient.from('wallet_tx').insert({
+        player_id:currentUser.id, rpc_delta:0, nyx_delta:-amount, reason:reason||null
+      }).then(function(){}).catch(function(){});
+    }
+  }catch(e){}
   return true;
 }
 
@@ -9472,6 +9535,14 @@ async function walletCreditOther(playerId, rpc, nyx, reason){
     body:JSON.stringify(payload)
   });
   if(!resp.ok){return false;}
+  // Audit log (fire-and-forget) — RLS permet à tout user authentifié d'insérer
+  try{
+    if((rpc||0)!==0||(nyx||0)!==0){
+      supabaseClient.from('wallet_tx').insert({
+        player_id:playerId, rpc_delta:rpc||0, nyx_delta:nyx||0, reason:reason||null
+      }).then(function(){}).catch(function(){});
+    }
+  }catch(e){}
   return true;
 }
 
@@ -10685,6 +10756,10 @@ var RunTracker=(function(){
 // l'import Strava client mais sans densification (capture native déjà dense).
 async function saveCapturedRun(captured, runName){
   if(!currentUser){throw new Error('Pas connecté');}
+  // Kill switch : si l'admin a désactivé l'enregistrement des courses
+  if(window.__appSettings && window.__appSettings.runs_disabled){
+    throw new Error('Enregistrement temporairement désactivé (maintenance)');
+  }
   if(!captured||!captured.points||captured.points.length<2){
     throw new Error('Pas assez de points GPS');
   }
@@ -10803,6 +10878,13 @@ async function saveCapturedRun(captured, runName){
   try{
     if(typeof checkAndClaimStreak==='function') checkAndClaimStreak();
   }catch(e){console.warn('streak trigger after run fail',e);}
+
+  // 6. Trigger récompense parrainage : 1ère course du filleul → le parrain
+  //    empoche 2000 RPC + 2 NYX. Idempotent (checkReferralReward vérifie
+  //    l'existence en BDD avant d'insérer).
+  try{
+    if(typeof checkReferralReward==='function') checkReferralReward('first_run');
+  }catch(e){console.warn('referral first_run trigger fail',e);}
 
   return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
 }
