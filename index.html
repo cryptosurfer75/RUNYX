@@ -1168,11 +1168,12 @@ select option{background:#040c1c}
 
   <!-- Série connexion — cadre indépendant sous la PC -->
   <div id="streak-banner" style="max-width:480px;margin:0 auto .85rem">
-    <div style="background:rgba(10,20,50,.7);border:1px solid rgba(74,144,255,.22);border-radius:10px;padding:.7rem .9rem;display:flex;align-items:center;gap:.7rem">
-      <span style="font-size:1.25rem;line-height:1">🔥</span>
+    <div id="streak-banner-inner" onclick="openModal('streak-info-modal')" title="Comment marche la chaîne ?" style="background:rgba(10,20,50,.7);border:1px solid rgba(74,144,255,.22);border-radius:10px;padding:.7rem .9rem;display:flex;align-items:center;gap:.7rem;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(10,20,50,.85)'" onmouseout="this.style.background='rgba(10,20,50,.7)'">
+      <span id="streak-emoji" style="font-size:1.25rem;line-height:1">🔥</span>
       <div style="flex:1">
         <div style="display:flex;align-items:baseline;gap:.45rem;margin-bottom:.25rem">
           <span id="stat-streak" style="font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;color:var(--gold)">—</span>
+          <span style="font-size:.6rem;color:var(--muted2);margin-left:auto">ⓘ</span>
         </div>
         <div id="streak-dots" class="streak-dots" style="gap:.25rem"></div>
         <div id="streak-inline-info" style="font-size:.62rem;color:var(--muted2);margin-top:.3rem"></div>
@@ -1975,6 +1976,32 @@ select option{background:#040c1c}
       <button id="lr-cancel-btn" onclick="cancelLiveRun()" style="width:100%;margin-top:.45rem;padding:.45rem;background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--muted2);font-size:.7rem;border-radius:8px;cursor:pointer">Annuler</button>
       <div id="lr-hint" style="text-align:center;margin-top:.5rem;font-size:.62rem;color:var(--muted2)">Mets-toi à ton point de départ et attends le verrouillage GPS</div>
       <div id="lr-screen-warning" style="display:none;text-align:center;margin-top:.45rem;padding:.5rem .65rem;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.35);border-radius:6px;font-size:.7rem;color:#f5c842;font-weight:600;line-height:1.4">⚠️ <strong>Garde l'écran ALLUMÉ</strong> pendant toute la course<br><span style="font-weight:400;color:#c0a060">Sinon le GPS se coupe — limitation actuelle de la PWA</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal info : explique la chaîne de connexion -->
+<div class="modal" id="streak-info-modal">
+  <div class="modal-box" style="max-width:440px">
+    <button class="modal-close" onclick="closeModal('streak-info-modal')">✕</button>
+    <div style="text-align:center;font-size:2.2rem;margin-bottom:.3rem">🔥</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--gold);text-align:center;margin-bottom:.85rem">CHAÎNE DE CONNEXION</div>
+    <div style="font-size:.85rem;color:var(--text);line-height:1.7;margin-bottom:1rem;text-align:center">
+      <strong style="color:var(--gold)">Connecte-toi chaque jour</strong> à SPEEDIX pour faire grimper ta chaîne et empocher tes récompenses RPC.
+    </div>
+    <div style="font-size:.78rem;color:var(--muted2);line-height:1.7;background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.2);border-radius:8px;padding:.7rem .85rem;margin-bottom:.85rem">
+      <strong style="color:var(--gold)">📈 Récompenses</strong><br>
+      • Jours 1 à 7 : <strong style="color:var(--gold)">+300 RPC / jour</strong><br>
+      • Jour 8 et + : <strong style="color:var(--gold)">+100 RPC / jour</strong>
+    </div>
+    <div style="font-size:.78rem;color:var(--muted2);line-height:1.7;background:rgba(255,68,68,.05);border:1px solid rgba(255,68,68,.2);border-radius:8px;padding:.7rem .85rem;margin-bottom:1rem">
+      <strong style="color:#ff8080">⚠️ Si tu rates un jour</strong><br>
+      Ta chaîne se casse et redémarre avec une récompense réduite :<br>
+      <span style="color:var(--text)">80 → 60 → 40 → 20 → 0 RPC</span> après chaque nouvel arrêt.<br>
+      Au 5ᵉ raté, la série est définitivement terminée 💔
+    </div>
+    <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;text-align:center;font-style:italic">
+      Astuce : termine une course dans la journée, ça compte aussi 🏃
     </div>
   </div>
 </div>
@@ -9542,22 +9569,23 @@ async function checkReferralSameTeam(teamId){
 // ══════════════════════════════════════════════════════════════════════
 //  STREAK — Bonus de connexion continu
 // ══════════════════════════════════════════════════════════════════════
-// Phase 1 : jours 1-7 = 300 RPC, jour 8+ = 100 RPC
-// Phase 2 (après 1 break) : 50 RPC/jour
-// Phase 0 (après 2 breaks) : plus de bonus
-
-// phase = nombre d'arrêts accumulés (0 = jamais cassé, 7 = chaîne morte).
-// Barème : phase 0 → 300 RPC (j1-7) puis 100 RPC · phase 1 → 80 · phase 2 → 50
-// puis -10 à chaque arrêt (phase 3 = 40, 4 = 30, 5 = 20, 6 = 10, 7 = chaîne morte).
+// phase = nombre d'arrêts accumulés (0 = jamais cassé, 5 = chaîne morte).
+// Barème :
+//   phase 0 → 300 RPC (j1-7) puis 100 RPC (jour 8+)
+//   phase 1 → 80 RPC
+//   phase 2 → 60 RPC
+//   phase 3 → 40 RPC
+//   phase 4 → 20 RPC
+//   phase 5 → 0 (chaîne définitivement morte)
 function getStreakReward(phase, count){
-  if(phase>=7) return 0;
+  if(phase>=5) return 0;
   if(phase===0) return count<=7 ? 300 : 100;
-  if(phase===1) return 80;
-  return 70 - phase*10;
+  // phases 1..4 → 80, 60, 40, 20 (décroissance régulière de 20)
+  return 100 - phase*20;
 }
 
 function getStreakMessage(phase, count, reward){
-  if(phase>=7) return {emoji:'💔',title:'Série terminée',sub:'Tu as épuisé tes chances',reward:'',info:'Tu as accumulé 7 arrêts — la série de connexion est définitivement terminée.'};
+  if(phase>=5) return {emoji:'💔',title:'Série terminée',sub:'Tu as épuisé tes chances',reward:'',info:'Tu as accumulé 5 arrêts — la série de connexion est définitivement terminée.'};
   var emoji=count<=3?'🔥':count<=7?'🔥🔥':count<=14?'🔥🔥🔥':'⚡';
   var milestones={7:'🎯 1 semaine complète !',14:'💪 2 semaines !',30:'🏆 1 mois de suite !',50:'👑 50 jours !',100:'🌟 100 jours légendaire !'};
   var bonus=milestones[count]||'';
@@ -9570,7 +9598,7 @@ function getStreakMessage(phase, count, reward){
     info=count<=7?'Jours 1-7 : 300 RPC/jour · Ensuite : 100 RPC/jour':'100 RPC/jour · Continue la série !';
   } else {
     var next=Math.max(0,getStreakReward(phase+1,1));
-    info='⚠️ '+reward+' RPC/jour · Un nouvel arrêt te fera passer à '+next+' RPC/jour'+(phase>=6?' (fin de série)':'');
+    info='⚠️ '+reward+' RPC/jour · Un nouvel arrêt te fera passer à '+next+' RPC/jour'+(phase>=4?' (fin de série)':'');
   }
   if(bonus) info=bonus+'<br>'+info;
   return {emoji:emoji,title:title,sub:sub,reward:'+'+reward+' RPC',info:info};
@@ -9593,7 +9621,7 @@ async function checkAndClaimStreak(){
   var today=getParisTodayStr();
   var lastDate=player.streak_last_date;
   var count=player.streak_count||0;
-  // phase = nombre d'arrêts accumulés (0 = jamais cassé, 7 = chaîne morte)
+  // phase = nombre d'arrêts accumulés (0 = jamais cassé, 5 = chaîne morte)
   var phase=player.streak_phase!=null?player.streak_phase:0;
   var misses=Array.isArray(player.streak_misses)?player.streak_misses:[];
 
@@ -9603,8 +9631,8 @@ async function checkAndClaimStreak(){
     return;
   }
 
-  // Chaîne morte (7 arrêts ou plus)
-  if(phase>=7){
+  // Chaîne morte (5 arrêts ou plus)
+  if(phase>=5){
     updateStreakDisplay(0,phase,misses);
     return;
   }
@@ -9623,7 +9651,7 @@ async function checkAndClaimStreak(){
     newCount=1;
     newPhase=phase+1;
     newMisses=[]; // historique effacé à chaque reset
-    if(newPhase>=7){
+    if(newPhase>=5){
       newCount=0;
     }
   }
@@ -9688,16 +9716,51 @@ function updateStreakDisplay(count, phase, misses){
   var missesSet={};
   misses.forEach(function(m){missesSet[m]=true;});
 
-  // Bandeau streak sous la PC
   var statEl=document.getElementById('stat-streak');
+  var emojiEl=document.getElementById('streak-emoji');
+  var dotsEl=document.getElementById('streak-dots');
+  var infoEl=document.getElementById('streak-inline-info');
+  var bannerInner=document.getElementById('streak-banner-inner');
+
+  // ── Cas spécial : chaîne définitivement morte (5 arrêts atteints) ──
+  // Le bandeau bascule en mode "deuil" : emoji 💔, texte rouge, plus de dots.
+  if(phase>=5){
+    if(emojiEl) emojiEl.textContent='💔';
+    if(statEl){
+      statEl.textContent='Chaîne définitivement terminée 💔';
+      statEl.style.color='#ff6060';
+      statEl.style.fontFamily="'Bebas Neue',sans-serif";
+      statEl.style.fontSize='.95rem';
+      statEl.style.letterSpacing='1px';
+    }
+    if(dotsEl){dotsEl.innerHTML='';dotsEl.style.display='none';}
+    if(infoEl){infoEl.innerHTML='';infoEl.style.display='none';}
+    if(bannerInner){
+      bannerInner.style.background='rgba(40,10,15,.7)';
+      bannerInner.style.borderColor='rgba(255,68,68,.35)';
+    }
+    return;
+  }
+
+  // ── Cas normal : on restore les styles si on revenait du mode "morte" ──
+  if(emojiEl) emojiEl.textContent='🔥';
   if(statEl){
     statEl.textContent=count+' jour'+(count>1?'s':'')+' consécutif'+(count>1?'s':'');
+    statEl.style.color='var(--gold)';
+    statEl.style.fontFamily="'Space Mono',monospace";
+    statEl.style.fontSize='.88rem';
+    statEl.style.letterSpacing='';
+  }
+  if(dotsEl) dotsEl.style.display='';
+  if(infoEl) infoEl.style.display='';
+  if(bannerInner){
+    bannerInner.style.background='rgba(10,20,50,.7)';
+    bannerInner.style.borderColor='rgba(74,144,255,.22)';
   }
 
   // Dots — défilement en packs (max 9 dots pour tenir sur 1 ligne mobile)
   // J1-9 : grandit de 1 à 9 · J10+ : reset en packs de 7 jours (3→9 dots)
   // Jours loupés affichés en croix rouge
-  var dotsEl=document.getElementById('streak-dots');
   if(dotsEl){
     var html='';
     var start;
@@ -9718,13 +9781,9 @@ function updateStreakDisplay(count, phase, misses){
     dotsEl.innerHTML=html;
   }
 
-  // Info inline dans le bandeau streak
-  // phase = nombre d'arrêts (0 = jamais cassé, 7 = chaîne morte)
-  var infoEl=document.getElementById('streak-inline-info');
+  // Info inline dans le bandeau streak (phase>=5 traité plus haut en early-return)
   if(infoEl){
-    if(phase>=7){
-      infoEl.innerHTML='❌ Série terminée — 7 arrêts atteints';
-    } else if(phase===0){
+    if(phase===0){
       if(count<=7){
         infoEl.innerHTML='Jours 1-7 : <strong style="color:var(--gold)">300 RPC/jour</strong> · Ensuite : 100 RPC/jour';
       } else {
@@ -10737,6 +10796,13 @@ async function saveCapturedRun(captured, runName){
       body:JSON.stringify({})
     }).catch(function(){});
   }catch(e){console.warn('check-badges trigger fail',e);}
+
+  // 5. Re-déclenche le check de streak : finir une course = activité
+  //    journalière, donc la chaîne doit être validée pour aujourd'hui même si
+  //    le RP n'a pas rechargé l'app entre 2 jours (cas du tab toujours ouvert).
+  try{
+    if(typeof checkAndClaimStreak==='function') checkAndClaimStreak();
+  }catch(e){console.warn('streak trigger after run fail',e);}
 
   return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
 }
