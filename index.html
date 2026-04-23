@@ -1435,6 +1435,23 @@ select option{background:#040c1c}
             <div class="result-rpc" id="r-rpc">→ <strong>+0 RPC</strong></div>
           </div>
         </div>
+
+        <!-- ── Bloc Enregistrement réel ── -->
+        <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:.7rem;color:var(--muted2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:.6rem;font-weight:700">📝 Enregistrer cette course pour de vrai</div>
+          <div class="form-grid" style="grid-template-columns:2fr 1fr">
+            <div class="fgroup">
+              <label>Nom de la course</label>
+              <input type="text" id="c-name" placeholder="Course manuelle" maxlength="50">
+            </div>
+            <div class="fgroup">
+              <label>Date</label>
+              <input type="date" id="c-date">
+            </div>
+          </div>
+          <button onclick="saveManualRun()" style="width:100%;padding:.7rem;border-radius:7px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.82rem;cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='rgba(45,219,128,.22)'" onmouseout="this.style.background='rgba(45,219,128,.12)'">✓ Enregistrer cette course</button>
+          <div style="font-size:.62rem;color:var(--muted);margin-top:.45rem;line-height:1.4;text-align:center">Action irréversible. La course sera comptabilisée comme une course réelle (points, RPC, grade).</div>
+        </div>
       </div>
     </div>
   </div>
@@ -4161,6 +4178,100 @@ function calcPts(){
   const rpc=Math.round(res)*8;
   document.getElementById('r-pts').textContent=Math.round(res).toLocaleString('fr');
   document.getElementById('r-rpc').innerHTML=`→ <strong>+${rpc.toLocaleString('fr')} RPC</strong>`;
+}
+
+// Enregistre la course saisie dans le simulateur comme une vraie course en BDD.
+// Sert de remplaçant manuel à Strava/Garmin/GPS natif tant qu'ils ne marchent
+// pas. Tous les downstream (RPC, badges, streak, parrainage, grade) sont
+// déclenchés comme pour une vraie course.
+async function saveManualRun(){
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  // Kill switch global
+  if(window.__appSettings && window.__appSettings.runs_disabled){
+    showToast('⚠️ Enregistrement temporairement désactivé (maintenance)');
+    return;
+  }
+  const km=parseFloat(document.getElementById('c-km').value)||0;
+  const spd=parseFloat(document.getElementById('c-spd').value)||0;
+  const elv=parseFloat(document.getElementById('c-elv').value)||0;
+  const boost=document.getElementById('c-boost').checked;
+  const name=(document.getElementById('c-name').value||'').trim()||'Course manuelle';
+  const dateStr=document.getElementById('c-date').value;
+  // Validations basiques
+  if(km<=0){showToast('⚠️ Distance requise (> 0 km)');return;}
+  if(spd<=0){showToast('⚠️ Vitesse requise (> 0 km/h)');return;}
+  if(km>200){showToast('⚠️ Distance trop élevée (max 200 km)');return;}
+  if(spd>40){showToast('⚠️ Vitesse trop élevée (max 40 km/h)');return;}
+  // Date par défaut = aujourd'hui si vide
+  let runDate;
+  if(dateStr){
+    const d=new Date(dateStr+'T12:00:00');
+    if(isNaN(d.getTime())){showToast('⚠️ Date invalide');return;}
+    if(d>new Date()){showToast('⚠️ Date dans le futur impossible');return;}
+    runDate=d.toISOString();
+  } else {
+    runDate=new Date().toISOString();
+  }
+  const pts=Math.round(computePts(km,spd,elv,boost));
+  const timeMin=km/spd*60; // déduit km + vitesse
+  // Confirmation explicite (action irréversible)
+  const ok=await askConfirm(
+    'Tu vas enregistrer une course de <strong style="color:var(--gold)">'+km+' km</strong> pour <strong style="color:var(--gold)">'+pts.toLocaleString('fr')+' points</strong> (+ '+(pts*8).toLocaleString('fr')+' RPC).<br><br>Cette action est <strong>irréversible</strong>.',
+    {title:'Enregistrer cette course',emoji:'📝',okLabel:'Enregistrer'}
+  );
+  if(!ok) return;
+  try{
+    // 1. Insert run
+    const runResp=await fetch(supabaseUrl+'/rest/v1/runs',{
+      method:'POST',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify({
+        player_id:currentUser.id,
+        points:pts,
+        distance:Math.round(km*100)/100,
+        time:Math.round(timeMin*10)/10,
+        elevation:Math.round(elv),
+        run_date:runDate,
+        period:0,
+        name:name,
+        polyline:null,
+        flagged:false
+      })
+    });
+    if(!runResp.ok){throw new Error('Échec sauvegarde ('+runResp.status+')');}
+    // 2. Crédit RPC (8 RPC par point — même règle qu'une course réelle)
+    if(typeof walletCredit==='function'){
+      await walletCredit(pts*8, 0, 'Course '+name+' · '+pts+' pts');
+    }
+    showToast('✓ Course enregistrée : +'+pts.toLocaleString('fr')+' pts · +'+(pts*8).toLocaleString('fr')+' RPC');
+    // Reset les champs
+    document.getElementById('c-km').value=0;
+    document.getElementById('c-spd').value=0;
+    document.getElementById('c-elv').value=0;
+    document.getElementById('c-boost').checked=false;
+    document.getElementById('c-name').value='';
+    document.getElementById('c-date').value=new Date().toISOString().substring(0,10);
+    calcPts();
+    // 3. Triggers downstream (badges, streak, parrainage, grade)
+    try{
+      const _sess=(await supabaseClient.auth.getSession()).data.session;
+      const _userJwt=_sess?_sess.access_token:supabaseKey;
+      fetch(supabaseUrl+'/functions/v1/check-badges',{
+        method:'POST',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+_userJwt,'Content-Type':'application/json'},
+        body:'{}'
+      }).catch(function(){});
+    }catch(e){}
+    try{if(typeof checkAndClaimStreak==='function') checkAndClaimStreak();}catch(e){}
+    try{if(typeof checkReferralReward==='function') checkReferralReward('first_run');}catch(e){}
+    try{if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);}catch(e){}
+    // Refresh UI
+    if(typeof renderHistory==='function') renderHistory();
+    if(typeof renderDashboard==='function') renderDashboard();
+  }catch(e){
+    console.error('saveManualRun fail',e);
+    showToast('⚠️ Erreur : '+e.message);
+  }
 }
 
 /* ============================================================
