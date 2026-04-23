@@ -106,7 +106,10 @@
   --expert:#f5c842; --pro:#ff6020; --elite:#9060f0;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
+/* min-height en dvh (dynamic viewport height) pour gérer correctement les barres
+   système Android (status bar + navigation bar) avec viewport-fit=cover.
+   padding-bottom safe-area pour éviter que le contenu passe SOUS la barre nav système. */
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100dvh;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom)}
 body::before{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image:linear-gradient(rgba(74,144,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(74,144,255,.025) 1px,transparent 1px);
@@ -121,6 +124,9 @@ body::before{
   background:rgba(6,8,16,.95);backdrop-filter:blur(16px);
   border-bottom:1px solid var(--border);
   display:flex;align-items:center;height:52px;padding:0 1.25rem;gap:0;
+  /* safe-area : empêche la nav de passer sous la status bar Android (notch / heure / icônes) */
+  padding-top:env(safe-area-inset-top);
+  height:calc(52px + env(safe-area-inset-top));
 }
 .nav-logo{
   font-family:'Bebas Neue',sans-serif;font-size:1.5rem;
@@ -526,9 +532,11 @@ body::before{
 /* ============================================================
    MODAL
 ============================================================ */
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:400;align-items:center;justify-content:center}
+/* modal : padding safe-area pour pas déborder de l'écran sur Android avec viewport-fit=cover */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:400;align-items:center;justify-content:center;padding:env(safe-area-inset-top) .75rem env(safe-area-inset-bottom)}
 .modal.open{display:flex;animation:fadeUp .2s}
-.modal-box{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;max-width:480px;width:92%;max-height:85vh;overflow-y:auto;position:relative}
+/* modal-box : 85dvh = se base sur la hauteur viewport DYNAMIQUE (exclut les barres système quand visibles) */
+.modal-box{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;max-width:480px;width:92%;max-height:85dvh;overflow-y:auto;position:relative}
 .modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--gold);margin-bottom:.25rem}
 .modal-sub{font-size:.78rem;color:var(--muted2);margin-bottom:1.1rem}
 .modal-close{position:absolute;top:.85rem;right:.9rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem}
@@ -580,6 +588,11 @@ body::before{
   .layout-2col{grid-template-columns:1fr !important}
   .layout-3col{grid-template-columns:1fr 1fr !important}
   .form-grid{grid-template-columns:1fr 1fr !important}
+  /* Responsive : réduit le padding des pages sur mobile pour gagner de la place
+     et empêche les blocks/tables de déborder horizontalement */
+  .page{padding:.85rem !important;max-width:100%}
+  .block{max-width:100%}
+  .tbl{width:100%}
 
   /* Mobile navbar : on cache les onglets (trop à l'étroit avec BETA chip),
      on garde uniquement logo déroulant + BETA + Admin (si admin) + RPC/NYX.
@@ -1483,7 +1496,7 @@ select option{background:#040c1c}
         <div class="block-header">
           <div class="block-title">Carte <span class="hl">Hexagonale</span></div>
           <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-            <span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;color:var(--muted2)">Amiens</span>
+            <span id="lands-city-name" style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;color:var(--muted2)">—</span>
             <!-- Toggle Individuel / Team -->
             <div style="display:flex;gap:0;border:1px solid rgba(255,255,255,.15);border-radius:6px;overflow:hidden;margin-left:.5rem">
               <button id="map-btn-indiv" onclick="switchMapMode('indiv')" style="
@@ -5791,8 +5804,33 @@ async function centerMapOnLatestRun(){
     // Utilise le premier point (point de départ)
     var start=pts[0];
     _landsMap.setView([start[0],start[1]],15);
+    // Reverse geocode pour afficher le nom de la ville
+    _updateLandsCityLabel(start[0],start[1]);
   } catch(e){
     console.warn('[centerMapOnLatestRun] failed:',e);
+  }
+}
+
+// Reverse geocoding via OSM Nominatim (gratuit, rate limit 1 req/sec).
+// Affiche le nom de la ville/commune dans le header de la carte Lands.
+// Cache le résultat par paire lat/lng arrondie pour éviter les appels répétés.
+var _landsCityCache = {};
+async function _updateLandsCityLabel(lat, lng){
+  var el = document.getElementById('lands-city-name');
+  if(!el) return;
+  var key = lat.toFixed(2)+','+lng.toFixed(2);
+  if(_landsCityCache[key]){ el.textContent = _landsCityCache[key]; return; }
+  try{
+    var resp = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=10&accept-language=fr');
+    if(!resp.ok) throw new Error('nominatim '+resp.status);
+    var data = await resp.json();
+    var addr = data.address || {};
+    var city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '—';
+    _landsCityCache[key] = city;
+    el.textContent = city;
+  }catch(e){
+    console.warn('[lands] reverse geocode failed', e);
+    el.textContent = '—';
   }
 }
 
