@@ -1742,7 +1742,16 @@ select option{background:#040c1c}
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
       Système de <span style="color:var(--gold)">Grades</span>
     </div>
-    <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">6 niveaux · Niveau sportif · Fidélité · Implication</div>
+    <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">6 niveaux qui valorisent ton sport, ta fidélité et ton implication</div>
+  </div>
+
+  <!-- Explainer : règle AND + surprise -->
+  <div class="block" style="margin-bottom:1.25rem;border-color:rgba(245,200,66,.35);background:rgba(245,200,66,.04)">
+    <div style="padding:.85rem 1rem;font-size:.82rem;color:var(--text);line-height:1.6">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1.5px;color:var(--gold);margin-bottom:.35rem">📜 Comment ça marche</div>
+      Tu démarres en <strong>STARTER</strong> dès l'inscription. Pour passer au grade suivant tu dois remplir les conditions du grade visé.<br>
+      À chaque passage de grade, la couleur de ta Player Card change et une <strong style="color:var(--gold)">surprise</strong> t'attend... 🎁
+    </div>
   </div>
 
   <div class="layout-3col" style="margin-bottom:1.25rem" id="grade-cards"></div>
@@ -3266,6 +3275,11 @@ async function onLoginSuccess(user, isNew){
   if(typeof checkAndClaimStreak==='function'){
     setTimeout(function(){ checkAndClaimStreak(); }, isNew?1500:800);
   }
+  // Recalcul grade au login (rattrapage rétroactif si seuils franchis hors-ligne)
+  // Délai > streak pour ne pas empiler les popups au démarrage.
+  if(typeof updatePlayerGrade==='function'){
+    setTimeout(function(){ updatePlayerGrade(user.id); }, isNew?6500:3500);
+  }
   // Check badges une fois au login (rattrapage rétroactif)
   if(typeof triggerBadgeCheck==='function'){
     setTimeout(function(){ triggerBadgeCheck(); }, 5000);
@@ -3900,49 +3914,166 @@ var AVATAR_LIBRARY=[
 "https://api.dicebear.com/9.x/avataaars/svg?seed=speedix-080&skinColor=614335&top=winterHat04&hairColor=c93305&clothing=hoodie&clothesColor=929598&eyes=surprised&mouth=default&eyebrows=raisedExcited&facialHair=beardMajestic&facialHairColor=2c1b18&facialHairProbability=100"
 ];
 
-// Calculer le grade d'un joueur selon ses stats
-function computeGrade(periods, ptsCum, landsLoc, landsProp, isCompetitive){
-  if(!isCompetitive) return 'starter';
-  // Du plus haut au plus bas — il faut DÉPASSER chaque seuil (strictement supérieur)
+// Calculer le grade d'un joueur selon ses stats.
+// Logique : du grade le plus élevé au plus bas, on retient le premier dont
+// TOUTES les conditions sont remplies (AND). minSeuil=0 = pas de contrainte
+// sur ce critère (utile pour DÉBUTANT qui n'exige que les points).
+function computeGrade(periods, ptsCum, landsLoc, landsProp){
   for(var i=GRADES_DATA.length-1;i>=1;i--){
     var g=GRADES_DATA[i];
-    if(periods>g.minPeriods && ptsCum>g.minPts && landsLoc>g.minLoc && (g.minProp===0||landsProp>g.minProp)){
-      return g.cls;
-    }
+    var okPeriods = (g.minPeriods===0) || (periods>g.minPeriods);
+    var okPts     = (g.minPts===0)     || (ptsCum>g.minPts);
+    var okLoc     = (g.minLoc===0)     || (landsLoc>g.minLoc);
+    var okProp    = (g.minProp===0)    || (landsProp>g.minProp);
+    if(okPeriods && okPts && okLoc && okProp) return g.cls;
   }
   return 'starter';
 }
 
-// Charger et mettre à jour le grade d'un joueur
+// Helpers pour mapper grade <-> index dans GRADES_DATA
+function _gradeIndex(cls){
+  for(var i=0;i<GRADES_DATA.length;i++){if(GRADES_DATA[i].cls===cls) return i;}
+  return 0;
+}
+
+// Charger et mettre à jour le grade d'un joueur.
+// Si le grade monte, crédite les récompenses RPC + NYX cumulées sur tous les
+// paliers franchis et déclenche le popup de célébration pour CHAQUE palier
+// (uniquement si le joueur affecté est l'utilisateur courant).
 async function updatePlayerGrade(playerId){
   if(!playerId) return;
-  // Charger les stats
-  var {data:player}=await supabaseClient.from('players').select('competitive,grade').eq('id',playerId).single();
+  var {data:player}=await supabaseClient.from('players').select('grade,rpc_balance,nyx_balance,rpc_cumulated').eq('id',playerId).single();
   if(!player) return;
-  // Périodes actives (hors Starter)
-  var {data:palData}=await supabaseClient.from('palmares').select('period').eq('player_id',playerId);
+
+  // 1. Périodes actives (présence en palmarès hors Starter)
+  var {data:palData}=await supabaseClient.from('palmares').select('period,league_key').eq('player_id',playerId);
   var pastPeriods=new Set();
-  (palData||[]).forEach(function(p){if(p.league_key!=='starter') pastPeriods.add(p.period);});
-  // Points cumulés (toutes les runs de toutes les périodes — on utilise le wallet rpc comme proxy pour l'instant)
-  var {data:wData}=await supabaseClient.from('players').select('rpc_balance').eq('id',playerId).single();
-  var ptsCum=(wData?wData.rpc_balance:0)||0;
-  // Runs actuelles
-  var {data:runs}=await supabaseClient.from('runs').select('points').eq('player_id',playerId).eq('period',0);
-  var currentPts=(runs||[]).reduce(function(s,r){return s+(r.points||0);},0);
-  if(currentPts>0) pastPeriods.add(_periodData.period||1);
+  (palData||[]).forEach(function(p){if(p.league_key&&p.league_key!=='starter') pastPeriods.add(p.period);});
+  // Si le joueur a au moins 1 run en période courante (period=0), on compte la période en cours
+  var {data:curRuns}=await supabaseClient.from('runs').select('id').eq('player_id',playerId).eq('period',0).limit(1);
+  if((curRuns||[]).length>0) pastPeriods.add('current');
   var periods=pastPeriods.size;
-  // Lands (pour l'instant 0, sera branché quand les lands seront fonctionnels)
-  var landsLoc=0;
-  var landsProp=0;
-  var newGrade=computeGrade(periods, ptsCum, landsLoc, landsProp, player.competitive||false);
-  // Mettre à jour si changé
-  if(newGrade!==(player.grade||'starter')){
+
+  // 2. Points cumulés = somme runs.points TOUTES périodes confondues
+  var {data:allRuns}=await supabaseClient.from('runs').select('points').eq('player_id',playerId);
+  var ptsCum=(allRuns||[]).reduce(function(s,r){return s+(r.points||0);},0);
+
+  // 3. Lands réels (location et propriété)
+  var {data:landsLocData}=await supabaseClient.from('lands').select('id').eq('tenant_id',playerId).eq('status','rented');
+  var {data:landsPropData}=await supabaseClient.from('lands').select('id').eq('owner_id',playerId).eq('status','owned');
+  var landsLoc=(landsLocData||[]).length;
+  var landsProp=(landsPropData||[]).length;
+
+  // 4. Calcul nouveau grade
+  var oldGrade=player.grade||'starter';
+  var newGrade=computeGrade(periods, ptsCum, landsLoc, landsProp);
+  var oldIdx=_gradeIndex(oldGrade);
+  var newIdx=_gradeIndex(newGrade);
+
+  // 5. Pas de changement
+  if(newIdx===oldIdx) return newGrade;
+
+  // 6. Régression (ne devrait pas arriver, on l'absorbe silencieusement)
+  if(newIdx<oldIdx){
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(playerId),{
       method:'PATCH',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
       body:JSON.stringify({grade:newGrade})
     });
+    return newGrade;
   }
+
+  // 7. Promotion : cumul des récompenses pour tous les paliers franchis
+  var totalRpc=0, totalNyx=0;
+  for(var k=oldIdx+1;k<=newIdx;k++){
+    totalRpc+=GRADES_DATA[k].rpcReward||0;
+    totalNyx+=GRADES_DATA[k].nyxReward||0;
+  }
+
+  // 8. Update grade + balances en DB (atomic patch)
+  var newRpc=(player.rpc_balance||0)+totalRpc;
+  var newNyx=(player.nyx_balance||0)+totalNyx;
+  var newRpcCum=(player.rpc_cumulated||0)+totalRpc;
+  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(playerId),{
+    method:'PATCH',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({grade:newGrade, rpc_balance:newRpc, nyx_balance:newNyx, rpc_cumulated:newRpcCum})
+  });
+
+  // 9. Audit log (1 ligne par palier franchi)
+  for(var k=oldIdx+1;k<=newIdx;k++){
+    var g=GRADES_DATA[k];
+    if((g.rpcReward||0)>0 || (g.nyxReward||0)>0){
+      try{
+        await supabaseClient.from('wallet_tx').insert({
+          player_id:playerId,
+          rpc_delta:g.rpcReward||0,
+          nyx_delta:g.nyxReward||0,
+          reason:'Passage grade '+g.name
+        });
+      }catch(e){console.warn('wallet_tx grade fail',e);}
+    }
+  }
+
+  // 10. Popup célébration (uniquement pour l'user courant, 1 popup chaîné par palier)
+  if(currentUser && playerId===currentUser.id && typeof showGradeUpgradePopup==='function'){
+    var queue=[];
+    for(var k=oldIdx+1;k<=newIdx;k++) queue.push(GRADES_DATA[k]);
+    showGradeUpgradePopup(queue);
+    // Refresh wallet local pour que les balances s'affichent à jour
+    if(typeof loadWallet==='function') loadWallet();
+  }
+
   return newGrade;
+}
+
+// Affiche un popup de célébration enchaîné si plusieurs paliers franchis.
+// queue : tableau d'objets GRADES_DATA dans l'ordre du plus bas au plus haut.
+function showGradeUpgradePopup(queue){
+  if(!queue||!queue.length) return;
+  var g=queue.shift();
+  var modal=document.getElementById('grade-upgrade-modal');
+  if(!modal){
+    // Création à la volée si le markup n'existe pas
+    modal=document.createElement('div');
+    modal.id='grade-upgrade-modal';
+    modal.className='modal';
+    modal.innerHTML='<div class="modal-box" style="max-width:380px;text-align:center;padding:1.6rem 1.4rem">'
+      +'<div id="gu-emoji" style="font-size:3.4rem;margin-bottom:.4rem">🎖️</div>'
+      +'<div id="gu-title" style="font-family:Bebas Neue,sans-serif;font-size:1.5rem;letter-spacing:2.5px;margin-bottom:.3rem">FÉLICITATIONS</div>'
+      +'<div id="gu-sub" style="font-size:.85rem;color:var(--muted2);margin-bottom:1rem">Tu passes au grade supérieur</div>'
+      +'<div id="gu-badge" style="display:inline-block;font-family:Bebas Neue,sans-serif;font-size:1.6rem;letter-spacing:3px;padding:.4rem 1.2rem;border-radius:8px;border:2px solid;margin-bottom:1rem"></div>'
+      +'<div id="gu-msg" style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5"></div>'
+      +'<div id="gu-rewards" style="display:flex;gap:.6rem;justify-content:center;margin-bottom:1.2rem"></div>'
+      +'<button class="btn btn-gold" onclick="_closeGradeUpgrade()" style="width:100%">Continuer</button>'
+      +'</div>';
+    document.body.appendChild(modal);
+  }
+  var color=g.color;
+  document.getElementById('gu-badge').textContent=g.name;
+  document.getElementById('gu-badge').style.color=color;
+  document.getElementById('gu-badge').style.borderColor=color;
+  document.getElementById('gu-badge').style.background=color.replace(')',', .08)').replace('var(','rgba(var(');
+  // Fallback simple pour le background si var() complexe
+  document.getElementById('gu-badge').style.background='rgba(255,255,255,.04)';
+  var msg='Tu quittes la zone précédente et accèdes au grade <strong style="color:'+color+'">'+g.name+'</strong>. Continue ta progression dans SPEEDIX !';
+  if(g.cls==='debutant') msg='Tu quittes la zone Starter et deviens <strong style="color:'+color+'">DÉBUTANT</strong>. Continue ta progression dans SPEEDIX !';
+  document.getElementById('gu-msg').innerHTML=msg;
+  var rewardsHtml='';
+  if((g.rpcReward||0)>0) rewardsHtml+='<div style="background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.4);padding:.5rem .8rem;border-radius:6px"><div style="font-size:.6rem;color:var(--muted2);letter-spacing:.5px">RPC</div><div style="font-family:Space Mono,monospace;font-weight:700;color:var(--gold);font-size:1.05rem">+'+g.rpcReward.toLocaleString('fr')+'</div></div>';
+  if((g.nyxReward||0)>0) rewardsHtml+='<div style="background:rgba(32,208,224,.08);border:1px solid rgba(32,208,224,.4);padding:.5rem .8rem;border-radius:6px"><div style="font-size:.6rem;color:var(--muted2);letter-spacing:.5px">NYX</div><div style="font-family:Space Mono,monospace;font-weight:700;color:var(--cyan);font-size:1.05rem">+'+g.nyxReward+'</div></div>';
+  document.getElementById('gu-rewards').innerHTML=rewardsHtml;
+  // Stocker la queue restante pour enchaîner au close
+  modal._upgradeQueue=queue;
+  if(typeof openModal==='function') openModal('grade-upgrade-modal');
+  else modal.style.display='flex';
+}
+function _closeGradeUpgrade(){
+  var modal=document.getElementById('grade-upgrade-modal');
+  var queue=modal?(modal._upgradeQueue||[]):[];
+  if(typeof closeModal==='function') closeModal('grade-upgrade-modal');
+  else if(modal) modal.style.display='none';
+  if(queue.length>0){
+    setTimeout(function(){showGradeUpgradePopup(queue);},350);
+  }
 }
 function natFlag(v){ return v?(v.trim().split(/\s+/)[0]||'🏳️'):'🏳️'; }
 var SQUARE_FLAGS=['🇨🇭','🇻🇦','🇳🇵'];
@@ -3957,12 +4088,12 @@ const MARKET_LANDS=[];
 const TEAMS=[];
 
 const GRADES_DATA=[
-  {name:'STARTER', cls:'starter',color:'var(--starter)',minPeriods:0, minPts:0,       minLoc:0,   minProp:0},
-  {name:'DÉBUTANT',cls:'debutant',color:'var(--debutant)',minPeriods:2, minPts:2000,   minLoc:5,   minProp:0},
-  {name:'CONFIRMÉ',cls:'confirme',color:'var(--confirme)',minPeriods:3, minPts:20000,  minLoc:20,  minProp:5},
-  {name:'EXPERT',  cls:'expert',  color:'var(--expert)',minPeriods:6,  minPts:80000,  minLoc:60,  minProp:12},
-  {name:'PRO',     cls:'pro',     color:'var(--pro)',minPeriods:12,    minPts:150000, minLoc:80,  minProp:18},
-  {name:'ELITE',   cls:'elite',   color:'var(--elite)',minPeriods:18,  minPts:200000, minLoc:100, minProp:25},
+  {name:'STARTER', cls:'starter', color:'var(--starter)', minPeriods:0,  minPts:0,      minLoc:0,  minProp:0,  rpcReward:0,     nyxReward:0  },
+  {name:'DÉBUTANT',cls:'debutant',color:'var(--debutant)',minPeriods:0,  minPts:500,    minLoc:0,  minProp:0,  rpcReward:2000,  nyxReward:10 },
+  {name:'CONFIRMÉ',cls:'confirme',color:'var(--confirme)',minPeriods:2,  minPts:2000,   minLoc:5,  minProp:0,  rpcReward:5000,  nyxReward:20 },
+  {name:'EXPERT',  cls:'expert',  color:'var(--expert)',  minPeriods:6,  minPts:50000,  minLoc:40, minProp:6,  rpcReward:15000, nyxReward:45 },
+  {name:'PRO',     cls:'pro',     color:'var(--pro)',     minPeriods:12, minPts:100000, minLoc:60, minProp:12, rpcReward:30000, nyxReward:90 },
+  {name:'ELITE',   cls:'elite',   color:'var(--elite)',   minPeriods:18, minPts:150000, minLoc:80, minProp:18, rpcReward:50000, nyxReward:150},
 ];
 const FP_DATA=[
   {f:'Participation à la League',     free:true, prem:true},
@@ -5855,6 +5986,8 @@ async function rentLand(landId){
   renderMyLands();
   // Déclenche la vérif du badge PROSPECTEUR (fenêtre 60 min)
   if(typeof triggerBadgeCheck==='function') triggerBadgeCheck();
+  // Recalcul grade : 5+ locations = condition CONFIRMÉ
+  if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);
 }
 
 // Couleur carte du joueur
@@ -5981,6 +6114,8 @@ async function buyLand(landId){
   closeModal('land-modal');
   loadLandsOnMap();
   renderMyLands();
+  // Recalcul grade : 12+ propriétés = condition EXPERT, etc.
+  if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);
   // Compter les propriétés du joueur pour adapter le message
   var {data:ownedLands}=await supabaseClient.from('lands').select('id').eq('owner_id',currentUser.id).eq('status','owned');
   var nbOwned=(ownedLands||[]).length;
@@ -6078,6 +6213,8 @@ async function buyLandFromSale(saleId,landId,sellerId,price){
   showToast('🏠 Land achetée ! Taxe 10% prélevée');
   loadLandsOnMap();
   renderMyLands();
+  // Recalcul grade : nouvelle propriété peut faire monter d'un palier
+  if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);
 }
 
 async function releaseLand(landId){
@@ -8923,25 +9060,51 @@ function clickLand(idx,cls){
 
 function renderGrades(){
   const el=document.getElementById('grade-cards');
-  el.innerHTML=GRADES_DATA.map(g=>`
-    <div class="grade-card" style="border-color:${g.color}33;background:${g.color}06">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${g.color}"></div>
-      <div style="margin-bottom:.65rem">
-        <span class="badge g-${g.cls}">${g.name}</span>
-      </div>
-      <div style="font-size:.75rem;color:var(--muted2);line-height:1.9">
-        Périodes : <strong style="color:var(--text)">${g.minPeriods>0?'+ de '+g.minPeriods:'—'}</strong><br>
-        Pts cumulés : <strong style="color:var(--text)">${g.minPts>0?'+ de '+g.minPts.toLocaleString('fr'):'< 500'}</strong><br>
-        Locations : <strong style="color:var(--text)">${g.minLoc>0?'+ de '+g.minLoc:'—'}</strong><br>
-        Propriétés : <strong style="color:var(--text)">${g.minProp>0?'+ de '+g.minProp:'—'}</strong>
-      </div>
-    </div>`).join('');
-  // Compare table
+  if(!el) return;
+
+  // Helper : phrase de critère "avoir + de X label" ou rien si non requis
+  function critLine(value, label){
+    if(!value || value === 0) return '';
+    return '<div style="display:flex;align-items:baseline;gap:.4rem;padding:.32rem 0;border-bottom:1px dashed rgba(255,255,255,.06);font-size:.78rem;color:var(--text);line-height:1.4">'
+      +'<span style="color:var(--green);font-weight:700;flex-shrink:0">›</span>'
+      +'<span>avoir + de <strong style="color:var(--gold);font-family:Space Mono,monospace">'+value.toLocaleString('fr')+'</strong> '+label+'</span>'
+    +'</div>';
+  }
+
+  el.innerHTML = GRADES_DATA.map(function(g){
+    var isStarter = (g.cls === 'starter');
+
+    var body;
+    if(isStarter){
+      body = '<div style="font-size:.78rem;color:var(--muted);font-style:italic;line-height:1.6;padding:.4rem 0">'
+        +'Grade attribué dès ton inscription. Tu en sors automatiquement dès que tu dépasses <strong style="color:var(--text);font-style:normal">500 points cumulés</strong>.'
+      +'</div>';
+    } else {
+      body = '<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:.4rem;font-weight:700">📋 Conditions à remplir</div>'
+        + critLine(g.minPeriods, 'périodes actives')
+        + critLine(g.minPts, 'points cumulés')
+        + critLine(g.minLoc, 'lands en location')
+        + critLine(g.minProp, 'lands en propriété');
+    }
+
+    return '<div class="grade-card" style="border-color:'+g.color+'55;background:'+g.color+'06;display:flex;flex-direction:column">'
+      +'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:'+g.color+'"></div>'
+      +'<div style="margin-bottom:.7rem">'
+        +'<span class="badge g-'+g.cls+'" style="font-size:.85rem;letter-spacing:1.5px;padding:.32rem .7rem">'+g.name+'</span>'
+      +'</div>'
+      + body
+    +'</div>';
+  }).join('');
+
+  // Compare table — uniquement les conditions, pas les récompenses (surprise)
+  function fmtVal(v){
+    return v>0 ? '+ de '+v.toLocaleString('fr') : '<span style="color:var(--muted);font-style:italic">non requis</span>';
+  }
   const rows=[
-    {lbl:'Périodes actives',vals:GRADES_DATA.map(g=>g.minPeriods>0?'+ de '+g.minPeriods:'—')},
-    {lbl:'Points cumulés',vals:GRADES_DATA.map(g=>g.minPts>0?'+ de '+g.minPts.toLocaleString('fr'):'< 500')},
-    {lbl:'Lands location',vals:GRADES_DATA.map(g=>g.minLoc>0?'+ de '+g.minLoc:'—')},
-    {lbl:'Lands propriété',vals:GRADES_DATA.map(g=>g.minProp>0?'+ de '+g.minProp:'—')},
+    {lbl:'Périodes actives',vals:GRADES_DATA.map(g=>fmtVal(g.minPeriods))},
+    {lbl:'Points cumulés', vals:GRADES_DATA.map(g=>fmtVal(g.minPts))},
+    {lbl:'Lands location', vals:GRADES_DATA.map(g=>fmtVal(g.minLoc))},
+    {lbl:'Lands propriété',vals:GRADES_DATA.map(g=>fmtVal(g.minProp))},
   ];
   const head='<thead><tr><th style="text-align:left">Critère</th>'+GRADES_DATA.map(g=>`<th><span class="badge g-${g.cls}" style="font-size:.55rem">${g.name}</span></th>`).join('')+'</tr></thead>';
   const body='<tbody>'+rows.map(r=>`<tr><td style="text-align:left;padding:.5rem .85rem;font-size:.78rem;font-weight:600">${r.lbl}</td>${r.vals.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')+'</tbody>';
@@ -10885,6 +11048,12 @@ async function saveCapturedRun(captured, runName){
   try{
     if(typeof checkReferralReward==='function') checkReferralReward('first_run');
   }catch(e){console.warn('referral first_run trigger fail',e);}
+
+  // 7. Recalcul grade : la course apporte des points qui peuvent déclencher
+  //    une montée (Starter→Débutant à 500 pts cumulés, etc.).
+  try{
+    if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);
+  }catch(e){console.warn('grade recalc after run fail',e);}
 
   return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
 }
