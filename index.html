@@ -757,6 +757,16 @@ select option{background:#040c1c}
 @keyframes logoPulse{0%,100%{filter:drop-shadow(0 0 20px rgba(245,200,66,.3)) drop-shadow(0 0 40px rgba(245,200,66,.1))}50%{filter:drop-shadow(0 0 25px rgba(245,200,66,.45)) drop-shadow(0 0 50px rgba(245,200,66,.2))}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){
+  /* Page Lands : tableau "Mes Lands" trop large pour mobile (8 colonnes).
+     On masque les colonnes secondaires (Statut, P.loc., Loyer) pour ne garder que l'essentiel. */
+  #lands-tbl th:nth-child(2),
+  #lands-tbl td:nth-child(2),
+  #lands-tbl th:nth-child(3),
+  #lands-tbl td:nth-child(3),
+  #lands-tbl th:nth-child(6),
+  #lands-tbl td:nth-child(6){display:none}
+  /* Carte hexagonale : adapter la hauteur sur mobile */
+  #lands-map{height:340px !important}
 }
 @keyframes ringRotate{0%{transform:translate(-50%,-50%) rotateX(68deg) rotateZ(0deg)}100%{transform:translate(-50%,-50%) rotateX(68deg) rotateZ(360deg)}}
 @keyframes planetGlow{0%,100%{box-shadow:0 0 30px rgba(245,200,66,.12),0 0 60px rgba(74,144,255,.06),inset -20px -15px 35px rgba(0,0,0,.7),inset 8px 8px 20px rgba(245,200,66,.08)}50%{box-shadow:0 0 45px rgba(245,200,66,.2),0 0 80px rgba(74,144,255,.1),inset -20px -15px 35px rgba(0,0,0,.7),inset 8px 8px 20px rgba(245,200,66,.12)}}
