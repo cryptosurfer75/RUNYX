@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SPEEDIX LEAGUE</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -10940,7 +10940,49 @@ var RunTracker=(function(){
     var statusEl=document.getElementById('lr-status');
     if(statusEl) statusEl.textContent=msg;
   }
+  // Détection runtime : tourne-t-on dans Capacitor (app native) ou en PWA web ?
+  // Si Capacitor + plugin BackgroundGeolocation présent → utilise le plugin natif
+  // (foreground service Android, background mode iOS) qui survit au screen-off.
+  // Sinon → fallback sur navigator.geolocation.watchPosition (comportement web).
+  function _isCapacitorNative(){
+    return !!(window.Capacitor
+      && typeof window.Capacitor.isNativePlatform === 'function'
+      && window.Capacitor.isNativePlatform()
+      && window.Capacitor.Plugins
+      && window.Capacitor.Plugins.BackgroundGeolocation);
+  }
+  var _useNativeGps = false;
   function _startWatch(){
+    if(_isCapacitorNative()){
+      _useNativeGps = true;
+      window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
+        {
+          backgroundMessage: "SPEEDIX enregistre ta course",
+          backgroundTitle: "SPEEDIX en course",
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 5
+        },
+        function(location, error){
+          if(error){ _onGpsError(error); return; }
+          // Adapte le format natif vers celui attendu par _ingest (cohérent avec navigator.geolocation)
+          _ingest({
+            coords: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              accuracy: location.accuracy,
+              altitude: (location.altitude!=null?location.altitude:null),
+              speed: (location.speed!=null?location.speed:null)
+            },
+            timestamp: location.time || Date.now()
+          });
+        }
+      ).then(function(watcher_id){ _watchId = watcher_id; })
+       .catch(function(e){ console.warn('[RunTracker] native GPS init fail',e); _onGpsError(e); });
+      return;
+    }
+    // Fallback PWA web
+    _useNativeGps = false;
     if(!navigator.geolocation){throw new Error('Geolocation non supportée');}
     _watchId=navigator.geolocation.watchPosition(
       _ingest, _onGpsError,
@@ -10948,7 +10990,15 @@ var RunTracker=(function(){
     );
   }
   function _stopWatch(){
-    if(_watchId!=null){navigator.geolocation.clearWatch(_watchId);_watchId=null;}
+    if(_watchId==null) return;
+    if(_useNativeGps && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation){
+      window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: _watchId })
+        .catch(function(e){ console.warn('[RunTracker] native GPS stop fail',e); });
+    } else if(navigator.geolocation){
+      navigator.geolocation.clearWatch(_watchId);
+    }
+    _watchId = null;
+    _useNativeGps = false;
   }
 
   // Wake Lock : empêche l'écran de s'éteindre. Auto-libéré si l'app passe
