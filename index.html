@@ -11013,30 +11013,39 @@ var RunTracker=(function(){
   function _startWatch(){
     if(_isCapacitorNative()){
       _useNativeGps = true;
-      window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
-        {
-          backgroundMessage: "SPEEDIX enregistre ta course",
-          backgroundTitle: "SPEEDIX en course",
-          requestPermissions: true,
-          stale: false,
-          distanceFilter: 5
-        },
-        function(location, error){
-          if(error){ _onGpsError(error); return; }
-          // Adapte le format natif vers celui attendu par _ingest (cohérent avec navigator.geolocation)
-          _ingest({
-            coords: {
-              latitude: location.latitude,
-              longitude: location.longitude,
-              accuracy: location.accuracy,
-              altitude: (location.altitude!=null?location.altitude:null),
-              speed: (location.speed!=null?location.speed:null)
-            },
-            timestamp: location.time || Date.now()
-          });
+      try {
+        var _addResult = window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
+          {
+            backgroundMessage: "SPEEDIX enregistre ta course",
+            backgroundTitle: "SPEEDIX en course",
+            requestPermissions: true,
+            stale: false,
+            distanceFilter: 5
+          },
+          function(location, error){
+            if(error){ _onGpsError(error); return; }
+            _ingest({
+              coords: {
+                latitude: location.latitude,
+                longitude: location.longitude,
+                accuracy: location.accuracy,
+                altitude: (location.altitude!=null?location.altitude:null),
+                speed: (location.speed!=null?location.speed:null)
+              },
+              timestamp: location.time || Date.now()
+            });
+          }
+        );
+        if(_addResult && typeof _addResult.then === 'function'){
+          _addResult.then(function(watcher_id){ _watchId = watcher_id; })
+                    .catch(function(e){ console.warn('[RunTracker] native GPS init fail',e); _onGpsError(e); });
+        } else {
+          _watchId = _addResult;
         }
-      ).then(function(watcher_id){ _watchId = watcher_id; })
-       .catch(function(e){ console.warn('[RunTracker] native GPS init fail',e); _onGpsError(e); });
+      } catch(e){
+        console.warn('[RunTracker] native GPS init exception',e);
+        _onGpsError(e);
+      }
       return;
     }
     // Fallback PWA web
@@ -11050,8 +11059,12 @@ var RunTracker=(function(){
   function _stopWatch(){
     if(_watchId==null) return;
     if(_useNativeGps && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation){
-      window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: _watchId })
-        .catch(function(e){ console.warn('[RunTracker] native GPS stop fail',e); });
+      try {
+        var _rmResult = window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: _watchId });
+        if(_rmResult && typeof _rmResult.catch === 'function'){
+          _rmResult.catch(function(e){ console.warn('[RunTracker] native GPS stop fail',e); });
+        }
+      } catch(e){ console.warn('[RunTracker] native GPS stop exception',e); }
     } else if(navigator.geolocation){
       navigator.geolocation.clearWatch(_watchId);
     }
