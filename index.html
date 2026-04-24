@@ -783,11 +783,11 @@ select option{background:#040c1c}
 <div style="position:relative;z-index:2;width:100%;text-align:center">
 <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:500px;margin:0 auto;background:#020408">
 <!-- Image 1 : Logo SPEEDIX -->
-<img src="hero-speedix-league.png" alt="SPEEDIX LEAGUE" style="width:100%;display:block" loading="eager">
+<img src="hero-speedix-league.png" alt="SPEEDIX LEAGUE" style="width:100%;max-height:220px;object-fit:contain;display:block" loading="eager">
 <!-- Tagline entre les 2 images -->
 <div style="font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2.5px;color:#f5c842;text-align:center;padding:.9rem .5rem .55rem;line-height:1.15;text-shadow:0 0 18px rgba(245,200,66,.35)">1<sup style="font-size:.55em;letter-spacing:0">er</sup> CHAMPIONNAT DE RUNNING</div>
 <!-- Image 2 : Leagues -->
-<img src="hero-speedix-leagues.png" alt="Les 8 Leagues SPEEDIX" style="width:100%;display:block" loading="eager">
+<img src="hero-speedix-leagues.png" alt="Les 8 Leagues SPEEDIX" style="width:100%;max-height:220px;object-fit:contain;display:block" loading="eager">
 <!-- Sous-titre sous l'image 2 -->
 <div style="text-align:center;padding:.7rem .5rem .3rem">
   <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;line-height:1.1;text-shadow:0 2px 10px rgba(0,0,0,.6)"><span style="color:#f5c842">COMPÉTITION</span> <span style="color:#8aaccc">—</span> <span style="color:#4a90ff">MOTIVATION</span> <span style="color:#8aaccc">—</span> <span style="color:#2ddb80">GAMING</span></div>
@@ -3312,6 +3312,8 @@ async function onLoginSuccess(user, isNew){
   if(typeof walletLoad==='function') walletLoad();
   // Charger les données parrainage
   if(typeof loadParrainageData==='function') loadParrainageData(user.id);
+  // Charger les inscriptions aux events (sync DB → localStorage cache)
+  if(typeof loadEventParticipations==='function') loadEventParticipations();
   // Charger la période
   if(typeof loadPeriodSettings==='function') loadPeriodSettings();
   // Panel admin
@@ -6652,11 +6654,11 @@ async function adminSimulateExploration(){
       await supabaseClient.from('land_passages').insert({
         land_id:hexId, player_id:playerId, passage_date:today, rpc_earned:rpcEarned
       });
-      // Si la land a un tenant/owner différent du coureur, créditer le rendement
+      // Créditer le propriétaire/locataire (y compris le coureur lui-même s'il
+      // possède la land — courir sur ses propres lands rapporte des RPC).
       var landOwner=landData?(landData.owner_id||landData.tenant_id):null;
-      if(landOwner&&landOwner!==playerId){
+      if(landOwner){
         await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
-        // Incrémenter le rendement mensuel
         await supabaseClient.from('lands').update({monthly_revenue:(landData.monthly_revenue||0)+rpcEarned}).eq('id',hexId);
       }
     }
@@ -10703,11 +10705,15 @@ async function syncStravaActivities(silent){
               headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
               body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
             });
-            // Créditer le propriétaire/locataire et incrémenter le rendement mensuel
+            // Créditer le propriétaire/locataire (y compris soi-même si on
+            // possède la land) et incrémenter le rendement mensuel.
             var landOwner=ld?(ld.owner_id||ld.tenant_id):null;
-            if(landOwner&&landOwner!==currentUser.id){
-              await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
-              // Recharger monthly_revenue courant pour éviter une race
+            if(landOwner){
+              if(landOwner===currentUser.id){
+                if(typeof walletCredit==='function') await walletCredit(rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+              } else {
+                await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+              }
               var revResp=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=monthly_revenue',{
                 headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
               });
@@ -10825,8 +10831,12 @@ async function processStravaLands(index){
         body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
       });
       var landOwner=ld?(ld.owner_id||ld.tenant_id):null;
-      if(landOwner&&landOwner!==currentUser.id){
-        await walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
+      if(landOwner){
+        if(landOwner===currentUser.id){
+          if(typeof walletCredit==='function') await walletCredit(rpcEarned,0,'Passage Land');
+        } else {
+          await walletCreditOther(landOwner,rpcEarned,0,'Passage Land');
+        }
         var curRev2=(ld.monthly_revenue||0);
         await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
           method:'PATCH',
@@ -11259,13 +11269,17 @@ async function saveCapturedRun(captured, runName){
           headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
           body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
         });
-        // Si la land appartient à un autre joueur → on le crédite + on incrémente le rendement mensuel
+        // La land a un propriétaire/locataire → on crédite + on incrémente le rendement.
+        // Le propriétaire qui passe sur son propre land est aussi crédité (récompense
+        // d'investissement : courir sur ses lands rapporte).
         var landOwner=land?(land.owner_id||land.tenant_id):null;
-        if(landOwner && landOwner!==currentUser.id && typeof walletCreditOther==='function'){
-          await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+        if(landOwner){
+          if(landOwner===currentUser.id){
+            if(typeof walletCredit==='function') await walletCredit(rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+          } else if(typeof walletCreditOther==='function'){
+            await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
+          }
           totalRpcLand+=rpcEarned;
-          // Met à jour monthly_revenue sur la land (sans race : on relit la
-          // valeur courante avant d'ajouter)
           try{
             var revResp=await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=monthly_revenue',{
               headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
@@ -13492,26 +13506,49 @@ function switchChallengesTab(tab){
   renderChallenges();
 }
 
-// Marque le RP comme "inscrit" à un événement (stocké en local pour l'instant).
-// À l'avenir : remontée DB + rappel push avant la date.
-function participateEvent(badgeId,badgeName){
+// Marque le RP comme "inscrit" à un événement. Persistance BDD + cache local.
+// Le cache localStorage évite un round-trip à chaque render.
+async function participateEvent(badgeId,badgeName){
   if(!currentUser) return;
   var key='participated-'+badgeId+'-'+currentUser.id;
   localStorage.setItem(key,'1');
+  try {
+    await supabaseClient.from('player_event_participations')
+      .upsert({player_id:currentUser.id, badge_id:badgeId},{onConflict:'player_id,badge_id'});
+  } catch(e){ console.warn('participateEvent DB persist fail',e); }
   showToast('✓ Inscrit à "'+(badgeName||'l\'événement')+'" — on te rappellera le jour J !');
   if(typeof renderChallenges==='function') renderChallenges();
   if(typeof renderMyChallenges==='function') renderMyChallenges();
 }
 
-// Désinscription d'un événement : supprime le flag d'inscription, le bouton
-// "PARTICIPER" réapparaît et le RP peut re-valider plus tard.
-function unregisterEvent(badgeId,badgeName){
+// Désinscription d'un événement : supprime côté BDD + cache local.
+async function unregisterEvent(badgeId,badgeName){
   if(!currentUser) return;
   var key='participated-'+badgeId+'-'+currentUser.id;
   localStorage.removeItem(key);
+  try {
+    await supabaseClient.from('player_event_participations')
+      .delete().eq('player_id',currentUser.id).eq('badge_id',badgeId);
+  } catch(e){ console.warn('unregisterEvent DB delete fail',e); }
   showToast('🗙 Inscription retirée pour "'+(badgeName||'l\'événement')+'"');
   if(typeof renderChallenges==='function') renderChallenges();
   if(typeof renderMyChallenges==='function') renderMyChallenges();
+}
+
+// Au login : recharge les inscriptions depuis Supabase et populate le cache
+// localStorage. Garantit la cohérence cross-device et après un wipe.
+async function loadEventParticipations(){
+  if(!currentUser) return;
+  try {
+    var {data:rows}=await supabaseClient.from('player_event_participations')
+      .select('badge_id').eq('player_id',currentUser.id);
+    if(!rows) return;
+    rows.forEach(function(r){
+      localStorage.setItem('participated-'+r.badge_id+'-'+currentUser.id,'1');
+    });
+    if(typeof renderChallenges==='function') renderChallenges();
+    if(typeof renderMyChallenges==='function') renderMyChallenges();
+  } catch(e){ console.warn('loadEventParticipations fail',e); }
 }
 
 function toggleChallenges(){
