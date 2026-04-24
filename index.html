@@ -108,8 +108,16 @@
 *{margin:0;padding:0;box-sizing:border-box}
 /* min-height en dvh (dynamic viewport height) pour gérer correctement les barres
    système Android (status bar + navigation bar) avec viewport-fit=cover.
-   padding-bottom safe-area pour éviter que le contenu passe SOUS la barre nav système. */
-body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100dvh;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom)}
+   Padding safe-area sur tous les côtés pour iPhone : viewport-fit=cover étend la
+   WebView dans la zone du notch et des coins arrondis. Sans padding gauche/droite,
+   le contenu peut être coupé par ces zones non-rectangulaires. */
+body{
+  background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
+  min-height:100dvh;overflow-x:hidden;
+  padding-bottom:env(safe-area-inset-bottom);
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+}
 body::before{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image:linear-gradient(rgba(74,144,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(74,144,255,.025) 1px,transparent 1px);
@@ -4238,7 +4246,9 @@ async function saveManualRun(){
   if(dateStr){
     const d=new Date(dateStr+'T12:00:00');
     if(isNaN(d.getTime())){showToast('⚠️ Date invalide');return;}
-    if(d>new Date()){showToast('⚠️ Date dans le futur impossible');return;}
+    // Comparaison au niveau JOUR : aujourd'hui OK, demain et après refusé
+    const todayStr=new Date().toISOString().substring(0,10);
+    if(dateStr>todayStr){showToast('⚠️ Date dans le futur impossible');return;}
     runDate=d.toISOString();
   } else {
     runDate=new Date().toISOString();
