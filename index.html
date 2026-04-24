@@ -568,10 +568,6 @@ body::before{
   70%{box-shadow:0 0 0 12px rgba(74,144,255,0),0 2px 6px rgba(0,0,0,.5)}
   100%{box-shadow:0 0 0 0 rgba(74,144,255,0),0 2px 6px rgba(0,0,0,.5)}
 }
-@keyframes pulse-warn{
-  0%,100%{opacity:1}
-  50%{opacity:.7}
-}
 
 /* ============================================================
    TOAST
@@ -2055,10 +2051,6 @@ select option{background:#040c1c}
       <div id="lr-timer" style="font-family:'Space Mono',monospace;font-size:2.4rem;font-weight:700;line-height:1.25">00:00:00</div>
       <div id="lr-status" style="font-size:.6rem;letter-spacing:1px;opacity:.85;margin-top:.3rem">📡 Recherche du signal GPS…</div>
     </div>
-    <!-- Bannière d'alerte interruption GPS (cachée par défaut, affichée si l'écran s'éteint) -->
-    <div id="lr-interrupt-banner" style="display:none;background:linear-gradient(180deg,#ff4040,#c8102e);color:#fff;padding:.65rem .8rem;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:2px;border-bottom:2px solid #7a0d1f;animation:pulse-warn 1.2s infinite">
-      ⚠️ ÉCRAN ÉTEINT — GPS COUPÉ ! REVIENS VITE SUR L'APP
-    </div>
     <!-- Stats grid -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(74,144,255,.18)">
       <div style="background:#0a1020;padding:.7rem .3rem;text-align:center">
@@ -2096,7 +2088,6 @@ select option{background:#040c1c}
       </div>
       <button id="lr-cancel-btn" onclick="cancelLiveRun()" style="width:100%;margin-top:.45rem;padding:.45rem;background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--muted2);font-size:.7rem;border-radius:8px;cursor:pointer">Annuler</button>
       <div id="lr-hint" style="text-align:center;margin-top:.5rem;font-size:.62rem;color:var(--muted2)">Mets-toi à ton point de départ et attends le verrouillage GPS</div>
-      <div id="lr-screen-warning" style="display:none;text-align:center;margin-top:.45rem;padding:.5rem .65rem;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.35);border-radius:6px;font-size:.7rem;color:#f5c842;font-weight:600;line-height:1.4">⚠️ <strong>Garde l'écran ALLUMÉ</strong> pendant toute la course<br><span style="font-weight:400;color:#c0a060">Sinon le GPS se coupe — limitation actuelle de la PWA</span></div>
     </div>
   </div>
 </div>
@@ -11002,7 +10993,6 @@ function _haversineM(lat1,lng1,lat2,lng2){
 var RunTracker=(function(){
   var _state='idle';            // 'idle' | 'armed' | 'tracking' | 'paused'
   var _watchId=null;
-  var _wakeLock=null;
   var _onPoint=null;            // callback live (utilisé par l'UI)
   var _onLock=null;             // callback dès qu'on a un point GPS valide (verrouillage)
   var _points=[];               // [{lat, lng, alt, t, acc}] — uniquement en mode 'tracking'
@@ -11013,7 +11003,6 @@ var RunTracker=(function(){
   var _lastFix=null;             // dernière position connue (même en armed) pour status
   var _pausedAt=0;              // ms epoch du début de la pause courante
   var _totalPausedMs=0;         // cumul des temps de pause depuis le start
-  var _onInterrupt=null;        // callback fire si écran s'éteint pendant tracking
 
   function _resetStats(){
     _points=[];_lastAccepted=null;_lastAlt=null;
@@ -11154,29 +11143,9 @@ var RunTracker=(function(){
     _useNativeGps = false;
   }
 
-  // Wake Lock : empêche l'écran de s'éteindre. Auto-libéré si l'app passe
-  // en arrière-plan → on ré-acquiert au retour visible.
-  async function _acquireWakeLock(){
-    if(!('wakeLock' in navigator)) return;
-    try{
-      _wakeLock=await navigator.wakeLock.request('screen');
-      _wakeLock.addEventListener('release',function(){_wakeLock=null;});
-    }catch(e){console.warn('[RunTracker] wakeLock fail',e);}
-  }
-  async function _releaseWakeLock(){
-    if(_wakeLock){try{await _wakeLock.release();}catch(e){}_wakeLock=null;}
-  }
-  function _onVisChange(){
-    if(document.visibilityState==='hidden' && _state==='tracking'){
-      // App backgroundée ou écran éteint → GPS va probablement être suspendu
-      // par l'OS. On notifie l'UI pour qu'elle alerte l'utilisateur (vibration,
-      // son, bannière) afin qu'il revienne sur l'app au plus vite.
-      if(_onInterrupt){try{_onInterrupt();}catch(e){}}
-    }
-    if(document.visibilityState==='visible' && _state==='tracking' && !_wakeLock){
-      _acquireWakeLock();
-    }
-  }
+  // Wake Lock + alertes interruption : supprimés. Le GPS natif (Capacitor +
+  // background-geolocation) continue d'enregistrer écran éteint / app en
+  // arrière-plan. Plus besoin d'éviter ces états ni de prévenir l'utilisateur.
 
   return {
     isActive:function(){return _state==='tracking'||_state==='paused';},
@@ -11191,9 +11160,8 @@ var RunTracker=(function(){
     getPoints:function(){return _points.slice();},
     onPoint:function(cb){_onPoint=cb;},
     onLock:function(cb){_onLock=cb;},
-    // onInterrupt : callback fire quand l'app passe en arrière-plan ou que
-    // l'écran s'éteint pendant la course → permet d'alerter l'utilisateur.
-    onInterrupt:function(cb){_onInterrupt=cb;},
+    // onInterrupt : no-op conservé pour compat (le GPS natif gère le background)
+    onInterrupt:function(){},
     // pause() : suspend l'accumulation. Le chrono se fige, distance/dénivelé
     // arrêtent de monter, le marker sur la carte ne bouge plus. Le GPS reste
     // actif en arrière-plan pour ne pas perdre le signal.
@@ -11220,8 +11188,6 @@ var RunTracker=(function(){
       _resetStats();
       _lastFix=null;
       _startWatch();
-      await _acquireWakeLock();
-      document.addEventListener('visibilitychange',_onVisChange);
       _state='armed';
     },
     // start() : passe en mode enregistrement. Reset les stats et fixe l'origine
@@ -11236,8 +11202,6 @@ var RunTracker=(function(){
     stop:async function(){
       if(_state==='idle') return null;
       _stopWatch();
-      await _releaseWakeLock();
-      document.removeEventListener('visibilitychange',_onVisChange);
       var wasRunning=(_state==='tracking'||_state==='paused');
       // Fige la durée finale (utile si on stop pendant une pause)
       var finalDurMs=_currentDurMs();
@@ -11774,11 +11738,6 @@ async function _startLiveRunWarmup(){
   runningActions.style.display='none';
   cancelBtn.style.display='';
   hint.textContent='Mets-toi à ton point de départ et attends le verrouillage GPS';
-  // Reset bannières/warnings
-  var _interruptBanner=document.getElementById('lr-interrupt-banner');
-  if(_interruptBanner) _interruptBanner.style.display='none';
-  var _screenWarn=document.getElementById('lr-screen-warning');
-  if(_screenWarn) _screenWarn.style.display='none';
   // Toggle de partage : default = préférence permanente du joueur
   if(shareChk){
     shareChk.checked=!!(window.__myPlayer&&window.__myPlayer.shareLivePosition);
@@ -11849,9 +11808,7 @@ function confirmStartLiveRun(){
   var shareRow=document.getElementById('lr-share-row');
   if(shareRow) shareRow.style.display='none';
   document.getElementById('lr-running-actions').style.display='flex';
-  document.getElementById('lr-hint').textContent='Course en cours · Wake Lock actif';
-  var screenWarn=document.getElementById('lr-screen-warning');
-  if(screenWarn) screenWarn.style.display='block';
+  document.getElementById('lr-hint').textContent='Course en cours · GPS natif actif';
   // Marker passe en doré (course active)
   if(_liveRunMarker){
     try{_liveRunMarker.setStyle({fillColor:'#f5c842',fillOpacity:1});}catch(e){}
@@ -11882,38 +11839,6 @@ function confirmStartLiveRun(){
       function(){return RunTracker.getLastFix();}
     );
   }
-  // Alerte forte si l'écran s'éteint / app backgroundée pendant la course
-  // (limitation PWA : OS suspend le GPS dès que l'app n'est plus au 1er plan).
-  RunTracker.onInterrupt(function(){
-    var banner=document.getElementById('lr-interrupt-banner');
-    if(banner) banner.style.display='block';
-    // Vibration longue + saccadée pour percer à travers l'écran verrouillé
-    try{if(navigator.vibrate) navigator.vibrate([400,150,400,150,400,150,600]);}catch(e){}
-    // Ping audio fort et répété
-    try{
-      var ctx=new (window.AudioContext||window.webkitAudioContext)();
-      [0,0.4,0.8].forEach(function(delay){
-        var t=ctx.currentTime+delay;
-        var osc=ctx.createOscillator();
-        var gain=ctx.createGain();
-        osc.connect(gain);gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(660,t);
-        osc.frequency.exponentialRampToValueAtTime(1320,t+0.25);
-        gain.gain.setValueAtTime(0.001,t);
-        gain.gain.exponentialRampToValueAtTime(0.45,t+0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001,t+0.35);
-        osc.start(t);osc.stop(t+0.4);
-      });
-    }catch(e){}
-    // Auto-dismiss de la bannière 4 sec après le retour visible
-    var hide=function(){
-      if(document.visibilityState==='visible'){
-        setTimeout(function(){if(banner) banner.style.display='none';},4000);
-        document.removeEventListener('visibilitychange',hide);
-      }
-    };
-    document.addEventListener('visibilitychange',hide);
-  });
   // Timer indépendant des points GPS
   _liveRunTimerInt=setInterval(function(){
     var stats=RunTracker.getStats();
@@ -11944,7 +11869,7 @@ function togglePauseLiveRun(){
     btn.style.background='linear-gradient(180deg,#f5c842,#b8860b)';
     btn.style.color='#000';
     btn.style.boxShadow='0 4px 16px rgba(245,200,66,.3)';
-    if(hint) hint.textContent='Garde l\'écran allumé pour ne rien perdre';
+    if(hint) hint.textContent='Course en cours · GPS natif actif';
     if(_liveRunMarker){try{_liveRunMarker.setStyle({fillColor:'#f5c842',fillOpacity:1});}catch(e){}}
     if(typeof LivePositions!=='undefined') LivePositions.resumeSending();
   }else{
