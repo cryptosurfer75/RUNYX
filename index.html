@@ -4514,10 +4514,20 @@ function renderDashboard(){
         var activePeriods=pastPeriods.size+currentCounts;
         set('stat-periodes', activePeriods>0?activePeriods:'0');
         // Lands locataire / propriétaire
+        // Une land en vente active est exclue du compte "propriété" (le RP a
+        // initié son désengagement, elle n'est plus comptée comme acquise).
         var {data:myLandsLoc}=await supabaseClient.from('lands').select('id').eq('tenant_id',_statUid).eq('status','rented');
         var {data:myLandsProp}=await supabaseClient.from('lands').select('id').eq('owner_id',_statUid).eq('status','owned');
+        var ownedIds=(myLandsProp||[]).map(function(l){return l.id;});
+        var activeSaleIds=[];
+        if(ownedIds.length){
+          var {data:activeSales}=await supabaseClient.from('land_sales')
+            .select('land_id').in('land_id',ownedIds).eq('status','active');
+          activeSaleIds=(activeSales||[]).map(function(s){return s.land_id;});
+        }
+        var nbPropEffective=ownedIds.filter(function(id){return activeSaleIds.indexOf(id)<0;}).length;
         set('stat-lands-loc',(myLandsLoc?myLandsLoc.length:0));
-        set('stat-lands-prop',(myLandsProp?myLandsProp.length:0));
+        set('stat-lands-prop',nbPropEffective);
       })();
     }
     // Streak
@@ -6552,11 +6562,23 @@ async function renderMyLands(page){
     if(summary) summary.innerHTML='<span style="font-size:.68rem;color:var(--muted2)">0 lands</span>';
     return;
   }
+  // Pour les lands owned, on cherche celles en vente active pour les
+  // distinguer (badge "À vendre" + compteur séparé).
+  var ownedIds=myLands.filter(function(l){return l.status==='owned';}).map(function(l){return l.id;});
+  var activeSaleSet={};
+  if(ownedIds.length){
+    var {data:activeSales}=await supabaseClient.from('land_sales')
+      .select('land_id,price_nyx').in('land_id',ownedIds).eq('status','active');
+    (activeSales||[]).forEach(function(s){activeSaleSet[s.land_id]=s.price_nyx;});
+  }
   var nbLoc=myLands.filter(function(l){return l.status==='rented';}).length;
-  var nbOwn=myLands.filter(function(l){return l.status==='owned';}).length;
+  var nbOwnTotal=myLands.filter(function(l){return l.status==='owned';}).length;
+  var nbForSale=ownedIds.filter(function(id){return id in activeSaleSet;}).length;
+  var nbOwn=nbOwnTotal-nbForSale;
   var totalRevenue=myLands.reduce(function(s,l){return s+(l.monthly_revenue||0);},0);
   if(summary) summary.innerHTML='<span style="font-size:.68rem;color:var(--blue)">'+nbLoc+' location'+(nbLoc>1?'s':'')+'</span>'
     +'<span style="font-size:.68rem;color:var(--green)">'+nbOwn+' propriété'+(nbOwn>1?'s':'')+'</span>'
+    +(nbForSale>0?'<span style="font-size:.68rem;color:var(--cyan)">'+nbForSale+' à vendre</span>':'')
     +'<span style="font-size:.68rem;color:var(--gold)">'+totalRevenue.toLocaleString('fr')+' RPC ce mois</span>';
   var rpcPassage=[3,6,9,12];
   var period=_periodData.period||1;
@@ -6591,8 +6613,11 @@ async function renderMyLands(page){
     var starsTxt=l.stars>0?('★'.repeat(l.stars)):'nue';
     var starsColor=l.stars>0?'#ffe050':'var(--muted)';
     var isOwned=(l.status==='owned');
+    var isForSale=(l.id in activeSaleSet);
     var statusBadge=isOwned
-      ?'<span class="badge g-confirme" style="font-size:.55rem">Propriété</span>'
+      ?(isForSale
+        ?'<span class="badge" style="font-size:.55rem;background:rgba(32,208,224,.12);border:1px solid rgba(32,208,224,.4);color:var(--cyan)">À vendre · '+activeSaleSet[l.id]+' NYX</span>'
+        :'<span class="badge g-confirme" style="font-size:.55rem">Propriété</span>')
       :'<span class="badge g-debutant" style="font-size:.55rem">Location</span>';
     // Loyer selon la période de location
     var rp=_computeRentPeriods(l);
