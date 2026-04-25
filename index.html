@@ -4307,7 +4307,7 @@ async function saveManualRun(){
   const name=(document.getElementById('c-name').value||'').trim()||'Course manuelle';
   const dateStr=document.getElementById('c-date').value;
   // Validations basiques
-  if(km<=0){showToast('⚠️ Distance requise (> 0 km)');return;}
+  if(km<1){showToast('⚠️ Course < 1 km exclue du jeu');return;}
   if(spd<=0){showToast('⚠️ Vitesse requise (> 0 km/h)');return;}
   if(km>200){showToast('⚠️ Distance trop élevée (max 200 km)');return;}
   if(spd>40){showToast('⚠️ Vitesse trop élevée (max 40 km/h)');return;}
@@ -11893,10 +11893,19 @@ function togglePauseLiveRun(){
 async function stopLiveRun(){
   if(!RunTracker.isActive()){closeModal('live-run-modal');return;}
   var stats=RunTracker.getStats();
-  // Garde-fou : courses trop courtes = on demande confirmation
-  if(stats.km<0.3){
-    if(!confirm('Course très courte ('+stats.km.toFixed(2)+' km). Vraiment terminer ?')) return;
-  }
+  // Confirmation systématique avant FINISH : éviter les arrêts par erreur
+  // (clic accidentel sur le bouton rouge en pleine course = perte du tracé).
+  // On affiche les stats actuelles pour rappel.
+  var _km=stats.km.toFixed(2).replace('.',',');
+  var _hms=_formatDuration(stats.durMs||0);
+  var _elv=Math.round(stats.elv||0);
+  var _tooShort=stats.km<1;
+  var ok=await askConfirm(
+    (_tooShort?'⚠️ <strong style="color:var(--red)">Course &lt; 1 km : sera exclue du jeu</strong> (non enregistrée).<br><br>':'')
+    +'<strong style="color:var(--gold)">'+_km+' km</strong> · <strong style="color:var(--gold)">'+_hms+'</strong> · D+ '+_elv+' m<br><br>Tu veux vraiment <strong>terminer</strong> et enregistrer cette course ?',
+    {title:'Terminer la course ?', emoji:'🏁', okLabel:'OUI, FINISH', cancelLabel:'Continuer', destructive:true}
+  );
+  if(!ok) return;
   // Désactive le bouton pour éviter double-clic
   var btn=document.getElementById('lr-stop-btn');
   if(btn){btn.disabled=true;btn.textContent='💾 Enregistrement…';btn.style.opacity='.7';}
@@ -11914,8 +11923,8 @@ async function stopLiveRun(){
     showToast('⚠️ Pas assez de points GPS, course non sauvegardée');
     return;
   }
-  if(captured.km<0.1){
-    showToast('⚠️ Distance trop faible, course non sauvegardée');
+  if(captured.km<1){
+    showToast('⚠️ Course < 1 km — exclue du jeu (non enregistrée)');
     return;
   }
   // Récupère le buffer des croisements AVANT que stopSending nettoie quoi que ce soit
@@ -13225,9 +13234,13 @@ async function renderChallenges(){
   var unlockedMap={};
   (unlocked||[]).forEach(function(u){unlockedMap[u.badge_id]=u.earned_at;});
 
-  // 3. Stats runs (non flaggés)
+  // 3. Stats runs : on compte TOUS les runs y compris les flagués. Le flag
+  // sert uniquement à la review admin (panel admin/triche), il ne doit pas
+  // bloquer la progression du joueur (compteur Player Card et badges restent
+  // cohérents). Le seuil anti-triche à 35 km/h est large mais pas parfait,
+  // donc on évite de pénaliser silencieusement.
   var {data:runs}=await supabaseClient.from('runs').select('distance,time,elevation,run_date,polyline,flagged').eq('player_id',targetUuid);
-  var valid=(runs||[]).filter(function(r){return !r.flagged;});
+  var valid=(runs||[]);
 
   // 4. Lands louées 60min
   var cutoff=new Date(Date.now()-60*60*1000).toISOString();
