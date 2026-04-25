@@ -321,9 +321,10 @@ body::before{
 .ln-name{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--muted2)}
 .ln-range{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
 .ln-count{
-  font-family:'Space Mono',monospace;font-size:.65rem;
-  background:rgba(255,255,255,.05);border-radius:10px;
-  padding:.1rem .4rem;color:var(--muted2);
+  font-family:'Space Mono',monospace;font-size:.75rem;font-weight:700;
+  background:rgba(245,200,66,.14);border:1px solid rgba(245,200,66,.35);
+  border-radius:10px;padding:.12rem .5rem;color:var(--gold);
+  min-width:18px;text-align:center;
 }
 .ln-me{
   width:6px;height:6px;border-radius:50%;
@@ -6007,7 +6008,7 @@ async function loadLandsOnMap(){
       var otherPid=land.owner_id||land.tenant_id;
       var otherColor=(otherPid&&rpColorMap[otherPid])?rpColorMap[otherPid]:'#555';
       var color=(isNewExplored||isMyPassage)?'#ffffff':isMineOwned?_myMapColor:isMineRented?_myMapColor:(land.status!=='free'?otherColor:'#555');
-      var fillOpacity=(isNewExplored||isMyPassage)?0.12:isMineOwned?0.95:(land.status==='owned'?0.85:isMineRented?0.3:land.status!=='free'?0.25:0.08);
+      var fillOpacity=(isNewExplored||isMyPassage)?0.12:isMineOwned?1:(land.status==='owned'?0.9:isMineRented?0.3:land.status!=='free'?0.25:0.08);
       var weight=isNewExplored?2:1;
       var borderCol=color;
       var poly=L.polygon(latlngs,{
@@ -6140,10 +6141,16 @@ async function showLandDetail(landId){
     if(Array.isArray(_saleData)&&_saleData[0]) activeSale=_saleData[0];
   }catch(e){}
 
+  // Priorité absolue à l'owner (la propriété passe AVANT la location).
+  // Si l'owner a aussi un tenant qui loue (owner ≠ tenant), on l'indique
+  // en complément. Sinon on retombe sur location pure ou libre.
   var statusLine='';
-  if(land.status==='owned'&&land.owner_id){
+  if(land.owner_id){
     statusLine='Statut : <strong style="color:var(--text)">Propriété de </strong><strong style="color:var(--green)">'+ownerName+'</strong>';
-  } else if(land.status==='rented'&&land.tenant_id){
+    if(land.tenant_id && land.tenant_id!==land.owner_id){
+      statusLine+=' <span style="color:var(--muted2)">·</span> <strong style="color:var(--text)">louée à </strong><strong style="color:var(--blue)">'+tenantName+'</strong>';
+    }
+  } else if(land.tenant_id){
     statusLine='Statut : <strong style="color:var(--text)">Location de </strong><strong style="color:var(--blue)">'+tenantName+'</strong>';
   } else {
     statusLine='Statut : <strong style="color:var(--text)">Libre</strong>';
