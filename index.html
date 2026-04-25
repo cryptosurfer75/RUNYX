@@ -1002,6 +1002,8 @@ select option{background:#040c1c}
       <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .85rem;border-radius:6px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;box-shadow:0 2px 10px rgba(45,138,50,.4)">🏃 NOUVELLE COURSE</button>
       <button onclick="openModal('sync-modal')" title="Strava — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY STRAVA</button>
       <button onclick="openModal('sync-modal')" title="Garmin — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#007cc3;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY GARMIN</button>
+      <!-- Bouton infirmerie discret (visible uniquement sur sa propre PC) -->
+      <button id="infirmerie-btn" onclick="openInfirmerieModal()" title="Te déclarer en infirmerie en cas de blessure" style="display:none;align-items:center;gap:.25rem;padding:.18rem .5rem;border-radius:4px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.58rem;font-weight:600;letter-spacing:.5px;cursor:pointer">🏥 <span id="infirmerie-btn-label">Infirmerie</span></button>
     </div>
   </div>
 
@@ -1265,13 +1267,6 @@ select option{background:#040c1c}
         <div><div id="stat-cagnotte-nyx" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--green)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Cagnotte NYX</div></div>
       </div>
 
-    </div>
-
-    <!-- Bouton Infirmerie / Statut infirmerie en cours -->
-    <div id="infirmerie-block" style="margin-top:.85rem;display:none">
-      <button id="infirmerie-btn" onclick="openInfirmerieModal()" style="width:100%;padding:.55rem .8rem;border-radius:8px;border:1.5px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:#ff8080;font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:2px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.45rem">
-        🏥 <span id="infirmerie-btn-label">ME DÉCLARER EN INFIRMERIE</span>
-      </button>
     </div>
 
     <!-- Watermark -->
@@ -2818,13 +2813,34 @@ function askConfirm(message, opts){
       <div class="block-header" style="border-color:rgba(255,160,32,.2)"><div class="block-title">🗺️ Les <span class="hl">Lands</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
         La carte est divisée en hexagones — les <strong style="color:var(--text)">Lands</strong>.<br>
-        Loue une Land (loyer mensuel en RPC) et gagne 3 RPC à chaque passage d'un RP.<br><br>
-        <strong style="color:var(--gold)">🏥 Infirmerie</strong> — En cas de blessure, déclare-toi en infirmerie depuis ta Player Card. Choisis une durée (15 / 30 / 45 / 60 jours) <strong style="color:var(--red)">DÉFINITIVE</strong>. Pendant l'infirmerie : aucune course ne peut être enregistrée, ta league est figée, tes loyers sont réduits (15j plein · 30j demi · 45/60j suspendus). Tu touches toujours les RPC des passages des autres sur tes Lands. Quotas glissants 12 mois : 15j 2× · 30j 2× · 45j 1× · 60j 1× · plafond 2 activations.<br><br>
-        <strong style="color:var(--gold)">🏆 40 pts minimum / période</strong> — Pour rester actif sportivement et bénéficier du bonus team de 2%, vise au moins 40 pts par période (= une simple marche GPS).<br><br>
-        <strong style="color:var(--gold)">📉 Mou progressif</strong> — Au rollover : descente max 1 league par période (peu importe la perf). Un RP fantôme (0 pt sur la période) descend 1 league + devient invisible dans le classement. Si 2ème période consécutive à 0 pt → retour Zone Starter, toujours invisible. Reprise de visibilité dès qu'il refait des points.<br>
+        Loue une Land (loyer mensuel en RPC) et gagne 3 RPC à chaque passage d'un RP.<br>
         Après plusieurs périodes, tu peux l'<strong style="color:var(--text)">acheter</strong> définitivement en NYX.<br>
         Ajoute des <strong style="color:var(--gold)">Étoiles</strong> : ★ 6 · ★★ 9 · ★★★ 12 RPC par passage.<br>
         Plafond de <strong style="color:var(--gold)">8 000 RPC / mois / Land</strong>.
+      </div>
+    </div>
+
+    <div class="block" style="border-color:rgba(255,128,128,.45)">
+      <div class="block-header" style="border-color:rgba(255,128,128,.2)"><div class="block-title">🏥 <span class="hl">Infirmerie</span></div></div>
+      <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
+        En cas de blessure ou indisponibilité, déclare-toi en infirmerie depuis ta Player Card.<br>
+        Choisis ta durée — décision <strong style="color:var(--red)">DÉFINITIVE</strong> (pas de reprise anticipée).<br><br>
+        <strong style="color:var(--gold)">Pendant l'infirmerie :</strong><br>
+        • Aucune course ne peut être enregistrée<br>
+        • Ta league est <strong style="color:var(--text)">figée</strong> (pas de relégation)<br>
+        • Tes loyers : <strong style="color:var(--text)">15j</strong> plein tarif · <strong style="color:var(--text)">30j</strong> demi-tarif · <strong style="color:var(--text)">45/60j</strong> suspendus<br>
+        • Tu gardes tes récompenses et ta chaîne de connexion<br><br>
+        <strong style="color:var(--gold)">Reprise :</strong> tu reprends en statut <strong>R</strong> (Reprise) jusqu'à la fin de la période en cours. Si tes points sont supérieurs au seuil de ta league, tu redeviens compétitif. Sinon tu restes une période supplémentaire en reprise.<br><br>
+        <strong style="color:var(--gold)">Plafond :</strong> 2 activations par période de 12 mois.
+      </div>
+    </div>
+
+    <div class="block" style="border-color:rgba(74,144,255,.45)">
+      <div class="block-header" style="border-color:rgba(74,144,255,.2)"><div class="block-title">📉 <span class="hl">Activité &amp; relégation</span></div></div>
+      <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
+        <strong style="color:var(--gold)">🏆 40 pts minimum / période</strong> — Pour rester actif sportivement et faire profiter ta team de ton bonus de 2%, fait au moins 40 pts par période.<br><br>
+        <strong style="color:var(--gold)">Descente protégée :</strong> au rollover, un RP ne peut descendre que d'<strong style="color:var(--text)">une league</strong> par période.<br><br>
+        <strong style="color:var(--gold)">RP fantôme (0 pt) :</strong> descente 1 league + devient <strong style="color:var(--text)">invisible</strong> dans le classement. 2ème période consécutive à 0 pt → retour au <strong style="color:var(--text)">départ du jeu, Zone Starter et calibrage</strong>.
       </div>
     </div>
 
@@ -4538,32 +4554,27 @@ function renderDashboard(){
     set('stat-lands-loc','0');set('stat-lands-prop','0');
     set('stat-badges','—');set('stat-best-rank','—');
     set('stat-cagnotte-rpc','—');set('stat-cagnotte-nyx','—');
-    // Bouton Infirmerie : visible uniquement sur SA propre PC (pas sur les autres RPs)
-    var _infBlock=document.getElementById('infirmerie-block');
-    if(_infBlock){
+    // Bouton Infirmerie discret : visible uniquement sur SA propre PC
+    var _infBtn=document.getElementById('infirmerie-btn');
+    if(_infBtn){
       if(isOwn){
-        _infBlock.style.display='block';
+        _infBtn.style.display='inline-flex';
         var _infLabel=document.getElementById('infirmerie-btn-label');
-        var _infBtn=document.getElementById('infirmerie-btn');
         if(typeof isInInfirmerie==='function' && isInInfirmerie()){
           var _i=window.__infirmerie;
           var _daysLeft=Math.ceil((new Date(_i.until)-new Date())/(24*3600*1000));
-          if(_infLabel) _infLabel.textContent='EN INFIRMERIE — '+_daysLeft+' J RESTANT'+(_daysLeft>1?'S':'');
-          if(_infBtn){
-            _infBtn.style.borderColor='var(--gold)';
-            _infBtn.style.background='rgba(245,200,66,.12)';
-            _infBtn.style.color='var(--gold)';
-          }
+          if(_infLabel) _infLabel.textContent='Infirmerie · '+_daysLeft+'j';
+          _infBtn.style.background='rgba(245,200,66,.12)';
+          _infBtn.style.borderColor='rgba(245,200,66,.35)';
+          _infBtn.style.color='var(--gold)';
         } else {
-          if(_infLabel) _infLabel.textContent='ME DÉCLARER EN INFIRMERIE';
-          if(_infBtn){
-            _infBtn.style.borderColor='rgba(255,68,68,.4)';
-            _infBtn.style.background='rgba(255,68,68,.08)';
-            _infBtn.style.color='#ff8080';
-          }
+          if(_infLabel) _infLabel.textContent='Infirmerie';
+          _infBtn.style.background='rgba(255,255,255,.04)';
+          _infBtn.style.borderColor='rgba(255,255,255,.12)';
+          _infBtn.style.color='var(--muted2)';
         }
       } else {
-        _infBlock.style.display='none';
+        _infBtn.style.display='none';
       }
     }
     if(_statUid){
@@ -10825,13 +10836,11 @@ function openInfirmerieModal(){
       +'<span style="font-size:.6rem;font-family:Space Mono,monospace;letter-spacing:0;color:'+(disabled?'var(--red)':'var(--muted2)')+'">'+used+'/'+maxD+(disabled?' · quota atteint':'')+'</span>'
       +'</button>';
   };
-  var info='15j = plein tarif loyers · 30j = demi-tarif · 45/60j = loyers suspendus';
   document.getElementById('lm-title').textContent='🏥 Infirmerie';
   document.getElementById('lm-sub').textContent='Pause sportive volontaire';
   document.getElementById('lm-body').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, streak conservée, RPC des passages reçus normalement.</div>'
-    +btn(15)+btn(30)+btn(45)+btn(60)
-    +'<div style="font-size:.65rem;color:var(--muted2);margin-top:.4rem;line-height:1.5">'+info+'<br>Plafond : 2 activations max par 12 mois ('+q.counts.total+'/2 utilisées).</div>';
+    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, streak conservée, récompenses normales.</div>'
+    +btn(15)+btn(30)+btn(45)+btn(60);
   openModal('land-modal');
 }
 
