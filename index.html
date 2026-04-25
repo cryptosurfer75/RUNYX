@@ -985,7 +985,11 @@ select option{background:#040c1c}
 =========================================== -->
 <div id="page-dashboard" class="page active">
 
-  <!-- Top bar -->
+  <!-- Top bar : titre à gauche, boutons à droite. flex-wrap:wrap permet aux
+       boutons de passer à la ligne sur mobile si pas assez de place. Le
+       margin-left:auto sur la colonne boutons garantit qu'ils restent alignés
+       à droite même quand ils wrappent (sinon space-between les colle à gauche
+       quand seuls sur leur ligne). -->
   <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
     <div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
@@ -993,7 +997,7 @@ select option{background:#040c1c}
       </div>
       <div id="pc-period-info" style="font-size:.78rem;color:var(--muted2);margin-top:.1rem"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end">
+    <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end;margin-left:auto">
       <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .85rem;border-radius:6px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;box-shadow:0 2px 10px rgba(45,138,50,.4)">🏃 NOUVELLE COURSE</button>
       <button onclick="openModal('sync-modal')" title="Strava — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY STRAVA</button>
       <button onclick="openModal('sync-modal')" title="Garmin — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#007cc3;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY GARMIN</button>
@@ -1518,7 +1522,7 @@ select option{background:#040c1c}
       </div>
       <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Explorer · Louer · Acheter · Étoiles · Trésors</div>
     </div>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-left:auto">
       <div class="pill pill-rpc" style="font-size:.72rem" id="lands-loyer-total">Loyer ce mois : <strong style="color:var(--muted2);margin-left:.35rem">—</strong></div>
     </div>
   </div>
@@ -1652,6 +1656,7 @@ select option{background:#040c1c}
       <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Classement mensuel · Bonus collectifs · 6 à 20 RP</div>
     </div>
     <button style="
+      margin-left:auto;
       background:linear-gradient(135deg,rgba(245,200,66,.08),rgba(200,160,20,.04));
       border:1.5px solid rgba(245,200,66,.55);
       color:var(--gold);font-weight:700;letter-spacing:.5px;
@@ -1977,7 +1982,7 @@ select option{background:#040c1c}
       </div>
       <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">5,99€ / mois · ou 60€ / an</div>
     </div>
-    <button id="premium-btn" class="btn btn-gold" onclick="handlePremiumClick()">⭐ Passer Premium</button>
+    <button id="premium-btn" class="btn btn-gold" style="margin-left:auto" onclick="handlePremiumClick()">⭐ Passer Premium</button>
   </div>
   <div id="premium-status" style="font-size:.75rem;text-align:center;margin-bottom:1rem"></div>
 
