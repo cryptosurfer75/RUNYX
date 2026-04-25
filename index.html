@@ -1247,10 +1247,10 @@ select option{background:#040c1c}
         <div><div id="stat-lands-prop" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--green)">3</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Lands Propriétaire</div></div>
       </div>
 
-      <!-- 9. Badges débloqués | 10. Ranking actuel -->
+      <!-- 9. Badges gagnés | 10. Ranking actuel -->
       <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🎖️</span>
-        <div><div id="stat-badges" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Badges débloqués</div></div>
+        <div><div id="stat-badges" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Badges gagnés</div></div>
       </div>
       <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🏆</span>
@@ -1359,9 +1359,9 @@ select option{background:#040c1c}
   <div id="league-mobile-selector" style="display:none;margin-bottom:.75rem;position:relative">
     <button onclick="toggleLeaguePicker()" id="league-picker-btn" style="
       width:100%;display:flex;align-items:center;justify-content:space-between;
-      padding:.55rem .9rem;border-radius:8px;cursor:pointer;
+      padding:.95rem 1rem;border-radius:8px;cursor:pointer;
       background:rgba(245,200,66,.08);border:1.5px solid rgba(245,200,66,.35);
-      font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;
+      font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;
       color:var(--gold);transition:all .15s;
     ">
       <span id="league-picker-label">—</span>
@@ -2154,7 +2154,7 @@ select option{background:#040c1c}
       <strong style="color:#ff8080">⚠️ Si tu rates un jour</strong><br>
       Ta chaîne se casse et redémarre avec une récompense réduite :<br>
       <span style="color:var(--text)">80 → 60 → 40 → 20 → 0 RPC</span> après chaque nouvel arrêt.<br>
-      Au 5ᵉ raté, la série est définitivement terminée 💔
+      Au 5ᵉ raté, la chaîne est définitivement terminée 💔
     </div>
     <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;text-align:center;font-style:italic">
       Astuce : termine une course dans la journée, ça compte aussi 🏃
@@ -2532,8 +2532,13 @@ function askConfirm(message, opts){
     <div id="tmm-title" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--text);margin-bottom:.2rem"></div>
     <div id="tmm-subtitle" style="font-size:.7rem;color:var(--muted2);margin-bottom:.8rem"></div>
     <div style="overflow-y:auto;max-height:360px">
-      <table class="tbl" style="width:100%">
-        <thead><tr><th style="width:36px">#</th><th>Joueur</th><th style="white-space:nowrap">Grade</th><th style="white-space:nowrap;text-align:right">PTS</th></tr></thead>
+      <table class="tbl" style="width:100%;table-layout:fixed">
+        <thead><tr>
+          <th style="width:28px;padding-left:0;padding-right:.15rem">#</th>
+          <th style="padding-left:.2rem">Joueur</th>
+          <th style="width:32px;padding:0;text-align:center">G</th>
+          <th style="width:62px;white-space:nowrap;text-align:right">PTS</th>
+        </tr></thead>
         <tbody id="tmm-tbody"></tbody>
       </table>
     </div>
@@ -2874,7 +2879,7 @@ function askConfirm(message, opts){
     <div class="block" style="border-color:rgba(74,144,255,.45)">
       <div class="block-header" style="border-color:rgba(74,144,255,.2)"><div class="block-title">⚡ Bonus & <span class="hl">Connexion</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
-        <strong style="color:var(--text)">Série de connexion</strong> — connecte-toi chaque jour pour maintenir ta série et réclamer un bonus RPC. Un jour raté remet la série à zéro avec une baisse des récompenses.<br><br>
+        <strong style="color:var(--text)">Chaîne de connexion</strong> — connecte-toi chaque jour pour maintenir ta chaîne et réclamer un bonus RPC. Un jour raté remet la chaîne à zéro avec une baisse des récompenses.<br><br>
         <strong style="color:var(--text)">Boost</strong> — <strong style="color:var(--green)">+10%</strong> de points sur les 24h suivantes. Max 10 par période.
       </div>
     </div>
@@ -3610,42 +3615,42 @@ async function loadPlayersFromSupabase(){
 
 
 const AVAILABLE_TEAMS=[
-  {idx:0,name:'Les Joker',emoji:'🃏',color:'#3388cc'},
-  {idx:1,name:'Les Shooter',emoji:'🎯',color:'#ff6600'},
+  {idx:0,name:'Les Jokers',emoji:'🃏',color:'#3388cc'},
+  {idx:1,name:'Les Shooters',emoji:'🎯',color:'#ff6600'},
   {idx:2,name:'Les Stingers',emoji:'🐝',color:'#f5c842'},
-  {idx:3,name:'Les Raccoon',emoji:'🦝',color:'#777788'},
-  {idx:4,name:'Les Owl',emoji:'🦉',color:'#8B6914'},
+  {idx:3,name:'Les Raccoons',emoji:'🦝',color:'#777788'},
+  {idx:4,name:'Les Owls',emoji:'🦉',color:'#8B6914'},
   {idx:5,name:'Les Fenix',emoji:'🔥',color:'#ff4500'},
-  {idx:6,name:'Les Gorilla',emoji:'🦍',color:'#444444'},
-  {idx:7,name:'Les Squirrel',emoji:'🐿️',color:'#c07030'},
-  {idx:8,name:'Les Goat',emoji:'🐐',color:'#888888'},
-  {idx:9,name:'Les Shibainu',emoji:'🐕',color:'#cc8800'},
-  {idx:10,name:'Les Chihuahua',emoji:'🐕',color:'#cc6633'},
-  {idx:11,name:'Les Spartan',emoji:'🛡️',color:'#cc8800'},
-  {idx:12,name:'Les Psycho',emoji:'🎭',color:'#e040a0'},
+  {idx:6,name:'Les Gorillas',emoji:'🦍',color:'#444444'},
+  {idx:7,name:'Les Squirrels',emoji:'🐿️',color:'#c07030'},
+  {idx:8,name:'Les Goats',emoji:'🐐',color:'#888888'},
+  {idx:9,name:'Les Shibainus',emoji:'🐕',color:'#cc8800'},
+  {idx:10,name:'Les Chihuahuas',emoji:'🐕',color:'#cc6633'},
+  {idx:11,name:'Les Spartans',emoji:'🛡️',color:'#cc8800'},
+  {idx:12,name:'Les Psychos',emoji:'🎭',color:'#e040a0'},
   {idx:13,name:'Les Pirates',emoji:'🏴‍☠️',color:'#333333'},
-  {idx:14,name:'Les Orch',emoji:'👹',color:'#556644'},
-  {idx:15,name:'Les Eagle',emoji:'🦅',color:'#4466aa'},
-  {idx:16,name:'Les Reaper',emoji:'💀',color:'#222222'},
-  {idx:17,name:'Les Queen',emoji:'👑',color:'#bb66dd'},
-  {idx:18,name:'Les Panda',emoji:'🐼',color:'#228833'},
-  {idx:19,name:'Les Alligator',emoji:'🐊',color:'#2d8a4e'},
-  {idx:20,name:'Les Unicorn',emoji:'🦄',color:'#bb66dd'},
+  {idx:14,name:'Les Orchs',emoji:'👹',color:'#556644'},
+  {idx:15,name:'Les Eagles',emoji:'🦅',color:'#4466aa'},
+  {idx:16,name:'Les Reapers',emoji:'💀',color:'#222222'},
+  {idx:17,name:'Les Queens',emoji:'👑',color:'#bb66dd'},
+  {idx:18,name:'Les Pandas',emoji:'🐼',color:'#228833'},
+  {idx:19,name:'Les Alligators',emoji:'🐊',color:'#2d8a4e'},
+  {idx:20,name:'Les Unicorns',emoji:'🦄',color:'#bb66dd'},
   {idx:21,name:'Les Lions',emoji:'🦁',color:'#cc8800'},
-  {idx:22,name:'Les Rhino',emoji:'🦏',color:'#556677'},
-  {idx:23,name:'Les Kraken',emoji:'🐙',color:'#2244aa'},
-  {idx:24,name:'Les Iceman',emoji:'❄️',color:'#44bbdd'},
+  {idx:22,name:'Les Rhinos',emoji:'🦏',color:'#556677'},
+  {idx:23,name:'Les Krakens',emoji:'🐙',color:'#2244aa'},
+  {idx:24,name:'Les Icemen',emoji:'❄️',color:'#44bbdd'},
   {idx:25,name:'Les Knights',emoji:'⚔️',color:'#778899'},
-  {idx:26,name:'Les Viking',emoji:'⛵',color:'#886633'},
+  {idx:26,name:'Les Vikings',emoji:'⛵',color:'#886633'},
   {idx:27,name:'Zeus',emoji:'⚡',color:'#f0c040'},
-  {idx:28,name:'Les Police',emoji:'👮',color:'#3344aa'},
-  {idx:29,name:'Les Fighter',emoji:'🥊',color:'#cc3333'},
-  {idx:30,name:'Les Samurai',emoji:'⚔️',color:'#884422'},
-  {idx:31,name:'Les Guardian',emoji:'🛡️',color:'#4488aa'},
-  {idx:32,name:'Les Sorcerer',emoji:'🧙',color:'#9060f0'},
-  {idx:33,name:'Les Dinosaur',emoji:'🦖',color:'#44aa44'},
-  {idx:34,name:'Les Pitbull',emoji:'🐕',color:'#aa6633'},
-  {idx:35,name:'Les Patriot',emoji:'🇺🇸',color:'#cc3333'},
+  {idx:28,name:'Les Polices',emoji:'👮',color:'#3344aa'},
+  {idx:29,name:'Les Fighters',emoji:'🥊',color:'#cc3333'},
+  {idx:30,name:'Les Samurais',emoji:'⚔️',color:'#884422'},
+  {idx:31,name:'Les Guardians',emoji:'🛡️',color:'#4488aa'},
+  {idx:32,name:'Les Sorcerers',emoji:'🧙',color:'#9060f0'},
+  {idx:33,name:'Les Dinosaurs',emoji:'🦖',color:'#44aa44'},
+  {idx:34,name:'Les Pitbulls',emoji:'🐕',color:'#aa6633'},
+  {idx:35,name:'Les Patriots',emoji:'🇺🇸',color:'#cc3333'},
   {idx:36,name:'Les Medicals',emoji:'🏥',color:'#44bbaa'},
   {idx:37,name:'Les Toucan',emoji:'🦜',color:'#ff6633'},
   {idx:38,name:'Les Hippo',emoji:'🦛',color:'#778899'},
@@ -5011,13 +5016,26 @@ function buildLeaguePicker(){
     const isActive=l.key===activeLeagueKey;
     const isMyLeague=window.__myPlayer&&l.key===window.__myPlayer.leagueKey;
     const _locked=!canAccessLeague(l.key);
-    return `<div onclick="selectLeague('${l.key}');toggleLeaguePicker()" style="
+    const _eliteLocked=(l.key==='lelite');
+    // Trait de séparation entre Starter ↔ L10 (entrée vraies leagues)
+    const sepTopL10=(l.key==='l10')
+      ? '<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);margin:.4rem .5rem"></div>'
+      : '';
+    // Trait de séparation entre L1 ↔ L Elite (Elite fermée beta, distinction visuelle)
+    const sepTopElite=_eliteLocked
+      ? '<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(160,224,255,.4),transparent);margin:.4rem .5rem"></div>'
+      : '';
+    const _onclick=_eliteLocked
+      ? `onclick="showToast('🔒 League Elite ouvrira plus tard')"`
+      : `onclick="selectLeague('${l.key}');toggleLeaguePicker()"`;
+    const _greyed=_locked||_eliteLocked;
+    return sepTopL10+sepTopElite+`<div ${_onclick} style="
       display:flex;align-items:center;justify-content:space-between;
-      padding:.55rem .9rem;cursor:pointer;
+      padding:.55rem .9rem;cursor:${_greyed?'not-allowed':'pointer'};
       background:${isActive?'rgba(245,200,66,.1)':'transparent'};
       border-left:3px solid ${isActive?l.color:'transparent'};
       transition:background .12s;
-      ${_locked?'opacity:.3;filter:grayscale(.75);':''}
+      ${_greyed?'opacity:.3;filter:grayscale(.75);':''}
     " onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='${isActive?'rgba(245,200,66,.1)':'transparent'}'">
       <div style="display:flex;align-items:center;gap:.5rem">
         ${isMyLeague?'<span style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span>':'<span style="width:6px"></span>'}
@@ -5033,7 +5051,7 @@ function updateLeaguePickerLabel(){
   const league=LEAGUES.find(l=>l.key===activeLeagueKey);
   if(!league)return;
   const lbl=document.getElementById('league-picker-label');
-  if(lbl)lbl.innerHTML=`<span style="color:${league.color}">${league.emoji} ${league.name}</span><span style="font-size:.75rem;color:var(--muted2)"> — ${league.label}</span>`;
+  if(lbl)lbl.innerHTML=`<span style="color:${league.color}">${league.emoji} ${league.name} — ${league.label}</span>`;
 }
 
 function renderLeagueNav(){
@@ -5337,15 +5355,11 @@ function renderLeaguePanel(){
     '<div style="display:flex;flex-direction:column;gap:1rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">'
     +'<div>'
-    +'<div class="league-panel-title" style="color:'+league.color+'">'
-    +league.emoji+' '
-    +'<span style="color:'+league.color+'">'+league.name+'</span>'
-    +(league.key!=='starter'?' <span style="font-size:1.6rem;letter-spacing:3px;color:'+league.color+'">— '+league.label+'</span>':'')
-    +'</div>'
-    +'<div style="font-size:.75rem;color:var(--muted2);margin-top:.1rem">Zone : '+rangeLabel+'</div>'
+    // Titre L6 — RUBIS retiré : redondant avec le menu déroulant orange.
+    +'<div style="font-size:.85rem;color:var(--muted2)">Zone : <strong style="color:var(--text)">'+rangeLabel+'</strong></div>'
     +'</div>'
     +'<div class="league-info-pills">'
-    +'<div class="info-pill">'+players.length+' joueur'+(players.length>1?'s':'')+'</div>'
+    +'<div class="info-pill">'+players.length+' RP'+(players.length>1?'':'')+'</div>'
     +'<div class="info-pill">Buy-in : <strong>'+buyinText+'</strong></div>'
     +myLeaguePill
     +'</div></div>'
@@ -6180,6 +6194,28 @@ async function loadLandsOnMap(){
     });
     var passData=await passResp.json();
     window._myPassageLandIds=(passData||[]).map(function(p){return p.land_id;});
+    // ARCHITECTURE : avec le refacto lands free hors DB, les hexes traversés
+    // sur des lands free n'apparaissent plus dans land_passages. Pour que le RP
+    // voit quand même son tracé d'aujourd'hui (même après fermeture de l'app),
+    // on décode les polylines de ses runs du jour et on en extrait les hexes.
+    try {
+      var startOfDay=new Date();startOfDay.setHours(0,0,0,0);
+      var {data:todayRuns}=await supabaseClient.from('runs')
+        .select('polyline').eq('player_id',myId).gte('run_date',startOfDay.toISOString());
+      if(todayRuns && typeof h3!=='undefined'){
+        var hexAccum=new Set(window._myPassageLandIds);
+        todayRuns.forEach(function(r){
+          if(!r.polyline) return;
+          try {
+            var pts=decodePolyline(r.polyline);
+            pts.forEach(function(p){
+              try{ hexAccum.add(h3.latLngToCell(p[0],p[1],H3_RESOLUTION)); }catch(e){}
+            });
+          } catch(e){}
+        });
+        window._myPassageLandIds=Array.from(hexAccum);
+      }
+    } catch(e){ console.warn('decode runs polylines fail',e); }
   } else if(window._hidePassages){
     window._myPassageLandIds=[];
   }
@@ -6237,16 +6273,36 @@ async function loadLandsOnMap(){
       }
     }catch(e){}
   });
-  // ── Afficher le bouton "Terminer" si des free lands avec mes passages subsistent ──
+  // ── Pass supplémentaire : rendre les hexes explorés/passés qui ne sont PAS en DB ──
+  // (Avec la nouvelle archi, les lands free n'ont plus de row DB. Les hexes
+  // traversés en course doivent quand même apparaître en blanc sur la carte
+  // pour que le RP voit son tracé et puisse louer ses découvertes.)
+  if(myId && !window._hidePassages){
+    var dbLandIds=new Set(lands.map(function(l){return l.id;}));
+    var freeExploredHexes=new Set();
+    (window._recentExploredHexes||[]).forEach(function(h){if(!dbLandIds.has(h)) freeExploredHexes.add(h);});
+    (_lastExploredHexes||[]).forEach(function(h){if(!dbLandIds.has(h)) freeExploredHexes.add(h);});
+    (window._myPassageLandIds||[]).forEach(function(h){if(!dbLandIds.has(h)) freeExploredHexes.add(h);});
+    freeExploredHexes.forEach(function(hexId){
+      try{
+        var boundary=h3.cellToBoundary(hexId);
+        var latlngs=boundary.map(function(c){return [c[0],c[1]];});
+        var poly=L.polygon(latlngs,{
+          color:'#ffffff',fillColor:'#ffffff',fillOpacity:0.12,
+          weight:2,opacity:0.9
+        }).addTo(_landsHexLayer);
+        poly.bindTooltip('<strong>'+hexId.substring(0,8)+'…</strong><br><span style="color:#fff">LIBRE — Cliquer pour louer</span>',{className:'hex-tt'});
+        poly.on('click',function(){showLandDetail(hexId);});
+      }catch(e){}
+    });
+  }
+
+  // ── Afficher le bouton "Terminer" si on a des hexes explorés à valider ──
   var _finBtnEl=document.getElementById('lands-finish-btn');
   if(myId&&!window._hidePassages){
-    var myFreeExplored=lands.filter(function(l){
-      if(l.status!=='free') return false;
-      if(window._myPassageLandIds&&window._myPassageLandIds.indexOf(l.id)>=0) return true;
-      var allExpl=(_lastExploredHexes||[]).concat(window._recentExploredHexes||[]);
-      return allExpl.indexOf(l.id)>=0;
-    });
-    if(_finBtnEl) _finBtnEl.style.display=myFreeExplored.length>0?'block':'none';
+    var allExpl=(_lastExploredHexes||[]).concat(window._recentExploredHexes||[]);
+    var hasExplored=allExpl.length>0 || (window._myPassageLandIds&&window._myPassageLandIds.length>0);
+    if(_finBtnEl) _finBtnEl.style.display=hasExplored?'block':'none';
   } else if(_finBtnEl){
     // Session terminée → bouton caché
     _finBtnEl.style.display='none';
@@ -8434,10 +8490,15 @@ async function shareRunCard(runId){
     timeStr=(h>0)?(h+':'+pad(m)+':'+pad(s)):(m+':'+pad(s));
   }
 
-  // Créer le canvas
+  // Créer le canvas en haute résolution (3×) pour un rendu net sur écrans Retina
+  // et une qualité d'image supérieure une fois partagée / téléchargée.
+  var SCALE=3;
   var cv=document.createElement('canvas');
-  cv.width=600;cv.height=400;
+  cv.width=600*SCALE;cv.height=400*SCALE;
   var cx=cv.getContext('2d');
+  cx.scale(SCALE,SCALE);
+  cx.imageSmoothingEnabled=true;
+  cx.imageSmoothingQuality='high';
 
   // Fond gradient sombre
   var bg=cx.createLinearGradient(0,0,600,400);
@@ -10146,7 +10207,7 @@ async function showWalletBreakdown(){
       var d=tx.rpc_delta||0;
       // On ignore Course et Land (déjà comptés via runs et land_passages)
       if(/^Course/i.test(r) || /Land/i.test(r)) return;
-      if(/^Streak/i.test(r)) streakRpc+=d;
+      if(/^Streak/i.test(r) || /^Cha[iî]ne/i.test(r)) streakRpc+=d;
       else if(/^Achat RPC/i.test(r) || /^IAP/i.test(r) || /^Pack RPC/i.test(r)) achatRpc+=d;
       else autreRpc+=d;
     });
@@ -10207,7 +10268,7 @@ async function showNyxBreakdown(){
     (txs||[]).forEach(function(tx){
       var r=tx.reason||'';
       var d=tx.nyx_delta||0;
-      if(/^Streak/i.test(r)) streakNyx+=d;
+      if(/^Streak/i.test(r) || /^Cha[iî]ne/i.test(r)) streakNyx+=d;
       else if(/^Vente Land/i.test(r)) ventesNyx+=d;
       else if(/^Parrainage/i.test(r)) parrainageNyx+=d;
       else if(/^Achat NYX/i.test(r) || /^IAP NYX/i.test(r) || /^Pack NYX/i.test(r)) achatNyx+=d;
@@ -10524,7 +10585,7 @@ function getStreakReward(phase, count){
 }
 
 function getStreakMessage(phase, count, reward){
-  if(phase>=5) return {emoji:'💔',title:'Série terminée',sub:'Tu as épuisé tes chances',reward:'',info:'Tu as accumulé 5 arrêts — la série de connexion est définitivement terminée.'};
+  if(phase>=5) return {emoji:'💔',title:'Chaîne terminée',sub:'Tu as épuisé tes chances',reward:'',info:'Tu as accumulé 5 arrêts — la chaîne de connexion est définitivement terminée.'};
   var emoji=count<=3?'🔥':count<=7?'🔥🔥':count<=14?'🔥🔥🔥':'⚡';
   var milestones={7:'🎯 1 semaine complète !',14:'💪 2 semaines !',30:'🏆 1 mois de suite !',50:'👑 50 jours !',100:'🌟 100 jours légendaire !'};
   var bonus=milestones[count]||'';
@@ -10606,7 +10667,7 @@ async function checkAndClaimStreak(){
 
   // Créditer les RPC via wallet
   if(reward>0){
-    await walletCredit(reward, 0, 'Streak jour '+newCount);
+    await walletCredit(reward, 0, 'Chaîne jour '+newCount);
   }
 
   // Afficher le modal
@@ -10726,7 +10787,7 @@ function updateStreakDisplay(count, phase, misses){
       if(count<=7){
         infoEl.innerHTML='Jours 1-7 : <strong style="color:var(--gold)">300 RPC/jour</strong> · Ensuite : 100 RPC/jour';
       } else {
-        infoEl.innerHTML='<strong style="color:var(--gold)">100 RPC/jour</strong> · Série active depuis '+count+' jours';
+        infoEl.innerHTML='<strong style="color:var(--gold)">100 RPC/jour</strong> · Chaîne active depuis '+count+' jours';
       }
     } else {
       var curReward=(typeof getStreakReward==='function')?getStreakReward(phase,count):0;
@@ -10839,7 +10900,7 @@ function openInfirmerieModal(){
   document.getElementById('lm-title').textContent='🏥 Infirmerie';
   document.getElementById('lm-sub').textContent='Pause sportive volontaire';
   document.getElementById('lm-body').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, streak conservée, récompenses normales.</div>'
+    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, chaîne conservée, récompenses normales.</div>'
     +btn(15)+btn(30)+btn(45)+btn(60);
   openModal('land-modal');
 }
@@ -12953,9 +13014,9 @@ async function renderTeams(){
         var rank=idx+1;
         var nb=t._nb||0;
         var rankEl=rank===1
-          ?'<span style="font-size:2.2rem;line-height:1">🥇</span>'
-          :rank===2?'<span style="font-size:2.2rem;line-height:1">🥈</span>'
-          :rank===3?'<span style="font-size:2.2rem;line-height:1">🥉</span>'
+          ?'<span style="font-size:1.5rem;line-height:1">🥇</span>'
+          :rank===2?'<span style="font-size:1.5rem;line-height:1">🥈</span>'
+          :rank===3?'<span style="font-size:1.5rem;line-height:1">🥉</span>'
           :'<span style="font-family:monospace;font-size:.95rem;color:var(--muted2);font-weight:700">#'+rank+'</span>';
         var teamEmoji=t.emoji||'🏃';
         var teamColor=t.color||'#4a90ff';
@@ -12965,8 +13026,8 @@ async function renderTeams(){
         var requestBtn=(!isOpen&&t.private&&!hasMyTeam&&currentUser)?'<span onclick="event.stopPropagation();requestJoinTeam(\''+t.id+'\',\''+encodeURIComponent(t.name)+'\')" title="Demander à rejoindre" style="font-size:.75rem;margin-left:.3rem;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">📩</span>':'';
         var typeTag=isOpen?'':(t.private?'<span title="Team privée" style="font-size:.85rem;margin-left:.25rem">🔒</span>'+requestBtn:'');
         var subLine=isOpen
-          ?nb+' membre'+(nb>1?'s':'')+' / '+getTeamCapacity(t)+bonusLabel
-          :'📍 '+t.city+' · '+nb+' membre'+(nb>1?'s':'')+' / '+getTeamCapacity(t)+bonusLabel;
+          ?nb+' RP'+bonusLabel
+          :'📍 '+t.city+' · '+nb+' RP'+bonusLabel;
         var _bIdx=getBlasonIdx(t);
         var emblemHtml=(_bIdx>=0&&AVAIL_BLASON_SMALL[_bIdx])
           ?'<div class="tmb-blason" data-bidx="'+_bIdx+'" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="cursor:pointer;flex-shrink:0;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><img src="'+AVAIL_BLASON_SMALL[_bIdx]+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1.5px solid '+teamColor+'55;display:block;pointer-events:none"></div>'
@@ -13864,7 +13925,7 @@ async function renderChallenges(){
   // 6. Tri : débloqués d'abord (récents en premier), puis verrouillés par progression
   var nbUnlocked=Object.keys(unlockedMap).length;
   var nbTotal=_badgesCatalog.length;
-  if(summary) summary.textContent=nbUnlocked+' / '+nbTotal+' débloqués';
+  if(summary) summary.textContent=nbUnlocked+' / '+nbTotal+' gagnés';
   var _today=new Date().toISOString().slice(0,10);
   // Detecte s'il y a au moins un challenge (event_run) actif pour faire "briller" le label
   var _hasActiveChallenge=_badgesCatalog.some(function(b){
@@ -13942,7 +14003,7 @@ async function renderChallenges(){
     var _unregBtn='';
     if(isUnlocked){
       var d=new Date(unlockedMap[b.id]);
-      progressTxt='Débloqué le '+d.toLocaleDateString('fr',{day:'2-digit',month:'short'});
+      progressTxt='Gagné le '+d.toLocaleDateString('fr',{day:'2-digit',month:'short'});
     } else if(isEvent){
       // Badge événementiel : bandeau date + bouton Participer si à venir
       var today=new Date().toISOString().slice(0,10);
@@ -14204,18 +14265,27 @@ function _badgeChallengeDescription(b){
   }
 }
 
-function showBadgeDetail(badgeId){
+async function showBadgeDetail(badgeId){
   if(!_badgesCatalog) return;
   var b=_badgesCatalog.find(function(x){return x.id===badgeId;});
   if(!b) return;
   var color=b.color||'#f5c842';
   var rewards=[];
-  if(b.reward_rpc) rewards.push('+'+b.reward_rpc.toLocaleString('fr')+' RPC');
-  if(b.reward_nyx) rewards.push('+'+b.reward_nyx+' 💎 NYX');
+  if(b.reward_rpc) rewards.push('<span style="color:var(--gold)">+'+b.reward_rpc.toLocaleString('fr')+' RPC</span>');
+  if(b.reward_nyx) rewards.push('<span style="color:var(--green)">+'+b.reward_nyx+' 💎 NYX</span>');
   var challengeTxt=_badgeChallengeDescription(b);
+  // Vérifier si débloqué (player_badges) → bascule sur la version "Félicitations"
+  var earnedAt=null;
+  if(currentUser){
+    try {
+      var {data:pb}=await supabaseClient.from('player_badges')
+        .select('earned_at').eq('player_id',currentUser.id).eq('badge_id',badgeId).maybeSingle();
+      if(pb && pb.earned_at) earnedAt=pb.earned_at;
+    } catch(e){}
+  }
   document.getElementById('lm-title').textContent='🎖️ '+(b.name||'Badge');
   document.getElementById('lm-sub').textContent='';
-  document.getElementById('lm-body').innerHTML=''
+  var bodyHtml=''
     +'<div style="text-align:center;padding:1rem .5rem">'
     +'  <div style="width:110px;height:125px;margin:0 auto 1rem;position:relative;display:flex;align-items:center;justify-content:center">'
     +'    <svg viewBox="0 0 100 115" style="width:100%;height:100%;filter:drop-shadow(0 0 14px '+color+'80)">'
@@ -14223,12 +14293,24 @@ function showBadgeDetail(badgeId){
     +'      <polygon points="50,2 95,28 95,82 50,108 5,82 5,28" fill="none" stroke="'+color+'" stroke-width="2.5"/>'
     +'    </svg>'
     +'    <div style="position:absolute;font-size:2.6rem">'+(b.icon||'🏆')+'</div>'
-    +'  </div>'
-    +'  <div style="font-size:.85rem;color:var(--text);margin-bottom:.4rem">'+(b.tagline||'')+'</div>'
-    +(challengeTxt?'<div style="font-size:.78rem;color:var(--muted2);margin-top:.6rem;padding:.55rem .7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;line-height:1.5">🎯 '+challengeTxt+'</div>':'')
-    +(rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.82rem;color:var(--gold);margin-top:.6rem">Récompense : '+rewards.join(' · ')+'</div>':'')
-    +'  <button onclick="closeModal(\'land-modal\')" style="margin-top:1rem;padding:.45rem 1.2rem;border-radius:7px;border:1.5px solid '+color+';background:'+color+'20;color:'+color+';font-weight:700;font-size:.78rem;cursor:pointer">Fermer</button>'
+    +'  </div>';
+  if(earnedAt){
+    // BADGE DÉBLOQUÉ : version Félicitations
+    var dateStr=new Date(earnedAt).toLocaleDateString('fr',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    bodyHtml+=
+       '  <div style="font-family:Bebas Neue,sans-serif;font-size:1.3rem;letter-spacing:2px;color:'+color+';margin-bottom:.4rem">FÉLICITATIONS !</div>'
+      +'  <div style="font-size:.82rem;color:var(--text);line-height:1.5;margin-bottom:.5rem">Tu as gagné ce badge le <strong>'+dateStr+'</strong> pour avoir réalisé ce challenge.</div>'
+      +(rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.85rem;color:var(--gold);margin-top:.4rem">'+rewards.join(' · ')+'</div>':'');
+  } else {
+    // BADGE PAS ENCORE DÉBLOQUÉ : version objectif (description + reward + challenge)
+    bodyHtml+=
+       '  <div style="font-size:.85rem;color:var(--text);margin-bottom:.4rem">'+(b.tagline||'')+'</div>'
+      +(challengeTxt?'<div style="font-size:.78rem;color:var(--muted2);margin-top:.6rem;padding:.55rem .7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;line-height:1.5">🎯 '+challengeTxt+'</div>':'')
+      +(rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.82rem;color:var(--gold);margin-top:.6rem">Récompense : '+rewards.join(' · ')+'</div>':'');
+  }
+  bodyHtml+='  <button onclick="closeModal(\'land-modal\')" style="margin-top:1rem;padding:.45rem 1.2rem;border-radius:7px;border:1.5px solid '+color+';background:'+color+'20;color:'+color+';font-weight:700;font-size:.78rem;cursor:pointer">Fermer</button>'
     +'</div>';
+  document.getElementById('lm-body').innerHTML=bodyHtml;
   openModal('land-modal');
 }
 
@@ -14249,11 +14331,13 @@ async function triggerBadgeCheck(){
     });
     var data=await resp.json();
     if(data&&data.ok&&data.new_badges&&data.new_badges.length){
-      // Afficher un « BOUM » par badge (l'un après l'autre)
+      // Afficher un « BOUM » par badge (l'un après l'autre).
+      // Délai de 4s entre chaque pour laisser le temps de lire avant l'enchaînement.
+      // Le user peut aussi click "Bravo !" pour passer plus vite.
       for(var i=0;i<data.new_badges.length;i++){
         (function(b,delay){
           setTimeout(function(){showBadgeUnlockModal(b);}, delay);
-        })(data.new_badges[i], i*1200);
+        })(data.new_badges[i], i*4000);
       }
       // Rafraîchir le wallet + la grille des défis si visible
       if(typeof walletLoad==='function') await walletLoad();
@@ -14267,10 +14351,10 @@ function showBadgeUnlockModal(b){
   var color=b.color||'#f5c842';
   var icon=b.icon||'🏆';
   var rewards=[];
-  if(b.reward_rpc) rewards.push('+'+b.reward_rpc.toLocaleString('fr')+' RPC');
-  if(b.reward_nyx) rewards.push('+'+b.reward_nyx+' 💎 NYX');
+  if(b.reward_rpc) rewards.push('<span style="color:var(--gold)">+'+b.reward_rpc.toLocaleString('fr')+' RPC</span>');
+  if(b.reward_nyx) rewards.push('<span style="color:var(--green)">+'+b.reward_nyx+' 💎 NYX</span>');
   var rewardsHtml=rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.85rem;color:var(--gold);margin-top:.4rem">'+rewards.join(' · ')+'</div>':'';
-  document.getElementById('lm-title').textContent='🎖️ Badge débloqué !';
+  document.getElementById('lm-title').textContent='🎖️ Badge gagné !';
   document.getElementById('lm-sub').textContent='';
   document.getElementById('lm-body').innerHTML=''
     +'<div style="text-align:center;padding:1rem .5rem">'
@@ -14416,13 +14500,19 @@ async function loadTeamMembers(teamId, teamName){
     var p=m.players||{};
     var isCap=m.role==='capitaine';
     return '<tr>'
-      +'<td><div class="rank-num '+(i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'')+'">'+(i+1)+'</div></td>'
-      +'<td><div style="display:flex;align-items:center;gap:.5rem">'
-        +natFlagHtml(p.nat)
-        +'<span style="font-size:.82rem;color:var(--text)">'+(p.username||'—')+'</span>'
-        +(isCap?'<span style="font-size:.55rem;font-weight:700;padding:.1rem .3rem;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:var(--gold)">CAP</span>':'')
+      +'<td style="padding-left:0;padding-right:.15rem"><div class="rank-num '+(i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'')+'">'+(i+1)+'</div></td>'
+      +'<td style="padding-left:.2rem"><div style="display:flex;align-items:center;gap:.35rem;min-width:0">'
+        +natFlagHtml(p.nat,'.95rem')
+        +'<span style="font-size:.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">'+(p.username||'—')+'</span>'
+        +(isCap?'<span style="font-size:.55rem;font-weight:700;padding:.1rem .3rem;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:var(--gold);flex-shrink:0">CAP</span>':'')
       +'</div></td>'
-      +'<td><span class="badge g-'+(p.grade||'starter')+'" style="font-size:.55rem">'+(p.grade||'starter')+'</span></td>'
+      +'<td>'+(function(){
+        var g=(p.grade||'starter').toLowerCase();
+        var gColors={starter:'#7a8090',debutant:'#4a90ff',confirme:'#9060f0',expert:'#f5c842',pro:'#ff6020',elite:'#ff4444'};
+        var col=gColors[g]||'#7a8090';
+        var letter=g.charAt(0).toUpperCase();
+        return '<span title="'+g.charAt(0).toUpperCase()+g.slice(1)+'" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:'+col+'22;border:1.5px solid '+col+';color:'+col+';font-family:\'Bebas Neue\',sans-serif;font-size:.85rem;font-weight:700">'+letter+'</span>';
+      })()+'</td>'
       +'<td style="text-align:right;font-family:Space Mono,monospace;font-size:.75rem;color:var(--gold)">'+(m._pts||0).toLocaleString('fr')+'</td>'
       +'</tr>';
   }).join('');
