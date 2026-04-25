@@ -1267,6 +1267,13 @@ select option{background:#040c1c}
 
     </div>
 
+    <!-- Bouton Infirmerie / Statut infirmerie en cours -->
+    <div id="infirmerie-block" style="margin-top:.85rem;display:none">
+      <button id="infirmerie-btn" onclick="openInfirmerieModal()" style="width:100%;padding:.55rem .8rem;border-radius:8px;border:1.5px solid rgba(255,68,68,.4);background:rgba(255,68,68,.08);color:#ff8080;font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:2px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.45rem">
+        🏥 <span id="infirmerie-btn-label">ME DÉCLARER EN INFIRMERIE</span>
+      </button>
+    </div>
+
     <!-- Watermark -->
     <div style="position:absolute;right:-6px;bottom:-8px;font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:4px;color:rgba(245,200,66,.04);pointer-events:none">SL</div>
   </div>
@@ -2811,7 +2818,10 @@ function askConfirm(message, opts){
       <div class="block-header" style="border-color:rgba(255,160,32,.2)"><div class="block-title">🗺️ Les <span class="hl">Lands</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
         La carte est divisée en hexagones — les <strong style="color:var(--text)">Lands</strong>.<br>
-        Loue une Land (loyer mensuel en RPC) et gagne 3 RPC à chaque passage d'un RP.<br>
+        Loue une Land (loyer mensuel en RPC) et gagne 3 RPC à chaque passage d'un RP.<br><br>
+        <strong style="color:var(--gold)">🏥 Infirmerie</strong> — En cas de blessure, déclare-toi en infirmerie depuis ta Player Card. Choisis une durée (15 / 30 / 45 / 60 jours) <strong style="color:var(--red)">DÉFINITIVE</strong>. Pendant l'infirmerie : aucune course ne peut être enregistrée, ta league est figée, tes loyers sont réduits (15j plein · 30j demi · 45/60j suspendus). Tu touches toujours les RPC des passages des autres sur tes Lands. Quotas glissants 12 mois : 15j 2× · 30j 2× · 45j 1× · 60j 1× · plafond 2 activations.<br><br>
+        <strong style="color:var(--gold)">🏆 40 pts minimum / période</strong> — Pour rester actif sportivement et bénéficier du bonus team de 2%, vise au moins 40 pts par période (= une simple marche GPS).<br><br>
+        <strong style="color:var(--gold)">📉 Mou progressif</strong> — Au rollover : descente max 1 league par période (peu importe la perf). Un RP fantôme (0 pt sur la période) descend 1 league + devient invisible dans le classement. Si 2ème période consécutive à 0 pt → retour Zone Starter, toujours invisible. Reprise de visibilité dès qu'il refait des points.<br>
         Après plusieurs périodes, tu peux l'<strong style="color:var(--text)">acheter</strong> définitivement en NYX.<br>
         Ajoute des <strong style="color:var(--gold)">Étoiles</strong> : ★ 6 · ★★ 9 · ★★★ 12 RPC par passage.<br>
         Plafond de <strong style="color:var(--gold)">8 000 RPC / mois / Land</strong>.
@@ -3413,6 +3423,7 @@ async function onLoginSuccess(user, isNew){
   if(typeof loadParrainageData==='function') loadParrainageData(user.id);
   // Charger les inscriptions aux events (sync DB → localStorage cache)
   if(typeof loadEventParticipations==='function') loadEventParticipations();
+  if(typeof loadInfirmerieData==='function') loadInfirmerieData();
   // Charger la période
   if(typeof loadPeriodSettings==='function') loadPeriodSettings();
   // Panel admin
@@ -3481,7 +3492,7 @@ async function loadPlayersFromSupabase(){
   // 1. Charger tous les joueurs
   const { data: playersData, error: playersErr } = await supabaseClient
     .from('players')
-    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial');
+    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods');
 
   if(playersErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur players : ' + playersErr.message + '</div>';
@@ -3547,6 +3558,9 @@ async function loadPlayersFromSupabase(){
       premium: p.premium || false,
       premiumUntil: p.premium_until || null,
       premiumTrial: p.premium_trial || false,
+      infirmerie_until: p.infirmerie_until || null,
+      is_visible: p.is_visible !== false,
+      consecutive_zero_periods: p.consecutive_zero_periods || 0,
     };
   });
 
@@ -4342,6 +4356,11 @@ async function saveManualRun(){
     showToast('⚠️ Enregistrement temporairement désactivé (maintenance)');
     return;
   }
+  // Infirmerie : aucune course ne peut être enregistrée pendant la pause
+  if(typeof isInInfirmerie==='function' && isInInfirmerie()){
+    showToast('🏥 Tu es en infirmerie — aucune course ne peut être enregistrée');
+    return;
+  }
   const km=parseFloat(document.getElementById('c-km').value)||0;
   const spd=parseFloat(document.getElementById('c-spd').value)||0;
   const elv=parseFloat(document.getElementById('c-elv').value)||0;
@@ -4519,6 +4538,34 @@ function renderDashboard(){
     set('stat-lands-loc','0');set('stat-lands-prop','0');
     set('stat-badges','—');set('stat-best-rank','—');
     set('stat-cagnotte-rpc','—');set('stat-cagnotte-nyx','—');
+    // Bouton Infirmerie : visible uniquement sur SA propre PC (pas sur les autres RPs)
+    var _infBlock=document.getElementById('infirmerie-block');
+    if(_infBlock){
+      if(isOwn){
+        _infBlock.style.display='block';
+        var _infLabel=document.getElementById('infirmerie-btn-label');
+        var _infBtn=document.getElementById('infirmerie-btn');
+        if(typeof isInInfirmerie==='function' && isInInfirmerie()){
+          var _i=window.__infirmerie;
+          var _daysLeft=Math.ceil((new Date(_i.until)-new Date())/(24*3600*1000));
+          if(_infLabel) _infLabel.textContent='EN INFIRMERIE — '+_daysLeft+' J RESTANT'+(_daysLeft>1?'S':'');
+          if(_infBtn){
+            _infBtn.style.borderColor='var(--gold)';
+            _infBtn.style.background='rgba(245,200,66,.12)';
+            _infBtn.style.color='var(--gold)';
+          }
+        } else {
+          if(_infLabel) _infLabel.textContent='ME DÉCLARER EN INFIRMERIE';
+          if(_infBtn){
+            _infBtn.style.borderColor='rgba(255,68,68,.4)';
+            _infBtn.style.background='rgba(255,68,68,.08)';
+            _infBtn.style.color='#ff8080';
+          }
+        }
+      } else {
+        _infBlock.style.display='none';
+      }
+    }
     if(_statUid){
       (async function(){
         // Charger runs de la période en cours + cumulés historiques
@@ -5048,7 +5095,14 @@ function renderLeaguePanel(){
   const allInLeague=PLAYERS.filter(function(p){return p.leagueKey===activeLeagueKey;});
   // Masquer les RP à 0 pts (inactifs) sauf en Starter Zone
   // Masquer les gelés + les 0 pts (sauf Starter)
-  const players=allInLeague.filter(function(p){return !p.frozen;}).sort(function(a,b){return b.pts-a.pts;});
+  // Filtrer : pas de gelés, pas de fantômes invisibles (sauf si on regarde sa propre PC)
+  var _myUid=currentUser?currentUser.id:null;
+  const players=allInLeague.filter(function(p){
+    if(p.frozen) return false;
+    // Fantôme invisible (is_visible=false) : caché à tous sauf à lui-même
+    if(p.is_visible===false && p._uuid!==_myUid) return false;
+    return true;
+  }).sort(function(a,b){return b.pts-a.pts;});
   const isMine=(activeLeagueKey==='l4');
   // L1 Or = nouveau plafond pendant la beta (L Elite fermée). Suffix "et +"
   // pour indiquer qu'on y reste sans cap supérieur.
@@ -5091,6 +5145,10 @@ function renderLeaguePanel(){
       calibBadge='<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.3);font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:var(--blue);margin-left:.3rem;flex-shrink:0;line-height:1" title="Période de calibrage — hors podium et prize pool">C</span>';
     }
     var debtBadge=p.buyin_debt?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Buy-in impayé — exclu des récompenses">DETTE</span>':'';
+    // Badge infirmerie 🏥 si le RP est en pause médicale en cours
+    var infBadge=(p.infirmerie_until && new Date(p.infirmerie_until)>new Date())
+      ?'<span title="En infirmerie" style="margin-left:.3rem;font-size:.85rem;flex-shrink:0;line-height:1">🏥</span>'
+      :'';
     var parrainBadge=p.parrain
       ?'<span title="'+(p.parrain==='A'?'Ambassadeur':p.parrain==='G'?'Gouverneur':p.parrain==='E'?'Empereur':'Fondateur')+'" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:'+parrainColors[p.parrain]+'22;border:1px solid '+parrainColors[p.parrain]+'88;font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:'+parrainColors[p.parrain]+';margin-left:.3rem;flex-shrink:0;line-height:1">'+p.parrain+'</span>'
       :'';
@@ -5113,7 +5171,7 @@ function renderLeaguePanel(){
       +'<td><div style="display:flex;align-items:center;gap:.55rem">'
       +natFlagHtml(p.nat)
       +'<div onclick="'+(p.id===1?'window.__viewedPlayer=null;renderDashboard();renderTeams();nav(\'dashboard\')':'showPlayerCard('+p.id+')')+'" style="width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'\'" title="'+p.name+'"><canvas id="'+avId+'" width="28" height="28" style="display:block"></canvas></div>'
-      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+calibBadge+debtBadge+parrainBadge+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+calibBadge+debtBadge+infBadge+parrainBadge+'</div>'
       +'</div></td>'
       +'<td style="font-family:monospace;font-size:.82rem">'
       +'<span style="display:inline-flex;align-items:center;justify-content:flex-end;gap:.45rem;width:100%">'
@@ -7504,7 +7562,7 @@ async function processEndOfPeriod(){
   var msg=document.getElementById('admin-period-msg');
 
   // 1. Charger tous les joueurs avec leurs points
-  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until');
+  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt');
   var {data:allRuns}=await supabaseClient.from('runs').select('player_id,points').eq('period',0);
   if(!allPlayers||!allRuns){return;}
 
@@ -7582,26 +7640,77 @@ async function processEndOfPeriod(){
   // Logique : si le RP est en league (pas Starter) et competitive=false, il vient de finir sa période de calibrage
   for(var ci=0;ci<ranked.length;ci++){
     var cp=ranked[ci];
+    var cpFull=allPlayers.find(function(x){return x.id===cp.id;})||{};
+    var cpInInf=cpFull.infirmerie_until && new Date(cpFull.infirmerie_until)>new Date();
+    if(cpInInf) continue; // en infirmerie → on touche à rien
     if(!cp.competitive && (cp.league||'starter').toLowerCase()!=='starter'){
-      await supabaseClient.from('players').update({competitive:true}).eq('id',cp.id);
+      // Check : passe compétitif uniquement si pts >= seuil min de sa league
+      // (sinon reste en R/calibrage). Gère calibrage normal ET reprise post-infirmerie.
+      var cpLg=LEAGUES.find(function(l){return l.key===(cp.league||'').toLowerCase();});
+      if(cpLg && cp.pts>=(cpLg.min||0)){
+        await supabaseClient.from('players').update({competitive:true}).eq('id',cp.id);
+      }
     }
   }
 
-  // 6. Reclassement de TOUS les RP selon leurs points
-  // Chaque RP est placé dans la league correspondant à ses points
-  // Minimum L10 (jamais redescendre en Starter une fois sorti)
+  // 6. Reclassement de TOUS les RP — règles "mou progressif" :
+  //    - En infirmerie → league figée (skip)
+  //    - 0 pt = FANTÔME : descente 1 league + invisible. 2ème consécutive → Starter, invisible.
+  //    - 1+ pt = ACTIF : descente max 1 league si pts < min (pas de saut multi).
+  //    - Montées : multi-league OK (auto via pts vs min)
   for(var ri=0;ri<ranked.length;ri++){
     var rp=ranked[ri];
+    var rpFull=allPlayers.find(function(x){return x.id===rp.id;})||{};
+    var rpInInf=rpFull.infirmerie_until && new Date(rpFull.infirmerie_until)>new Date();
+    if(rpInInf) continue; // league figée pendant infirmerie
     var currentLk=(rp.league||'starter').toLowerCase();
-    // Trouver la league correspondant aux points
-    var targetLg=LEAGUES.slice().reverse().find(function(l){return rp.pts>=l.min&&l.key!=='lelite';});
-    var targetKey=targetLg?targetLg.key:'starter';
-    // Ne jamais redescendre en Starter si déjà sorti
-    if(currentLk!=='starter'&&targetKey==='starter') targetKey='l10';
-    // L Elite fermée pour la beta : les RP > 20k pts restent en L1 Or
-    // Mettre à jour si différent
-    if(targetKey!==currentLk){
-      await supabaseClient.from('players').update({league:targetKey}).eq('id',rp.id);
+    var currentIdx=LEAGUES.findIndex(function(l){return l.key===currentLk;});
+    var targetKey=currentLk;
+    var newConsecutiveZero=rpFull.consecutive_zero_periods||0;
+    var newVisible=rpFull.is_visible!==false;
+    var pts=rp.pts||0;
+    if(pts===0 && currentLk!=='starter'){
+      // FANTÔME
+      newConsecutiveZero++;
+      newVisible=false;
+      if(newConsecutiveZero>=2){
+        // 2ème période consécutive 0 pt → retour Starter
+        targetKey='starter';
+        // competitive reset (retour calibrage)
+        await supabaseClient.from('players').update({competitive:false}).eq('id',rp.id);
+      } else {
+        // 1ère période 0 pt → descente -1 league + invisible
+        if(currentIdx>0){
+          var lowerLg=LEAGUES[currentIdx-1];
+          if(lowerLg && lowerLg.key!=='starter') targetKey=lowerLg.key;
+          else targetKey='l10';
+        }
+      }
+    } else {
+      // ACTIF : reset compteur fantôme + visible
+      newConsecutiveZero=0;
+      newVisible=true;
+      var currentLg=LEAGUES.find(function(l){return l.key===currentLk;});
+      if(currentLg && pts<(currentLg.min||0) && currentLk!=='starter'){
+        // Descente max -1 league (pas de saut multi)
+        if(currentIdx>0){
+          var lowerLg2=LEAGUES[currentIdx-1];
+          if(lowerLg2 && lowerLg2.key!=='starter') targetKey=lowerLg2.key;
+          else targetKey='l10';
+        }
+      } else if(currentLg && pts>(currentLg.max||Infinity) && currentLk!=='lelite'){
+        // Montée : on garde le multi-jump (logique existante via reverse find)
+        var upLg=LEAGUES.slice().reverse().find(function(l){return pts>=l.min&&l.key!=='lelite'&&l.key!=='starter';});
+        if(upLg) targetKey=upLg.key;
+      }
+    }
+    // Plancher : ne jamais redescendre en Starter sauf via la mécanique fantôme
+    var updates={};
+    if(targetKey!==currentLk) updates.league=targetKey;
+    if(newConsecutiveZero!==(rpFull.consecutive_zero_periods||0)) updates.consecutive_zero_periods=newConsecutiveZero;
+    if(newVisible!==(rpFull.is_visible!==false)) updates.is_visible=newVisible;
+    if(Object.keys(updates).length>0){
+      await supabaseClient.from('players').update(updates).eq('id',rp.id);
     }
   }
   // RP en Starter avec >= 500 pts CUMULÉS (toutes périodes) sortent aussi (montée libre).
@@ -10619,6 +10728,152 @@ function updateStreakDisplay(count, phase, misses){
 // ══════════════════════════════════════════════════════════════════════
 var _boostTimer=null;
 
+// ============================================================
+// INFIRMERIE — gestion des pauses sportives volontaires
+// ============================================================
+// Cache local de l'état infirmerie du joueur connecté.
+window.__infirmerie={until:null, startedAt:null, durationDays:0, history:[]};
+
+async function loadInfirmerieData(){
+  if(!currentUser) return;
+  try {
+    var {data:p}=await supabaseClient.from('players')
+      .select('infirmerie_until,infirmerie_started_at,infirmerie_duration_days,competitive')
+      .eq('id',currentUser.id).single();
+    if(p){
+      window.__infirmerie.until=p.infirmerie_until||null;
+      window.__infirmerie.startedAt=p.infirmerie_started_at||null;
+      window.__infirmerie.durationDays=p.infirmerie_duration_days||0;
+      // ── Transition sortie d'infirmerie ──
+      // Si infirmerie_until existe ET déjà passé → l'infirmerie s'est terminée
+      // (potentiellement hors-ligne). Action : passer le RP en statut R
+      // (competitive=false) et clear infirmerie_until pour ne pas re-trigger.
+      // Historique préservé via infirmerie_activations.
+      if(p.infirmerie_until && new Date(p.infirmerie_until)<=new Date()){
+        await supabaseClient.from('players').update({
+          infirmerie_until:null, competitive:false
+        }).eq('id',currentUser.id);
+        window.__infirmerie.until=null;
+        if(window.__myPlayer) window.__myPlayer.competitive=false;
+        showToast('🏥 Fin d\'infirmerie — tu es en mode Reprise (R) jusqu\'à la fin de la période');
+      }
+    }
+    // Historique sur 12 mois pour calcul des quotas
+    var oneYearAgo=new Date(Date.now()-365*24*3600*1000).toISOString();
+    var {data:hist}=await supabaseClient.from('infirmerie_activations')
+      .select('started_at,duration_days,ended_at')
+      .eq('player_id',currentUser.id).gte('started_at',oneYearAgo);
+    window.__infirmerie.history=hist||[];
+  } catch(e){ console.warn('loadInfirmerieData fail',e); }
+}
+
+// True si une infirmerie est en cours (until > now).
+function isInInfirmerie(){
+  var i=window.__infirmerie;
+  if(!i||!i.until) return false;
+  return new Date(i.until)>new Date();
+}
+
+// Quotas glissants 12 mois : 15j 2× · 30j 2× · 45j 1× · 60j 1× · plafond 2 activations totales.
+// Retourne {15:nb,30:nb,45:nb,60:nb,total:nb,canActivate:{15:bool,30:bool,45:bool,60:bool}}
+function getInfirmerieQuotaStatus(){
+  var hist=(window.__infirmerie&&window.__infirmerie.history)||[];
+  var counts={15:0,30:0,45:0,60:0,total:0};
+  hist.forEach(function(h){
+    var d=h.duration_days;
+    if(d===15||d===30||d===45||d===60){counts[d]++;counts.total++;}
+  });
+  var maxByDuration={15:2,30:2,45:1,60:1};
+  var canActivate={};
+  [15,30,45,60].forEach(function(d){
+    canActivate[d]=(counts[d]<maxByDuration[d])&&(counts.total<2);
+  });
+  return {counts:counts, canActivate:canActivate};
+}
+
+// Ouvre le modal de choix durée + affiche les quotas restants.
+function openInfirmerieModal(){
+  if(!currentUser) return;
+  if(window.__viewedPlayer){ showToast('👀 Mode consultation'); return; }
+  if(isInInfirmerie()){
+    var i=window.__infirmerie;
+    var endDate=new Date(i.until);
+    var daysLeft=Math.ceil((endDate-new Date())/(24*3600*1000));
+    askConfirm(
+      'Tu es en infirmerie depuis le <strong>'+new Date(i.startedAt).toLocaleDateString('fr')+'</strong>.<br>'
+      +'Durée choisie : <strong>'+i.durationDays+' jours</strong><br>'
+      +'Reste : <strong style="color:var(--gold)">'+daysLeft+' jour'+(daysLeft>1?'s':'')+'</strong><br><br>'
+      +'Sortie automatique le <strong>'+endDate.toLocaleDateString('fr')+'</strong>.<br><br>'
+      +'<em style="color:var(--muted2)">Reprise anticipée impossible.</em>',
+      {title:'Infirmerie en cours', emoji:'🏥', okLabel:'OK'}
+    );
+    return;
+  }
+  var q=getInfirmerieQuotaStatus();
+  var btn=function(d){
+    var disabled=!q.canActivate[d];
+    var maxD=d<=30?2:1;
+    var used=q.counts[d];
+    return '<button '+(disabled?'disabled':'onclick="closeModal(\'land-modal\');setTimeout(function(){activateInfirmerie('+d+');},150)"')
+      +' style="width:100%;padding:.65rem;margin-bottom:.45rem;border-radius:8px;'
+      +'border:1.5px solid '+(disabled?'rgba(255,255,255,.1)':'var(--gold)')+';'
+      +'background:'+(disabled?'rgba(255,255,255,.03)':'rgba(245,200,66,.08)')+';'
+      +'color:'+(disabled?'var(--muted)':'var(--gold)')+';'
+      +'font-family:Bebas Neue,sans-serif;font-size:.95rem;letter-spacing:2px;font-weight:700;'
+      +'cursor:'+(disabled?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center">'
+      +'<span>🏥 '+d+' JOURS</span>'
+      +'<span style="font-size:.6rem;font-family:Space Mono,monospace;letter-spacing:0;color:'+(disabled?'var(--red)':'var(--muted2)')+'">'+used+'/'+maxD+(disabled?' · quota atteint':'')+'</span>'
+      +'</button>';
+  };
+  var info='15j = plein tarif loyers · 30j = demi-tarif · 45/60j = loyers suspendus';
+  document.getElementById('lm-title').textContent='🏥 Infirmerie';
+  document.getElementById('lm-sub').textContent='Pause sportive volontaire';
+  document.getElementById('lm-body').innerHTML=
+    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, streak conservée, RPC des passages reçus normalement.</div>'
+    +btn(15)+btn(30)+btn(45)+btn(60)
+    +'<div style="font-size:.65rem;color:var(--muted2);margin-top:.4rem;line-height:1.5">'+info+'<br>Plafond : 2 activations max par 12 mois ('+q.counts.total+'/2 utilisées).</div>';
+  openModal('land-modal');
+}
+
+// Active l'infirmerie pour la durée donnée. DÉFINITIF, pas de reprise anticipée.
+async function activateInfirmerie(days){
+  if(!currentUser) return false;
+  if(isInInfirmerie()){ showToast('⚠️ Tu es déjà en infirmerie'); return false; }
+  if([15,30,45,60].indexOf(days)<0){ showToast('⚠️ Durée invalide'); return false; }
+  var q=getInfirmerieQuotaStatus();
+  if(!q.canActivate[days]){
+    showToast('⚠️ Quota '+days+'j atteint cette année (max '+(days<=30?2:1)+')');
+    return false;
+  }
+  var ok=await askConfirm(
+    'Tu vas être en infirmerie pendant <strong style="color:var(--gold)">'+days+' jours</strong>.<br><br>'
+    +'• Aucune course ne pourra être enregistrée<br>'
+    +'• Ta league est figée (pas de relégation)<br>'
+    +'• Loyers : '+(days<=15?'plein tarif':days<=30?'demi-tarif':'suspendus')+'<br>'
+    +'• Tu peux te connecter et garder ta streak<br>'
+    +'• Tu touches les RPC des passages sur tes Lands<br><br>'
+    +'⚠️ <strong style="color:var(--red)">Action DÉFINITIVE</strong> : pas de reprise anticipée possible.',
+    {title:'Activer l\'infirmerie ?', emoji:'🏥', okLabel:'Activer ('+days+' j)', destructive:true}
+  );
+  if(!ok) return false;
+  var nowIso=new Date().toISOString();
+  var until=new Date(Date.now()+days*24*3600*1000).toISOString();
+  // Update player + insert historique en 1 transaction logique
+  await supabaseClient.from('players').update({
+    infirmerie_until:until, infirmerie_started_at:nowIso, infirmerie_duration_days:days
+  }).eq('id',currentUser.id);
+  await supabaseClient.from('infirmerie_activations').insert({
+    player_id:currentUser.id, started_at:nowIso, duration_days:days, ended_at:until
+  });
+  window.__infirmerie.until=until;
+  window.__infirmerie.startedAt=nowIso;
+  window.__infirmerie.durationDays=days;
+  window.__infirmerie.history.push({started_at:nowIso,duration_days:days,ended_at:until});
+  showToast('🏥 Infirmerie activée pour '+days+' jours');
+  if(typeof renderDashboard==='function') renderDashboard();
+  return true;
+}
+
 async function loadBoostData(){
   if(!currentUser) return;
   var {data}=await supabaseClient.from('players').select('boost_stock,boost_active_until,boost_activated_at').eq('id',currentUser.id).single();
@@ -10972,6 +11227,11 @@ var _stravaActivitiesQueue=[];
 
 async function syncStravaActivities(silent){
   if(!currentUser||!window.__stravaToken){if(!silent)showToast('⚠️ Connecte Strava d\'abord');return;}
+  // Infirmerie : pas d'import pendant la pause (le RP pourra sync au retour)
+  if(typeof isInInfirmerie==='function' && isInInfirmerie()){
+    if(!silent)showToast('🏥 Tu es en infirmerie — sync bloqué jusqu\'à ton retour');
+    return;
+  }
   var tokenOk=await refreshStravaToken();
   if(!tokenOk&&!window.__stravaToken){if(!silent)showToast('⚠️ Token expiré, reconnecte Strava');return;}
   if(!silent)showToast('🔄 Import des activités…');
@@ -11562,6 +11822,10 @@ async function saveCapturedRun(captured, runName){
   if(window.__appSettings && window.__appSettings.runs_disabled){
     throw new Error('Enregistrement temporairement désactivé (maintenance)');
   }
+  // Infirmerie : aucune course pendant la pause
+  if(typeof isInInfirmerie==='function' && isInInfirmerie()){
+    throw new Error('Tu es en infirmerie — aucune course ne peut être enregistrée');
+  }
   if(!captured||!captured.points||captured.points.length<2){
     throw new Error('Pas assez de points GPS');
   }
@@ -12010,6 +12274,11 @@ function _formatDuration(ms){
 // Si non → affiche le modal d'intro. Sinon → démarre direct le warmup GPS.
 async function startLiveRun(){
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  // Infirmerie : empêcher de démarrer une course (sinon le RP court pour rien)
+  if(typeof isInInfirmerie==='function' && isInInfirmerie()){
+    showToast('🏥 Tu es en infirmerie — repose-toi, aucune course ne peut être enregistrée');
+    return;
+  }
   if(RunTracker.isActive()){openModal('live-run-modal');return;}
   if(!navigator.geolocation){showToast('⚠️ GPS non supporté sur ce navigateur');return;}
   // 1ère utilisation ? On montre l'intro une fois puis jamais plus.
