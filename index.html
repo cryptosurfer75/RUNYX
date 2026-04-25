@@ -321,9 +321,9 @@ body::before{
 .ln-name{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--muted2)}
 .ln-range{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
 .ln-count{
-  font-family:'Space Mono',monospace;font-size:.75rem;font-weight:700;
-  background:rgba(245,200,66,.14);border:1px solid rgba(245,200,66,.35);
-  border-radius:10px;padding:.12rem .5rem;color:var(--gold);
+  font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;
+  background:rgba(255,255,255,.06);border-radius:10px;
+  padding:.12rem .5rem;color:#c8cfd8;
   min-width:18px;text-align:center;
 }
 .ln-me{
@@ -976,8 +976,8 @@ select option{background:#040c1c}
     <button class="nav-tab" id="nav-tab-admin" onclick="nav('admin')" style="display:none;color:var(--red)">⚙ Admin</button>
   </div>
   <div class="nav-wallet">
-    <div class="pill pill-rpc">🪙 <span id="nav-rpc">—</span></div>
-    <div class="pill pill-nyx">💎 <span id="nav-nyx">—</span></div>
+    <div class="pill pill-rpc" onclick="showWalletBreakdown()" title="Détail de ma cagnotte" style="cursor:pointer">💰 <span id="nav-rpc">—</span></div>
+    <div class="pill pill-nyx" onclick="showNyxBreakdown()" title="Détail de ma cagnotte NYX" style="cursor:pointer">💎 <span id="nav-nyx">—</span></div>
   </div>
 </nav>
 
@@ -1204,7 +1204,7 @@ select option{background:#040c1c}
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(74,144,255,.3),transparent);margin-bottom:.85rem"></div>
 
     <!-- Stats scrollables — ordre imposé -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;max-height:270px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(74,144,255,.2) transparent;padding-right:.15rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding-right:.15rem">
 
       <!-- 1 & 2 -->
       <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
@@ -1245,14 +1245,24 @@ select option{background:#040c1c}
         <div><div id="stat-lands-prop" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--green)">3</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Lands Propriétaire</div></div>
       </div>
 
-      <!-- 9. RPC accumulés | 10. Best ranking — même ligne -->
+      <!-- 9. Badges débloqués | 10. Ranking actuel -->
       <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
-        <span style="font-size:1.1rem">🪙</span>
-        <div><div id="stat-rpc" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">487 200</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">RPC accumulés</div></div>
+        <span style="font-size:1.1rem">🎖️</span>
+        <div><div id="stat-badges" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Badges débloqués</div></div>
       </div>
       <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🏆</span>
         <div><div id="stat-best-rank" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:#ffffff">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Ranking actuel</div></div>
+      </div>
+
+      <!-- 11. Cagnotte RPC | 12. Cagnotte NYX (visibles entre RPs) -->
+      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(245,200,66,.25);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+        <span style="font-size:1.1rem">💰</span>
+        <div><div id="stat-cagnotte-rpc" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Cagnotte RPC</div></div>
+      </div>
+      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(45,219,128,.25);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+        <span style="font-size:1.1rem">💎</span>
+        <div><div id="stat-cagnotte-nyx" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--green)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Cagnotte NYX</div></div>
       </div>
 
     </div>
@@ -1888,7 +1898,7 @@ select option{background:#040c1c}
     <!-- RPC -->
     <div class="block">
       <div class="block-header" style="background:rgba(245,200,66,.05)">
-        <div class="block-title">🪙 RPC <span class="hl">— Monnaie principale</span></div>
+        <div class="block-title">💰 RPC <span class="hl">— Monnaie principale</span></div>
       </div>
       <div style="padding:.75rem 1rem">
         <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);margin-bottom:.5rem">Achat</div>
@@ -2099,6 +2109,32 @@ select option{background:#040c1c}
 </div>
 
 <!-- Modal info : explique la chaîne de connexion -->
+<!-- Modal détail cagnotte NYX : ouvre quand on click sur la pill 💎 en navbar -->
+<div class="modal" id="wallet-nyx-modal">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" onclick="closeModal('wallet-nyx-modal')">✕</button>
+    <div style="text-align:center;font-size:2rem;margin-bottom:.2rem">💎</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--green);text-align:center;margin-bottom:1rem">MA CAGNOTTE NYX</div>
+    <div id="wallet-nyx-body" style="padding:.2rem .5rem">
+      <div style="text-align:center;color:var(--muted2);font-size:.8rem;padding:1rem">Chargement…</div>
+    </div>
+    <button onclick="closeModal('wallet-nyx-modal')" style="width:100%;margin-top:1rem;padding:.6rem;border-radius:8px;border:1.5px solid var(--green);background:rgba(45,219,128,.1);color:var(--green);font-weight:700;font-size:.85rem;cursor:pointer">Fermer</button>
+  </div>
+</div>
+
+<!-- Modal détail cagnotte RPC : ouvre quand on click sur la pill 💰 en navbar -->
+<div class="modal" id="wallet-detail-modal">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" onclick="closeModal('wallet-detail-modal')">✕</button>
+    <div style="text-align:center;font-size:2rem;margin-bottom:.2rem">💰</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--gold);text-align:center;margin-bottom:1rem">MA CAGNOTTE RPC</div>
+    <div id="wallet-detail-body" style="padding:.2rem .5rem">
+      <div style="text-align:center;color:var(--muted2);font-size:.8rem;padding:1rem">Chargement…</div>
+    </div>
+    <button onclick="closeModal('wallet-detail-modal')" style="width:100%;margin-top:1rem;padding:.6rem;border-radius:8px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.85rem;cursor:pointer">Fermer</button>
+  </div>
+</div>
+
 <div class="modal" id="streak-info-modal">
   <div class="modal-box" style="max-width:440px">
     <button class="modal-close" onclick="closeModal('streak-info-modal')">✕</button>
@@ -2331,11 +2367,16 @@ function askConfirm(message, opts){
     var cancel = document.getElementById('ask-confirm-cancel');
     ok.textContent = opts.okLabel || 'Confirmer';
     cancel.textContent = opts.cancelLabel || 'Annuler';
-    // Bouton destructif → rouge au lieu de doré
+    // Couleur du bouton : destructive=rouge, success=vert (action positive
+     // type achat/validation), default=doré.
     if(opts.destructive){
       ok.style.borderColor = 'var(--red)';
       ok.style.background = 'linear-gradient(175deg,rgba(255,68,68,.22),rgba(180,40,40,.12))';
       ok.style.color = 'var(--red)';
+    } else if(opts.success){
+      ok.style.borderColor = 'var(--green)';
+      ok.style.background = 'linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12))';
+      ok.style.color = 'var(--green)';
     } else {
       ok.style.borderColor = 'var(--gold)';
       ok.style.background = 'linear-gradient(175deg,rgba(245,200,66,.22),rgba(200,160,20,.12))';
@@ -2593,7 +2634,7 @@ function askConfirm(message, opts){
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
             <div>
-              <label style="font-size:.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">🪙 RPC (+/-)</label>
+              <label style="font-size:.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">💰 RPC (+/-)</label>
               <input id="admin-wallet-rpc" type="number" step="1" placeholder="5000" style="width:100%;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--gold);font-size:.85rem;font-family:'Space Mono',monospace;outline:none;box-sizing:border-box">
             </div>
             <div>
@@ -2740,7 +2781,7 @@ function askConfirm(message, opts){
         Calculés selon ta <strong style="color:var(--text)">distance</strong>, ta <strong style="color:var(--text)">vitesse</strong> et ton <strong style="color:var(--text)">dénivelé</strong>.<br>
         La formule est <strong style="color:var(--gold)">secrète</strong> — elle valorise l'effort global.<br>
         Un <strong style="color:var(--text)">Boost</strong> ajoute <strong style="color:var(--green)">+10%</strong> pendant 24h.<br>
-        Vitesse &gt; 20 km/h = activité <strong style="color:var(--red)">invalidée</strong> 🏴‍☠️
+        Vitesse <strong>moyenne</strong> &gt; 20 km/h = activité <strong style="color:var(--red)">invalidée</strong> 🏴‍☠️
       </div>
     </div>
 
@@ -2760,7 +2801,7 @@ function askConfirm(message, opts){
       <div class="block-header" style="border-color:rgba(32,208,224,.2)"><div class="block-title">🏆 Les <span class="hl">Leagues</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
         Chaque RP est placé dans une League selon son niveau.<br>
-        12 niveaux de <strong style="color:#8090a0">Fer</strong> à <strong style="color:#a0e0ff">Diamant</strong>.<br>
+        10 niveaux de <strong style="color:#8090a0">Fer</strong> à <strong style="color:#f5c842">Or</strong>.<br>
         En fin de période, chaque RP est <strong style="color:var(--text)">reclassé</strong> dans la League correspondant à ses points.<br>
         Le <strong style="color:var(--gold)">buy-in</strong> RPC de chaque RP constitue le prize pool redistribué au podium.
       </div>
@@ -2770,7 +2811,7 @@ function askConfirm(message, opts){
       <div class="block-header" style="border-color:rgba(255,160,32,.2)"><div class="block-title">🗺️ Les <span class="hl">Lands</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
         La carte est divisée en hexagones — les <strong style="color:var(--text)">Lands</strong>.<br>
-        Loue une Land (loyer mensuel en RPC) et gagne des RPC à chaque passage d'un RP.<br>
+        Loue une Land (loyer mensuel en RPC) et gagne 3 RPC à chaque passage d'un RP.<br>
         Après plusieurs périodes, tu peux l'<strong style="color:var(--text)">acheter</strong> définitivement en NYX.<br>
         Ajoute des <strong style="color:var(--gold)">Étoiles</strong> : ★ 6 · ★★ 9 · ★★★ 12 RPC par passage.<br>
         Plafond de <strong style="color:var(--gold)">8 000 RPC / mois / Land</strong>.
@@ -2780,7 +2821,7 @@ function askConfirm(message, opts){
     <div class="block" style="border-color:rgba(245,200,66,.45)">
       <div class="block-header" style="border-color:rgba(245,200,66,.2)"><div class="block-title">💰 Les <span class="hl">Monnaies</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
-        <strong style="color:var(--gold)">🪙 RPC</strong> — gagnés en courant et via les Lands. Utilisés pour le buy-in, les Étoiles, les loyers.<br><br>
+        <strong style="color:var(--gold)">💰 RPC</strong> — gagnés en courant et via les Lands. Utilisés pour le buy-in, les Étoiles, les loyers.<br><br>
         <strong style="color:var(--green)">💎 NYX</strong> — monnaie Premium. Utilisée pour les Lands, les Boosts et les Licences Team.
       </div>
     </div>
@@ -2807,7 +2848,7 @@ function askConfirm(message, opts){
     <div class="block" style="border-color:rgba(74,144,255,.45)">
       <div class="block-header" style="border-color:rgba(74,144,255,.2)"><div class="block-title">⚡ Bonus & <span class="hl">Connexion</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
-        <strong style="color:var(--text)">Série de connexion</strong> — connecte-toi chaque jour pour maintenir ta série et réclamer un bonus RPC. Un jour raté remet la série à zéro.<br><br>
+        <strong style="color:var(--text)">Série de connexion</strong> — connecte-toi chaque jour pour maintenir ta série et réclamer un bonus RPC. Un jour raté remet la série à zéro avec une baisse des récompenses.<br><br>
         <strong style="color:var(--text)">Boost</strong> — <strong style="color:var(--green)">+10%</strong> de points sur les 24h suivantes. Max 10 par période.
       </div>
     </div>
@@ -3346,7 +3387,7 @@ async function onLoginSuccess(user, isNew){
         var {data:allRunsPts}=await supabaseClient.from('runs').select('points').eq('player_id',user.id);
         refPts=(allRunsPts||[]).reduce(function(s,r){return s+(r.points||0);},0);
       }
-      var targetLg=LEAGUES.slice().reverse().find(function(l){return refPts>=l.min&&l.key!=='starter';});
+      var targetLg=LEAGUES.slice().reverse().find(function(l){return refPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
       if(targetLg){
         var curIdx=LEAGUES.findIndex(function(l){return l.key===curLk;});
         var tgtIdx=LEAGUES.findIndex(function(l){return l.key===targetLg.key;});
@@ -3938,7 +3979,7 @@ const LEAGUES=[
   {key:'l4',      name:'L4',       label:'Émeraude',   emoji:'💚',  min:6001,  max:7500,  color:'#20c060', buyin:7500},
   {key:'l3',      name:'L3',       label:'Bronze',     emoji:'🤎',  min:7501,  max:10000, color:'#c07030', buyin:10000},
   {key:'l2',      name:'L2',       label:'Argent',     emoji:'🩶',  min:10001, max:13000, color:'#b0c0d0', buyin:13000},
-  {key:'l1',      name:'L1',       label:'Or',         emoji:'💛',  min:13001, max:20000, color:'#f5c842', buyin:20000},
+  {key:'l1',      name:'L1',       label:'Or',         emoji:'💛',  min:13001, max:20000, max2:null, color:'#f5c842', buyin:20000},
   {key:'lelite',  name:'L Elite',  label:'Diamant',    emoji:'💎',  min:20001, max:null,  color:'#a0e0ff', buyin:25000},
 ];
 
@@ -4476,12 +4517,13 @@ function renderDashboard(){
     set('stat-pts-cum','—');set('stat-km','—');set('stat-elv','—');
     set('stat-sorties','—');set('stat-heures','—');
     set('stat-lands-loc','0');set('stat-lands-prop','0');
-    set('stat-rpc','—');set('stat-best-rank','—');
+    set('stat-badges','—');set('stat-best-rank','—');
+    set('stat-cagnotte-rpc','—');set('stat-cagnotte-nyx','—');
     if(_statUid){
       (async function(){
         // Charger runs de la période en cours + cumulés historiques
         var {data:allR}=await supabaseClient.from('runs').select('distance,time,elevation,points').eq('player_id',_statUid).eq('period',0);
-        var {data:cumData}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated,rpc_cumulated').eq('id',_statUid).single();
+        var {data:cumData}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated,rpc_balance,nyx_balance').eq('id',_statUid).single();
         var currentPts=0,currentKm=0,currentElv=0,currentTime=0,currentRuns=(allR||[]).length;
         (allR||[]).forEach(function(r){
           currentPts+=(r.points||0);
@@ -4502,7 +4544,19 @@ function renderDashboard(){
         set('stat-elv', totalElv>0?(totalElv.toLocaleString('fr')+' m'):'0 m');
         set('stat-sorties', nbCourses>0?nbCourses:'0');
         set('stat-heures', totalTime>0?(heures+'h'+String(minutes).padStart(2,'0')):'0 h');
-        set('stat-rpc', cumData?(cumData.rpc_cumulated||0).toLocaleString('fr'):'0');
+        // Cagnottes courantes (rpc_balance, nyx_balance) — visibles entre RPs
+        set('stat-cagnotte-rpc', cumData?(cumData.rpc_balance||0).toLocaleString('fr'):'0');
+        set('stat-cagnotte-nyx', cumData?(cumData.nyx_balance||0).toLocaleString('fr'):'0');
+        // Badges débloqués (count) / total catalogue
+        try {
+          var [{data:pBadges},{data:catBadges}]=await Promise.all([
+            supabaseClient.from('player_badges').select('badge_id').eq('player_id',_statUid),
+            supabaseClient.from('badges').select('id')
+          ]);
+          var nbUnlocked=(pBadges||[]).length;
+          var nbTotal=(catBadges||[]).length;
+          set('stat-badges', nbUnlocked+' / '+nbTotal);
+        } catch(e){ set('stat-badges','—'); }
         // Ranking actuel = position globale du joueur (évolue chaque jour)
         set('stat-best-rank', '#'+globalRank);
         // Périodes actives = périodes passées hors Starter + courante si hors Starter et courses
@@ -4934,7 +4988,19 @@ function renderLeagueNav(){
     const isMe=l.key===activeLeagueKey;
     const isCurrent=window.__myPlayer&&l.key===window.__myPlayer.leagueKey;
     var _locked=!canAccessLeague(l.key);
-    el.innerHTML+=`<div class="league-nav-item ${l.key===activeLeagueKey?'active':''}" onclick="selectLeague('${l.key}')" style="${_locked?'opacity:.3;filter:grayscale(.75)':''}">
+    // Trait de séparation entre Starter et L10 (entrée dans les vraies leagues)
+    if(l.key==='l10'){
+      el.innerHTML+='<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);margin:.55rem 0"></div>';
+    }
+    // L Elite : fermée pour la beta. Trait visuel de séparation au-dessus
+    // (sans label) + grisée + click bloqué. Les RP > 20k pts restent en L1 Or.
+    var _eliteLocked=(l.key==='lelite');
+    if(_eliteLocked){
+      el.innerHTML+='<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(160,224,255,.4),transparent);margin:.55rem 0"></div>';
+    }
+    var _greyed=_locked||_eliteLocked;
+    var _onclick=_eliteLocked?'showToast(\'🔒 League Elite ouvrira plus tard — reste en Or pour l\\\'instant\')':'selectLeague(\''+l.key+'\')';
+    el.innerHTML+=`<div class="league-nav-item ${l.key===activeLeagueKey?'active':''}" onclick="${_onclick}" style="${_greyed?'opacity:.3;filter:grayscale(.75)':''}">
       <div style="display:flex;align-items:center;gap:.4rem">
         ${isCurrent?'<div class="ln-me"></div>':''}
         <span style="font-size:.85rem;line-height:1">${l.emoji}</span>
@@ -4984,8 +5050,11 @@ function renderLeaguePanel(){
   // Masquer les gelés + les 0 pts (sauf Starter)
   const players=allInLeague.filter(function(p){return !p.frozen;}).sort(function(a,b){return b.pts-a.pts;});
   const isMine=(activeLeagueKey==='l4');
+  // L1 Or = nouveau plafond pendant la beta (L Elite fermée). Suffix "et +"
+  // pour indiquer qu'on y reste sans cap supérieur.
+  var _isCapBeta=(league.key==='l1');
   const rangeLabel=league.max
-    ? league.min.toLocaleString('fr')+' – '+league.max.toLocaleString('fr')+' pts'
+    ? league.min.toLocaleString('fr')+' – '+league.max.toLocaleString('fr')+' pts'+(_isCapBeta?' et +':'')
     : league.min.toLocaleString('fr')+' pts +';
 
   var leagueIdx=LEAGUES.findIndex(function(l){return l.key===activeLeagueKey;});
@@ -5107,7 +5176,8 @@ function renderLeaguePanel(){
   }
 
   // ── Zone promotion (haut) ──────────────────────────────────────
-  var hasUpperLeague=(leagueIdx<LEAGUES.length-1);
+  // Pas de league supérieure si on est en L1 (L Elite fermée pendant la beta)
+  var hasUpperLeague=(leagueIdx<LEAGUES.length-1)&&(activeLeagueKey!=='l1');
   if(promo2Players.length>0){
     rows+=promo2Players.map(function(p){return buildRowWithCompRank(p,true,false);}).join('');
     rows+=makeSepLine(leagueIdx+2);
@@ -5809,12 +5879,18 @@ async function showParrainageInfo(){
   var _pRtw=viewedP?(viewedP.rtwId||'?????'):(window.__myPlayer?window.__myPlayer.rtwId:'?????');
   var myCode='SL-'+String(_pRtw).padStart(5,'0');
 
-  // Liste des filleuls
+  // Liste des filleuls paginée (10 par page)
+  if(typeof window._parrainagePage!=='number') window._parrainagePage=0;
   var filleulHtml='';
   if(c.filleuls.length){
+    var perPage=10;
+    var totalPages=Math.ceil(c.filleuls.length/perPage);
+    if(window._parrainagePage>=totalPages) window._parrainagePage=Math.max(0,totalPages-1);
+    var start=window._parrainagePage*perPage;
+    var pageFilleuls=c.filleuls.slice(start,start+perPage);
     filleulHtml='<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.6rem">'
       +'<div style="font-size:.62rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">'+(viewedP?'Filleuls de '+_pName:'Tes filleuls')+' ('+c.count+')</div>';
-    c.filleuls.slice(0,10).forEach(function(f){
+    pageFilleuls.forEach(function(f){
       var steps=f._steps||0;
       var stepsColor=steps===4?'var(--green)':steps>0?'var(--gold)':'var(--muted2)';
       var dots='';
@@ -5828,7 +5904,25 @@ async function showParrainageInfo(){
         +'<span style="font-size:.58rem;color:'+stepsColor+'">Étapes : '+steps+' / 4</span>'
       +'</div>';
     });
-    if(c.count>10) filleulHtml+='<div style="font-size:.65rem;color:var(--muted2);margin-top:.2rem">… et '+(c.count-10)+' autres</div>';
+    // Pagination buttons
+    if(totalPages>1){
+      filleulHtml+='<div style="display:flex;justify-content:center;gap:.3rem;margin-top:.55rem;flex-wrap:wrap">';
+      for(var pi=0;pi<totalPages;pi++){
+        var active=(pi===window._parrainagePage);
+        filleulHtml+='<button onclick="window._parrainagePage='+pi+';showParrainageInfo()" style="width:26px;height:26px;border-radius:4px;border:1px solid '+(active?'var(--gold)':'var(--border2)')+';background:'+(active?'rgba(245,200,66,.15)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.7rem;font-weight:700;cursor:pointer;font-family:Space Mono,monospace">'+(pi+1)+'</button>';
+      }
+      filleulHtml+='</div>';
+    }
+    // Légende des 4 étapes
+    filleulHtml+='<div style="margin-top:.75rem;padding:.6rem .7rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px">'
+      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">Les 4 étapes du filleul</div>'
+      +'<div style="font-size:.7rem;color:var(--text);line-height:1.7">'
+        +'<div><span style="color:var(--gold)">●</span> <strong>1.</strong> Sa 1<sup>ère</sup> course <span style="color:var(--muted2)">→ +2 000 RPC + 5 NYX</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>2.</strong> Dépasse 1 000 pts <span style="color:var(--muted2)">→ +5 NYX</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>3.</strong> 3 périodes consécutives <span style="color:var(--muted2)">→ +5 NYX</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>4.</strong> Rejoint ta team <span style="color:var(--muted2)">→ +5 NYX</span></div>'
+      +'</div>'
+    +'</div>';
     filleulHtml+='</div>';
   }
 
@@ -5937,12 +6031,33 @@ async function _updateLandsCityLabel(lat, lng){
 
 var _rpColorPalette=['#ff6020','#9060f0','#e040a0','#20d0e0','#ff4444','#c07030','#60c0ff','#ff9020','#40e080','#d060d0','#80a0ff','#e8a020','#20b080','#ff6699','#8844cc'];
 
+// Centre la carte Lands sur une land donnée (depuis le tableau Mes Lands).
+// Zoom à 17 pour bien voir l'hexagone + flash temporaire pour le repérer.
+function focusLandOnMap(landId){
+  if(!_landsMap||!landId) return;
+  try {
+    var c=h3.cellToLatLng(landId);
+    if(!c) return;
+    _landsMap.setView([c[0],c[1]],17);
+    // Flash visuel : cercle blanc temporaire pour attirer l'œil
+    var flash=L.circle([c[0],c[1]],{radius:30,color:'#fff',fillColor:'#fff',fillOpacity:0.5,weight:3,opacity:1,interactive:false}).addTo(_landsMap);
+    setTimeout(function(){try{_landsMap.removeLayer(flash);}catch(e){}},2000);
+    // Scroll vers le haut pour voir la carte (le tableau peut être en bas)
+    var mapEl=document.getElementById('lands-map');
+    if(mapEl) mapEl.scrollIntoView({behavior:'smooth',block:'center'});
+  } catch(e){ console.warn('focusLandOnMap fail',e); }
+}
+
 async function loadLandsOnMap(){
   if(!_landsMap||!_landsHexLayer) return;
   _landsHexLayer.clearLayers();
-  var {data:lands}=await supabaseClient.from('lands').select('id,hex_col,hex_row,owner_id,tenant_id,status,stars');
+  // ⚠️ limit(200000) explicite : Supabase JS limite à 1000 par défaut, ce qui
+  // tronquait silencieusement les lands. 200k couvre ~200 RPs en beta.
+  // TODO V1.0 : implémenter un filtrage par viewport (charger uniquement les
+  // lands dans la zone visible ±5km) pour scaler au-delà.
+  var {data:lands}=await supabaseClient.from('lands').select('id,hex_col,hex_row,owner_id,tenant_id,status,stars').limit(200000);
   // Charger les ventes actives
-  var {data:sales}=await supabaseClient.from('land_sales').select('land_id,price_nyx').eq('status','active');
+  var {data:sales}=await supabaseClient.from('land_sales').select('land_id,price_nyx').eq('status','active').limit(10000);
   var salesMap={};
   (sales||[]).forEach(function(s){salesMap[s.land_id]=s.price_nyx;});
   if(!lands||!lands.length) return;
@@ -6130,8 +6245,14 @@ async function loadLandsOnMap(){
 }
 
 async function showLandDetail(landId){
-  var {data:land}=await supabaseClient.from('lands').select('*').eq('id',landId).single();
-  if(!land) return;
+  // ARCHITECTURE : les lands free ne sont plus créées en DB. Si la land
+  // n'existe pas, on construit un objet virtuel pour permettre l'affichage
+  // du popup et l'action "Louer" (qui crée la row à ce moment).
+  var {data:land}=await supabaseClient.from('lands').select('*').eq('id',landId).maybeSingle();
+  if(!land){
+    land={id:landId, status:'free', owner_id:null, tenant_id:null,
+          stars:0, rent_periods:0, monthly_revenue:0};
+  }
   var myId=currentUser?currentUser.id:null;
   var isMine=(land.tenant_id===myId||land.owner_id===myId);
   var starsTxt=land.stars>0?('★'.repeat(land.stars)):' nue';
@@ -6252,11 +6373,29 @@ async function rentLand(landId){
   // Vérifier ban
   var {data:ban}=await supabaseClient.from('land_bans').select('id').eq('land_id',landId).eq('player_id',currentUser.id).gt('ban_until_period',period).maybeSingle();
   if(ban){showToast('⚠️ Non disponible pour cette période');return;}
-  var {error}=await supabaseClient.from('lands').update({
-    tenant_id:currentUser.id, status:'rented', rent_start_period:period, rent_periods:1,
-    rented_at:new Date().toISOString()
-  }).eq('id',landId).eq('status','free');
-  if(error){showToast('⚠️ '+error.message);return;}
+  // ARCHITECTURE : la land peut ne pas exister en DB (les lands free ne sont
+  // plus créées à l'exploration). On gère INSERT (nouvelle land) ou UPDATE
+  // (cas legacy : ancienne land free encore en DB, ou land libérée).
+  var {data:existing}=await supabaseClient.from('lands').select('status').eq('id',landId).maybeSingle();
+  if(existing && existing.status!=='free'){
+    showToast('⚠️ Land déjà prise');return;
+  }
+  var rentedAt=new Date().toISOString();
+  if(existing){
+    var {error}=await supabaseClient.from('lands').update({
+      tenant_id:currentUser.id, status:'rented', rent_start_period:period, rent_periods:1, rented_at:rentedAt
+    }).eq('id',landId).eq('status','free');
+    if(error){showToast('⚠️ '+error.message);return;}
+  } else {
+    // Première matérialisation de la land en DB
+    var ll=h3.cellToLatLng(landId);
+    var {error}=await supabaseClient.from('lands').insert({
+      id:landId, hex_col:Math.round(ll[1]*10000), hex_row:Math.round(ll[0]*10000),
+      status:'rented', stars:0, tenant_id:currentUser.id,
+      rent_start_period:period, rent_periods:1, rented_at:rentedAt
+    });
+    if(error){showToast('⚠️ '+error.message);return;}
+  }
   await walletCredit(-rentCost,0,'Loyer Land '+landId.substring(0,8));
   closeModal('land-modal');
   showToast('🔑 Land louée ! −'+rentCost.toLocaleString('fr')+' RPC');
@@ -6381,7 +6520,7 @@ async function buyLand(landId){
   var price=getLandBuyPrice(_computeRentPeriods(land));
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
-  if(!await askConfirm('Elle deviendra ta propriété définitive — tu encaisseras les loyers de tes locataires.\n\nPrix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter cette Land',emoji:'🏡',okLabel:'Acheter ('+price+' NYX)'})) return;
+  if(!await askConfirm('Elle deviendra ta propriété définitive. Tu continues d\'encaisser les récompenses de passages.\n\nPrix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter cette Land',emoji:'🏡',okLabel:'Acheter ('+price+' NYX)',success:true})) return;
   var ok=await walletDebitNyx(price,'Achat Land '+landId.substring(0,8));
   if(!ok) return;
   await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(landId),{
@@ -6467,7 +6606,7 @@ async function buyLandFromSale(saleId,landId,sellerId,price){
   if(currentUser.id===sellerId){showToast('⚠️ Tu ne peux pas acheter ta propre Land');return;}
   var w=window.__wallet||{nyx:0};
   if(w.nyx<price){showToast('⚠️ Solde insuffisant ('+price+' NYX requis)');return;}
-  if(!await askConfirm('Prix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter cette Land',emoji:'🏡',okLabel:'Acheter ('+price+' NYX)'})) return;
+  if(!await askConfirm('Prix : <strong style="color:var(--gold)">'+price+' NYX</strong>',{title:'Acheter cette Land',emoji:'🏡',okLabel:'Acheter ('+price+' NYX)',success:true})) return;
   // Débiter l'acheteur
   var ok=await walletDebitNyx(price,'Achat Land '+landId.substring(0,8));
   if(!ok) return;
@@ -6498,11 +6637,15 @@ async function buyLandFromSale(saleId,landId,sellerId,price){
 async function releaseLand(landId){
   if(!currentUser) return;
   if(!await askConfirm('Cette Land redeviendra libre et tu ne pourras plus la reprendre pendant 2 périodes.',{title:'Libérer cette Land',emoji:'🔓',okLabel:'Libérer',destructive:true})) return;
-  // Remettre la land en libre
+  // ARCHITECTURE : on supprime la row au lieu de la repasser en 'free'.
+  // Les lands free n'ont plus d'existence en DB. Les passages liés sont
+  // supprimés (FK NO ACTION les bloquerait sinon, et plus aucun rendement
+  // possible sur une land libérée). Le ban (2 périodes) reste actif via
+  // land_bans (qui n'a pas de FK sur lands).
+  await supabaseClient.from('land_passages').delete().eq('land_id',landId);
   await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(landId),{
-    method:'PATCH',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({tenant_id:null,owner_id:null,status:'free',stars:0,rent_periods:0,monthly_revenue:0})
+    method:'DELETE',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
   });
   // Ajouter un ban de 2 périodes pour ce RP sur cette land
   var banUntil=(_periodData.period||1)+2;
@@ -6614,11 +6757,15 @@ async function renderMyLands(page){
     var starsColor=l.stars>0?'#ffe050':'var(--muted)';
     var isOwned=(l.status==='owned');
     var isForSale=(l.id in activeSaleSet);
+    // Le badge est clickable : centre la carte sur la land et zoom à 17.
+    // Permet de localiser visuellement une land sur la carte sans devoir
+    // naviguer manuellement (utile quand on a beaucoup de lands éparpillées).
+    var clickAttr='onclick="focusLandOnMap(\''+l.id+'\')" title="Voir sur la carte" style="cursor:pointer;';
     var statusBadge=isOwned
       ?(isForSale
-        ?'<span class="badge" style="font-size:.55rem;background:rgba(32,208,224,.12);border:1px solid rgba(32,208,224,.4);color:var(--cyan)">À vendre · '+activeSaleSet[l.id]+' NYX</span>'
-        :'<span class="badge g-confirme" style="font-size:.55rem">Propriété</span>')
-      :'<span class="badge g-debutant" style="font-size:.55rem">Location</span>';
+        ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(32,208,224,.12);border:1px solid rgba(32,208,224,.4);color:var(--cyan)">À vendre · '+activeSaleSet[l.id]+' NYX</span>'
+        :'<span class="badge g-confirme" '+clickAttr+'font-size:.55rem">Propriété</span>')
+      :'<span class="badge g-debutant" '+clickAttr+'font-size:.55rem">Location</span>';
     // Loyer selon la période de location
     var rp=_computeRentPeriods(l);
     var rentCost=rp<=1?5000:rp<=6?4800:4600;
@@ -6730,33 +6877,23 @@ async function adminSimulateExploration(){
 
   var selected=Array.from(pathSet);
 
-  var created=0;
+  // ARCHITECTURE : on ne crée plus les lands free. On enregistre les passages
+  // UNIQUEMENT sur les lands qui existent en DB (rented/owned). Les lands free
+  // restent un repère client-side pour l'exploration en session courante.
+  var created=0; // toujours 0 — on ne crée plus de lands ici
+  var today=getParisTodayStr();
   for(var i=0;i<selected.length;i++){
     var hexId=selected[i];
-    var [hlat,hlng]=h3.cellToLatLng(hexId);
-    // Vérifier si la land existe déjà
-    var {data:existing}=await supabaseClient.from('lands').select('id').eq('id',hexId).maybeSingle();
-    if(!existing){
-      await supabaseClient.from('lands').insert({
-        id:hexId, hex_col:Math.round(hlng*10000), hex_row:Math.round(hlat*10000),
-        status:'free', stars:0
-      });
-      created++;
-    }
-    // Enregistrer le passage
-    var today=getParisTodayStr();
+    var {data:landData}=await supabaseClient.from('lands').select('stars,tenant_id,owner_id,monthly_revenue').eq('id',hexId).maybeSingle();
+    if(!landData) continue; // land free / pas en DB → skip passage
     var {data:passageEx}=await supabaseClient.from('land_passages').select('id')
       .eq('land_id',hexId).eq('player_id',playerId).eq('passage_date',today).maybeSingle();
     if(!passageEx){
-      // Déterminer les RPC par passage
-      var {data:landData}=await supabaseClient.from('lands').select('stars,tenant_id,owner_id').eq('id',hexId).single();
-      var rpcEarned=[3,6,9,12][(landData?landData.stars:0)||0];
+      var rpcEarned=[3,6,9,12][(landData.stars||0)];
       await supabaseClient.from('land_passages').insert({
         land_id:hexId, player_id:playerId, passage_date:today, rpc_earned:rpcEarned
       });
-      // Créditer le propriétaire/locataire (y compris le coureur lui-même s'il
-      // possède la land — courir sur ses propres lands rapporte des RPC).
-      var landOwner=landData?(landData.owner_id||landData.tenant_id):null;
+      var landOwner=landData.owner_id||landData.tenant_id;
       if(landOwner){
         await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
         await supabaseClient.from('lands').update({monthly_revenue:(landData.monthly_revenue||0)+rpcEarned}).eq('id',hexId);
@@ -7457,10 +7594,11 @@ async function processEndOfPeriod(){
     var rp=ranked[ri];
     var currentLk=(rp.league||'starter').toLowerCase();
     // Trouver la league correspondant aux points
-    var targetLg=LEAGUES.slice().reverse().find(function(l){return rp.pts>=l.min;});
+    var targetLg=LEAGUES.slice().reverse().find(function(l){return rp.pts>=l.min&&l.key!=='lelite';});
     var targetKey=targetLg?targetLg.key:'starter';
     // Ne jamais redescendre en Starter si déjà sorti
     if(currentLk!=='starter'&&targetKey==='starter') targetKey='l10';
+    // L Elite fermée pour la beta : les RP > 20k pts restent en L1 Or
     // Mettre à jour si différent
     if(targetKey!==currentLk){
       await supabaseClient.from('players').update({league:targetKey}).eq('id',rp.id);
@@ -7476,7 +7614,7 @@ async function processEndOfPeriod(){
       var {data:lifeRuns}=await supabaseClient.from('runs').select('points').eq('player_id',sp.id);
       var lifePts=(lifeRuns||[]).reduce(function(s,r){return s+(r.points||0);},0);
       if(lifePts>=500){
-        var tg=LEAGUES.slice().reverse().find(function(l){return lifePts>=l.min&&l.key!=='starter';});
+        var tg=LEAGUES.slice().reverse().find(function(l){return lifePts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
         if(tg) await supabaseClient.from('players').update({league:tg.key}).eq('id',sp.id);
       }
     }
@@ -7526,7 +7664,7 @@ async function processEndOfPeriod(){
 
     // Si gelé → vérifier s'il peut payer maintenant pour dégeler
     if(wasFrozen){
-      var destLgF=LEAGUES.slice().reverse().find(function(l){return brp.pts>=l.min&&l.key!=='starter';});
+      var destLgF=LEAGUES.slice().reverse().find(function(l){return brp.pts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
       var buyinF=destLgF?destLgF.buyin:0;
       var rpcF=(brPlayer?brPlayer.rpc_balance:0)||0;
       if(rpcF>=buyinF&&buyinF>0){
@@ -7539,7 +7677,7 @@ async function processEndOfPeriod(){
     }
 
     // Trouver la league de destination
-    var destLg=LEAGUES.slice().reverse().find(function(l){return brp.pts>=l.min&&l.key!=='starter';});
+    var destLg=LEAGUES.slice().reverse().find(function(l){return brp.pts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
     if(!destLg||!destLg.buyin) continue;
     var buyin=destLg.buyin;
     var currentRpc=(brPlayer?brPlayer.rpc_balance:0)||0;
@@ -8774,9 +8912,11 @@ async function adminAddRun(){
   var msg=document.getElementById('admin-run-msg');
   if(!playerId){msg.style.color='var(--red)';msg.textContent='Choisis un joueur';return;}
   if(km<=0){msg.style.color='var(--red)';msg.textContent='Distance invalide';return;}
-  // Vérifier si le joueur a un boost actif
-  var {data:pBoost}=await supabaseClient.from('players').select('boost_active_until').eq('id',playerId).single();
-  var hasBoost=pBoost&&pBoost.boost_active_until&&new Date(pBoost.boost_active_until)>new Date();
+  // Vérifier si le joueur a un boost actif AU MOMENT DE LA COURSE (now pour
+  // les courses admin, qui sont créées en temps réel sans date passée).
+  var {data:pBoost}=await supabaseClient.from('players').select('boost_active_until,boost_activated_at').eq('id',playerId).single();
+  var nowIso=new Date().toISOString();
+  var hasBoost=pBoost?wasBoostActiveAt(nowIso,pBoost.boost_activated_at,pBoost.boost_active_until):false;
   var pts=Math.round(computePts(km,spd,elv,hasBoost));
   var timeMin=spd>0?Math.round(km/spd*60):0;
   // Insérer dans runs
@@ -8814,7 +8954,7 @@ async function adminCheckStarterPromotion(playerId, playerName){
 
   // Cas 1 : en Starter et ≥ 500 pts → sort de Starter
   if(currentLk==='starter'&&totalPts>=500){
-    var targetLg=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter';});
+    var targetLg=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
     if(!targetLg) return;
     await supabaseClient.from('players').update({league:targetLg.key}).eq('id',playerId);
     if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">🚀 '+playerName+' sort de Starter → '+targetLg.name+' '+targetLg.label+' ('+totalPts+' pts)</span>';
@@ -8823,7 +8963,7 @@ async function adminCheckStarterPromotion(playerId, playerName){
 
   // Cas 2 : en league mais pas compétitif (montée libre / calibrage)
   if(currentLk!=='starter'&&!player.competitive){
-    var targetLg2=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter';});
+    var targetLg2=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
     if(!targetLg2||targetLg2.key===currentLk) return;
     // Vérifier qu'il monte (pas descente en calibrage)
     var currentIdx=LEAGUES.findIndex(function(l){return l.key===currentLk;});
@@ -8849,9 +8989,9 @@ async function adminCheckReferralMilestones(playerId, playerName){
       .eq('parrain_id',parrainId).eq('filleul_id',playerId).eq('reward_type','first_run').maybeSingle();
     if(!ex1){
       await supabaseClient.from('referral_rewards').insert({
-        parrain_id:parrainId,filleul_id:playerId,reward_type:'first_run',rpc_amount:2000,nyx_amount:2,notified:false
+        parrain_id:parrainId,filleul_id:playerId,reward_type:'first_run',rpc_amount:2000,nyx_amount:5,notified:false
       });
-      await walletCreditOther(parrainId,2000,2,'Parrainage first_run: '+playerName);
+      await walletCreditOther(parrainId,2000,5,'Parrainage first_run: '+playerName);
     }
   }
   // Étape 2 : dépasse 1000 pts
@@ -8860,9 +9000,9 @@ async function adminCheckReferralMilestones(playerId, playerName){
       .eq('parrain_id',parrainId).eq('filleul_id',playerId).eq('reward_type','1000_pts').maybeSingle();
     if(!ex2){
       await supabaseClient.from('referral_rewards').insert({
-        parrain_id:parrainId,filleul_id:playerId,reward_type:'1000_pts',rpc_amount:0,nyx_amount:2,notified:false
+        parrain_id:parrainId,filleul_id:playerId,reward_type:'1000_pts',rpc_amount:0,nyx_amount:5,notified:false
       });
-      await walletCreditOther(parrainId,0,2,'Parrainage 1000_pts: '+playerName);
+      await walletCreditOther(parrainId,0,5,'Parrainage 1000_pts: '+playerName);
     }
   }
 }
@@ -9415,7 +9555,7 @@ function renderGrades(){
 function buyPack(type, amount, price){
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
   var label=type==='rpc'?amount.toLocaleString('de-DE')+' RPC':amount+' NYX';
-  var emoji=type==='rpc'?'🪙':'💎';
+  var emoji=type==='rpc'?'💰':'💎';
   document.getElementById('lm-title').textContent=emoji+' Acheter '+label;
   document.getElementById('lm-body').innerHTML=
     '<div style="text-align:center;padding:1rem">'
@@ -9841,6 +9981,149 @@ function walletRefreshUI(){
 }
 
 // Créditer RPC et/ou NYX (montants positifs)
+// Affiche le détail de la cagnotte RPC du joueur (popup depuis la pill 💰).
+// Catégorise les credits par source (course, lands, défis, autre) en parsant
+// le champ reason de wallet_tx, et ajoute les badges débloqués (qui ne sont
+// pas loggés dans wallet_tx car créditrés par l'Edge Function check-badges).
+async function showWalletBreakdown(){
+  if(!currentUser) return;
+  openModal('wallet-detail-modal');
+  var bodyEl=document.getElementById('wallet-detail-body');
+  if(bodyEl) bodyEl.innerHTML='<div style="text-align:center;color:var(--muted2);font-size:.8rem;padding:1rem">Chargement…</div>';
+  try {
+    // 1. RPC course = somme des points de tous les runs × 8 (source de vérité,
+    //    runs.points est toujours rempli même si wallet_tx a des trous legacy)
+    var {data:allRuns}=await supabaseClient.from('runs')
+      .select('points').eq('player_id',currentUser.id).limit(50000);
+    var courseRpc=(allRuns||[]).reduce(function(s,r){return s+(r.points||0)*8;},0);
+    // 2. RPC lands = somme rpc_earned des passages sur mes lands (owned ou rented)
+    //    Inclut passages par moi + par les autres qui passent sur mes lands.
+    var {data:myLands}=await supabaseClient.from('lands')
+      .select('id').or('owner_id.eq.'+currentUser.id+',tenant_id.eq.'+currentUser.id);
+    var myLandIds=(myLands||[]).map(function(l){return l.id;});
+    var landsRpc=0;
+    if(myLandIds.length){
+      var {data:passages}=await supabaseClient.from('land_passages')
+        .select('rpc_earned').in('land_id',myLandIds).limit(100000);
+      landsRpc=(passages||[]).reduce(function(s,p){return s+(p.rpc_earned||0);},0);
+    }
+    // 3. Badges débloqués (RPC crédité directement par check-badges, pas dans wallet_tx)
+    var {data:pb}=await supabaseClient.from('player_badges')
+      .select('badge_id').eq('player_id',currentUser.id);
+    var badgesRpc=0;
+    var badgeIds=(pb||[]).map(function(x){return x.badge_id;});
+    if(badgeIds.length){
+      var {data:bcat}=await supabaseClient.from('badges')
+        .select('reward_rpc').in('id',badgeIds);
+      badgesRpc=(bcat||[]).reduce(function(s,b){return s+(b.reward_rpc||0);},0);
+    }
+    // 4. Bonus divers (streak, passage grade, parrainage, gifts admin) + achats RPC (IAP) depuis wallet_tx
+    var {data:txs}=await supabaseClient.from('wallet_tx')
+      .select('rpc_delta,reason').eq('player_id',currentUser.id).gt('rpc_delta',0).limit(10000);
+    var streakRpc=0, autreRpc=0, achatRpc=0;
+    (txs||[]).forEach(function(tx){
+      var r=tx.reason||'';
+      var d=tx.rpc_delta||0;
+      // On ignore Course et Land (déjà comptés via runs et land_passages)
+      if(/^Course/i.test(r) || /Land/i.test(r)) return;
+      if(/^Streak/i.test(r)) streakRpc+=d;
+      else if(/^Achat RPC/i.test(r) || /^IAP/i.test(r) || /^Pack RPC/i.test(r)) achatRpc+=d;
+      else autreRpc+=d;
+    });
+    // Défis = badges + streak (les 2 sont des "récompenses récurrentes")
+    var defisRpc=badgesRpc+streakRpc;
+    var totalGagne=courseRpc+landsRpc+defisRpc+autreRpc+achatRpc;
+    var w=window.__wallet||{rpc:0};
+    var soldeActuel=w.rpc||0;
+    var fmt=function(n){return (n||0).toLocaleString('fr');};
+    var line=function(emoji,label,val,color){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem .5rem;border-bottom:1px solid rgba(255,255,255,.06)">'
+        +'<span style="font-size:.85rem;color:var(--text)"><span style="font-size:1rem;margin-right:.4rem">'+emoji+'</span>'+label+'</span>'
+        +'<strong style="font-family:Space Mono,monospace;font-size:.9rem;color:'+color+'">+'+fmt(val)+'</strong>'
+        +'</div>';
+    };
+    bodyEl.innerHTML=
+      line('🏃','RPC en courant',courseRpc,'#4a90ff')
+      +line('🎖️','RPC avec défis & challenges',defisRpc,'var(--gold)')
+      +line('🗺️','RPC avec passages Lands',landsRpc,'var(--green)')
+      +(achatRpc>0?line('💳','RPC achetés',achatRpc,'#20d0e0'):'')
+      +(autreRpc>0?line('🎁','Bonus divers (grades, parrainage…)',autreRpc,'#9060f0'):'')
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:.85rem .5rem;margin-top:.4rem;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);border-radius:8px">'
+      +'<span style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2px;color:var(--text)">Total gagné</span>'
+      +'<strong style="font-family:Space Mono,monospace;font-size:1rem;color:var(--gold)">'+fmt(totalGagne)+' RPC</strong>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .5rem;margin-top:.3rem;font-size:.7rem;color:var(--muted2)">'
+      +'<span>Solde actuel (après dépenses)</span>'
+      +'<span style="font-family:Space Mono,monospace">'+fmt(soldeActuel)+' RPC</span>'
+      +'</div>';
+  } catch(e){
+    console.warn('showWalletBreakdown fail',e);
+    if(bodyEl) bodyEl.innerHTML='<div style="text-align:center;color:var(--red);font-size:.8rem;padding:1rem">Erreur chargement</div>';
+  }
+}
+
+// Détail cagnotte NYX (popup depuis la pill 💎). Sources : badges, ventes
+// Land, parrainage, bonus admin, achats IAP (futur).
+async function showNyxBreakdown(){
+  if(!currentUser) return;
+  openModal('wallet-nyx-modal');
+  var bodyEl=document.getElementById('wallet-nyx-body');
+  if(bodyEl) bodyEl.innerHTML='<div style="text-align:center;color:var(--muted2);font-size:.8rem;padding:1rem">Chargement…</div>';
+  try {
+    // 1. Badges débloqués (NYX crédité par check-badges, pas dans wallet_tx)
+    var {data:pb}=await supabaseClient.from('player_badges')
+      .select('badge_id').eq('player_id',currentUser.id);
+    var badgesNyx=0;
+    var badgeIds=(pb||[]).map(function(x){return x.badge_id;});
+    if(badgeIds.length){
+      var {data:bcat}=await supabaseClient.from('badges')
+        .select('reward_nyx').in('id',badgeIds);
+      badgesNyx=(bcat||[]).reduce(function(s,b){return s+(b.reward_nyx||0);},0);
+    }
+    // 2. wallet_tx : on parse les reasons pour catégoriser
+    var {data:txs}=await supabaseClient.from('wallet_tx')
+      .select('nyx_delta,reason').eq('player_id',currentUser.id).gt('nyx_delta',0).limit(10000);
+    var streakNyx=0, ventesNyx=0, parrainageNyx=0, achatNyx=0, autreNyx=0;
+    (txs||[]).forEach(function(tx){
+      var r=tx.reason||'';
+      var d=tx.nyx_delta||0;
+      if(/^Streak/i.test(r)) streakNyx+=d;
+      else if(/^Vente Land/i.test(r)) ventesNyx+=d;
+      else if(/^Parrainage/i.test(r)) parrainageNyx+=d;
+      else if(/^Achat NYX/i.test(r) || /^IAP NYX/i.test(r) || /^Pack NYX/i.test(r)) achatNyx+=d;
+      else autreNyx+=d; // Passage grade, gifts admin, etc.
+    });
+    var defisNyx=badgesNyx+streakNyx;
+    var totalGagne=defisNyx+ventesNyx+parrainageNyx+achatNyx+autreNyx;
+    var w=window.__wallet||{nyx:0};
+    var soldeActuel=w.nyx||0;
+    var fmt=function(n){return (n||0).toLocaleString('fr');};
+    var line=function(emoji,label,val,color){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem .5rem;border-bottom:1px solid rgba(255,255,255,.06)">'
+        +'<span style="font-size:.85rem;color:var(--text)"><span style="font-size:1rem;margin-right:.4rem">'+emoji+'</span>'+label+'</span>'
+        +'<strong style="font-family:Space Mono,monospace;font-size:.9rem;color:'+color+'">+'+fmt(val)+'</strong>'
+        +'</div>';
+    };
+    bodyEl.innerHTML=
+      line('🎖️','NYX avec défis & challenges',defisNyx,'var(--gold)')
+      +line('🏷️','NYX avec ventes de Lands',ventesNyx,'var(--cyan)')
+      +(parrainageNyx>0?line('🤝','NYX avec parrainage',parrainageNyx,'#f5c842'):'')
+      +(achatNyx>0?line('💳','NYX achetés',achatNyx,'#20d0e0'):'')
+      +(autreNyx>0?line('🎁','Bonus divers (grades, gifts…)',autreNyx,'#9060f0'):'')
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:.85rem .5rem;margin-top:.4rem;background:rgba(45,219,128,.08);border:1px solid rgba(45,219,128,.3);border-radius:8px">'
+      +'<span style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2px;color:var(--text)">Total gagné</span>'
+      +'<strong style="font-family:Space Mono,monospace;font-size:1rem;color:var(--green)">'+fmt(totalGagne)+' NYX</strong>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .5rem;margin-top:.3rem;font-size:.7rem;color:var(--muted2)">'
+      +'<span>Solde actuel (après dépenses)</span>'
+      +'<span style="font-family:Space Mono,monospace">'+fmt(soldeActuel)+' NYX</span>'
+      +'</div>';
+  } catch(e){
+    console.warn('showNyxBreakdown fail',e);
+    if(bodyEl) bodyEl.innerHTML='<div style="text-align:center;color:var(--red);font-size:.8rem;padding:1rem">Erreur chargement</div>';
+  }
+}
+
 async function walletCredit(rpc, nyx, reason){
   if(!currentUser) return false;
   var w=window.__wallet||{rpc:0,nyx:0};
@@ -10020,8 +10303,8 @@ async function checkReferralReward(rewardType){
   if(existing) return; // déjà donnée
   // Déterminer les montants
   var rpc=0,nyx=0;
-  if(rewardType==='first_run'){rpc=2000;nyx=2;}
-  else{nyx=2;} // 3_periods, 1000_pts, same_team
+  if(rewardType==='first_run'){rpc=2000;nyx=5;}
+  else{nyx=5;} // 3_periods, 1000_pts, same_team
   // Enregistrer la récompense
   await supabaseClient.from('referral_rewards').insert({
     parrain_id:parrainId, filleul_id:currentUser.id,
@@ -10338,9 +10621,9 @@ var _boostTimer=null;
 
 async function loadBoostData(){
   if(!currentUser) return;
-  var {data}=await supabaseClient.from('players').select('boost_stock,boost_active_until').eq('id',currentUser.id).single();
+  var {data}=await supabaseClient.from('players').select('boost_stock,boost_active_until,boost_activated_at').eq('id',currentUser.id).single();
   if(data){
-    window.__boost={stock:data.boost_stock||0,activeUntil:data.boost_active_until||null};
+    window.__boost={stock:data.boost_stock||0,activeUntil:data.boost_active_until||null,activatedAt:data.boost_activated_at||null};
     renderBoostRow();
   }
 }
@@ -10349,6 +10632,24 @@ function isBoostActive(){
   var b=window.__boost;
   if(!b||!b.activeUntil) return false;
   return new Date(b.activeUntil)>new Date();
+}
+
+// Vérifie si le boost était actif au DÉBUT d'une course donnée. Comparé à
+// isBoostActive() qui regarde NOW(), wasBoostActiveAt(runStart) regarde la
+// date de démarrage de la course pour décider du bonus. C'est ce qui compte
+// pour les imports décalés (Strava sync 2 jours plus tard) ou les courses
+// commencées juste avant l'expiration du boost.
+// Logique : la course est bonifiée si runStart est dans la fenêtre
+// [boost_activated_at, boost_activated_at + 24h]. Une activation APRÈS le
+// départ ne s'applique pas (logique : "on prend ce qui était actif au start").
+function wasBoostActiveAt(runStartDate, boostActivatedAt, boostActiveUntil){
+  if(!boostActiveUntil) return false;
+  var runDate=new Date(runStartDate);
+  if(isNaN(runDate.getTime())) return false;
+  var until=new Date(boostActiveUntil);
+  // Fallback compat : ancien data sans activated_at → on dérive de until - 24h
+  var activated=boostActivatedAt ? new Date(boostActivatedAt) : new Date(until.getTime()-24*3600*1000);
+  return runDate>=activated && runDate<=until;
 }
 
 function getBoostTimeLeft(){
@@ -10451,13 +10752,14 @@ async function activateBoost(){
     if(!ok) return;
     localStorage.setItem('boost-explained-'+currentUser.id,'1');
   }
+  var nowIso=new Date().toISOString();
   var until=new Date(Date.now()+24*3600*1000).toISOString();
   var newStock=b.stock-1;
   await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
     method:'PATCH',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({boost_stock:newStock,boost_active_until:until})
+    body:JSON.stringify({boost_stock:newStock,boost_active_until:until,boost_activated_at:nowIso})
   });
-  window.__boost={stock:newStock,activeUntil:until};
+  window.__boost={stock:newStock,activeUntil:until,activatedAt:nowIso};
   renderBoostRow();
   showToast('⚡ Boost activé — +10% pendant 24h !');
 }
@@ -10754,8 +11056,10 @@ async function syncStravaActivities(silent){
       var runDateFull=a.start_date||'';
       var {data:existingRun}=await supabaseClient.from('runs').select('id').eq('player_id',currentUser.id).eq('run_date',runDateFull).maybeSingle();
       if(existingRun) continue;
-      // Calculer les points
-      var hasBoost=isBoostActive();
+      // Calculer les points : boost basé sur la DATE DE DÉPART de la course
+      // (et non sur NOW()) pour gérer correctement les imports décalés.
+      var _b=window.__boost||{};
+      var hasBoost=wasBoostActiveAt(runDateFull, _b.activatedAt, _b.activeUntil);
       var pts=Math.round(computePts(km,spd,elv,hasBoost));
       // Insérer la course
       await window.fetch(supabaseUrl+'/rest/v1/runs',{
@@ -10774,51 +11078,40 @@ async function syncStravaActivities(silent){
         hexes=Array.from(hexSet);
       }
       newActivities.push({name:a.name,pts:pts,km:km,hexes:hexes,lat:a.start_latlng?a.start_latlng[0]:0,lng:a.start_latlng?a.start_latlng[1]:0});
-      // Enregistrer les passages automatiquement
+      // Enregistrer les passages automatiquement (UNIQUEMENT sur lands existantes)
       if(hexes.length>0){
         var today=getParisTodayStr();
         for(var hi=0;hi<hexes.length;hi++){
           var hexId=hexes[hi];
-          // Créer la land si elle n'existe pas
-          var chkR=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=id,stars,owner_id,tenant_id',{
+          // ARCHITECTURE : pas de création de lands free. Les lands free
+          // restent un repère client-side, pas un row en DB.
+          var chkR=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=id,stars,owner_id,tenant_id,monthly_revenue',{
             headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
           });
           var chkD=await chkR.json();
-          if(!chkD||!chkD.length){
-            var ll=typeof h3!=='undefined'?h3.cellToLatLng(hexId):[0,0];
-            await window.fetch(supabaseUrl+'/rest/v1/lands',{
-              method:'POST',
-              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-              body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
-            });
-          }
+          var ld=(chkD&&chkD[0])||null;
+          if(!ld) continue; // land free / pas en DB → skip
           // Enregistrer le passage
           var passChk=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today+'&select=id',{
             headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
           });
           var passD=await passChk.json();
           if(!passD||!passD.length){
-            var ld=(chkD&&chkD[0])?chkD[0]:null;
-            var rpcEarned=[3,6,9,12][(ld?ld.stars:0)||0];
+            var rpcEarned=[3,6,9,12][(ld.stars||0)];
             await window.fetch(supabaseUrl+'/rest/v1/land_passages',{
               method:'POST',
               headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
               body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
             });
-            // Créditer le propriétaire/locataire (y compris soi-même si on
-            // possède la land) et incrémenter le rendement mensuel.
-            var landOwner=ld?(ld.owner_id||ld.tenant_id):null;
+            // Crédit owner/tenant (y compris soi-même).
+            var landOwner=ld.owner_id||ld.tenant_id;
             if(landOwner){
               if(landOwner===currentUser.id){
                 if(typeof walletCredit==='function') await walletCredit(rpcEarned,0,'Passage Land '+hexId.substring(0,8));
               } else {
                 await walletCreditOther(landOwner,rpcEarned,0,'Passage Land '+hexId.substring(0,8));
               }
-              var revResp=await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=monthly_revenue',{
-                headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-              });
-              var revData=await revResp.json();
-              var curRev=(revData&&revData[0]&&revData[0].monthly_revenue)||0;
+              var curRev=(ld.monthly_revenue||0);
               await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
                 method:'PATCH',
                 headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
@@ -10827,7 +11120,7 @@ async function syncStravaActivities(silent){
             }
           }
         }
-        // Stocker les hexes explorés pour affichage sur la carte
+        // Stocker les hexes explorés pour affichage sur la carte (client-side only)
         if(!window._recentExploredHexes) window._recentExploredHexes=[];
         window._hidePassages=false;
         if(currentUser) localStorage.removeItem('expl-done-'+currentUser.id);
@@ -11274,9 +11567,14 @@ async function saveCapturedRun(captured, runName){
   }
   var km=captured.km, elv=captured.elv, timeMin=captured.timeMin;
   var spd=timeMin>0?(km/(timeMin/60)):0;
-  var hasBoost=(typeof isBoostActive==='function')?isBoostActive():false;
-  var pts=Math.round(computePts(km,spd,elv,hasBoost));
   var runDate=new Date(captured.startedAt||Date.now()).toISOString();
+  // Boost basé sur la DATE DE DÉPART de la course (pas NOW()) : une course
+  // commencée juste avant l'expiration garde son boost même si elle finit après.
+  var _b=window.__boost||{};
+  var hasBoost=(typeof wasBoostActiveAt==='function')
+    ? wasBoostActiveAt(runDate, _b.activatedAt, _b.activeUntil)
+    : false;
+  var pts=Math.round(computePts(km,spd,elv,hasBoost));
 
   // 1. Insert run (return=representation pour récupérer le run_id)
   var runResp=await fetch(supabaseUrl+'/rest/v1/runs',{
@@ -11316,36 +11614,31 @@ async function saveCapturedRun(captured, runName){
     nbLands=hexes.length;
     for(var i=0;i<hexes.length;i++){
       var hexId=hexes[i];
-      // Land existe ? sinon on la crée
-      var lr=await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=id,stars,owner_id,tenant_id',{
+      // ARCHITECTURE : on ne crée PLUS de lands free en DB. Les lands free
+      // sont juste un repère visuel client-side (window._recentExploredHexes).
+      // Une land n'existe en DB que si elle est rented ou owned. Donc :
+      // - Si la land existe (owned/rented) : on enregistre le passage + crédit
+      // - Si la land n'existe pas (free) : SKIP (zéro impact game)
+      var lr=await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=id,stars,owner_id,tenant_id,monthly_revenue',{
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
       });
       var lj=await lr.json();
-      if(!lj||!lj.length){
-        var ll=h3.cellToLatLng(hexId);
-        await fetch(supabaseUrl+'/rest/v1/lands',{
-          method:'POST',
-          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify({id:hexId,hex_col:Math.round(ll[1]*10000),hex_row:Math.round(ll[0]*10000),status:'free',stars:0})
-        });
-      }
+      var land=(lj&&lj[0])||null;
+      if(!land) continue; // land free / pas en DB → skip
       // Passage déjà fait aujourd'hui ?
       var pr=await fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(hexId)+'&player_id=eq.'+encodeURIComponent(currentUser.id)+'&passage_date=eq.'+today+'&select=id',{
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
       });
       var pj=await pr.json();
       if(!pj||!pj.length){
-        var land=(lj&&lj[0])||null;
-        var rpcEarned=[3,6,9,12][(land?land.stars:0)||0];
+        var rpcEarned=[3,6,9,12][(land.stars||0)];
         await fetch(supabaseUrl+'/rest/v1/land_passages',{
           method:'POST',
           headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
           body:JSON.stringify({land_id:hexId,player_id:currentUser.id,passage_date:today,rpc_earned:rpcEarned})
         });
-        // La land a un propriétaire/locataire → on crédite + on incrémente le rendement.
-        // Le propriétaire qui passe sur son propre land est aussi crédité (récompense
-        // d'investissement : courir sur ses lands rapporte).
-        var landOwner=land?(land.owner_id||land.tenant_id):null;
+        // Crédit du propriétaire/locataire (y compris soi-même).
+        var landOwner=land.owner_id||land.tenant_id;
         if(landOwner){
           if(landOwner===currentUser.id){
             if(typeof walletCredit==='function') await walletCredit(rpcEarned,0,'Passage Land '+hexId.substring(0,8));
@@ -11354,11 +11647,7 @@ async function saveCapturedRun(captured, runName){
           }
           totalRpcLand+=rpcEarned;
           try{
-            var revResp=await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId)+'&select=monthly_revenue',{
-              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
-            });
-            var revData=await revResp.json();
-            var curRev=(revData&&revData[0]&&revData[0].monthly_revenue)||0;
+            var curRev=(land.monthly_revenue||0);
             await fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(hexId),{
               method:'PATCH',
               headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
@@ -11393,7 +11682,7 @@ async function saveCapturedRun(captured, runName){
   }catch(e){console.warn('streak trigger after run fail',e);}
 
   // 6. Trigger récompense parrainage : 1ère course du filleul → le parrain
-  //    empoche 2000 RPC + 2 NYX. Idempotent (checkReferralReward vérifie
+  //    empoche 2000 RPC + 5 NYX. Idempotent (checkReferralReward vérifie
   //    l'existence en BDD avant d'insérer).
   try{
     if(typeof checkReferralReward==='function') checkReferralReward('first_run');
@@ -13144,7 +13433,7 @@ function _countCapitals(runs,caps){
       if(!pts.length)return;
       var start=pts[0];
       for(var i=0;i<caps.length;i++){
-        if(_haversineKm(start[0],start[1],caps[i].lat,caps[i].lng)<=25){visited.add(caps[i].name);break;}
+        if(_haversineKm(start[0],start[1],caps[i].lat,caps[i].lng)<=10){visited.add(caps[i].name);break;}
       }
     }catch(e){}
   });
@@ -13615,6 +13904,28 @@ function toggleChallenges(){
   }
 }
 
+// Description lisible du défi à accomplir pour débloquer un badge.
+// Utilise threshold_type + threshold_value du catalogue.
+function _badgeChallengeDescription(b){
+  var v=b.threshold_value||0;
+  var fmt=function(n){return Number.isInteger(n)?n.toLocaleString('fr'):n;};
+  switch(b.threshold_type){
+    case 'single_run_km':     return 'Parcourir <strong style="color:'+(b.color||'#f5c842')+'">'+fmt(v)+' km</strong> en une seule course';
+    case 'cumul_km':          return 'Cumuler <strong style="color:'+(b.color||'#f5c842')+'">'+fmt(v)+' km</strong> au total';
+    case 'single_run_elv_m':  return 'Faire <strong style="color:'+(b.color||'#f5c842')+'">+'+fmt(v)+' m</strong> de dénivelé en une seule course';
+    case 'cumul_elv_m':       return 'Cumuler <strong style="color:'+(b.color||'#f5c842')+'">'+fmt(v)+' m</strong> de dénivelé au total';
+    case 'speed_over_5km':    return 'Atteindre <strong style="color:'+(b.color||'#f5c842')+'">'+v+' km/h</strong> de moyenne sur ≥ 5 km';
+    case 'streak_days':       return 'Courir <strong style="color:'+(b.color||'#f5c842')+'">'+v+' jours</strong> consécutifs';
+    case 'simultaneous_lands':return 'Posséder <strong style="color:'+(b.color||'#f5c842')+'">'+v+' Lands</strong> simultanément (loc/prop) en moins de 60 min';
+    case 'capitals_fr':       return 'Courir au départ de <strong style="color:'+(b.color||'#f5c842')+'">'+v+' préfectures</strong> françaises différentes';
+    case 'capitals_eu':       return 'Courir au départ de <strong style="color:'+(b.color||'#f5c842')+'">'+v+' capitales</strong> européennes différentes';
+    case 'night_runs':        return 'Faire <strong style="color:'+(b.color||'#f5c842')+'">'+v+' courses</strong> entre 22h et 4h';
+    case 'morning_runs':      return 'Faire <strong style="color:'+(b.color||'#f5c842')+'">'+v+' courses</strong> entre 4h et 7h';
+    case 'event_run':         return 'Participer à l\'événement à la date prévue';
+    default:                  return '';
+  }
+}
+
 function showBadgeDetail(badgeId){
   if(!_badgesCatalog) return;
   var b=_badgesCatalog.find(function(x){return x.id===badgeId;});
@@ -13623,6 +13934,7 @@ function showBadgeDetail(badgeId){
   var rewards=[];
   if(b.reward_rpc) rewards.push('+'+b.reward_rpc.toLocaleString('fr')+' RPC');
   if(b.reward_nyx) rewards.push('+'+b.reward_nyx+' 💎 NYX');
+  var challengeTxt=_badgeChallengeDescription(b);
   document.getElementById('lm-title').textContent='🎖️ '+(b.name||'Badge');
   document.getElementById('lm-sub').textContent='';
   document.getElementById('lm-body').innerHTML=''
@@ -13635,7 +13947,8 @@ function showBadgeDetail(badgeId){
     +'    <div style="position:absolute;font-size:2.6rem">'+(b.icon||'🏆')+'</div>'
     +'  </div>'
     +'  <div style="font-size:.85rem;color:var(--text);margin-bottom:.4rem">'+(b.tagline||'')+'</div>'
-    +(rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.82rem;color:var(--gold);margin-top:.4rem">Récompense : '+rewards.join(' · ')+'</div>':'')
+    +(challengeTxt?'<div style="font-size:.78rem;color:var(--muted2);margin-top:.6rem;padding:.55rem .7rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;line-height:1.5">🎯 '+challengeTxt+'</div>':'')
+    +(rewards.length?'<div style="font-family:Space Mono,monospace;font-size:.82rem;color:var(--gold);margin-top:.6rem">Récompense : '+rewards.join(' · ')+'</div>':'')
     +'  <button onclick="closeModal(\'land-modal\')" style="margin-top:1rem;padding:.45rem 1.2rem;border-radius:7px;border:1.5px solid '+color+';background:'+color+'20;color:'+color+';font-weight:700;font-size:.78rem;cursor:pointer">Fermer</button>'
     +'</div>';
   openModal('land-modal');
