@@ -2409,7 +2409,7 @@ function askConfirm(message, opts){
     <div id="prc-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin:.8rem 0"></div>
     <div id="prc-rank-line" style="text-align:center;padding:.55rem;border-radius:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);margin-bottom:.7rem;font-size:.82rem;color:var(--text)"></div>
     <div id="prc-league-result" style="text-align:center;padding:.7rem .55rem;border-radius:9px;margin-bottom:1rem;font-size:.85rem;font-weight:600;line-height:1.4"></div>
-    <button onclick="closePeriodRecap()" style="width:100%;padding:.65rem;border-radius:8px;border:1.5px solid var(--gold);background:linear-gradient(175deg,rgba(245,200,66,.22),rgba(200,160,20,.12));color:var(--gold);font-weight:700;font-size:.88rem;cursor:pointer;letter-spacing:.3px">Continuer</button>
+    <button onclick="closePeriodRecap()" style="width:100%;padding:.65rem;border-radius:8px;border:1.5px solid var(--green);background:linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12));color:var(--green);font-weight:700;font-size:.88rem;cursor:pointer;letter-spacing:.3px">Continuer</button>
   </div>
 </div>
 
@@ -3422,7 +3422,12 @@ async function onLoginSuccess(user, isNew){
   var {data:runs}=await supabaseClient.from('runs').select('points').eq('player_id',user.id).eq('period',0);
   if(window.__myPlayer){
     var pts=(runs||[]).reduce(function(s,r){return s+(r.points||0);},0);
-    window.__myPlayer.pts=pts; window.__myPlayer.ptsCum=pts;
+    // Pour les Starters, on affiche le cumul lifetime (DB + période courante)
+    // pour la barre de progression vers les 500 pts qui sortent de la zone.
+    var _isStarterMe=((window.__myPlayer.leagueKey||'starter').toLowerCase()==='starter');
+    var _myPtsCumDb=pd?(pd.pts_cumulated||0):0;
+    window.__myPlayer.pts=_isStarterMe?(_myPtsCumDb+pts):pts;
+    window.__myPlayer.ptsCum=_myPtsCumDb+pts;
     window.__myPlayer.km=Math.round(pts/8); window.__myPlayer.courses=(runs||[]).length;
     // Montée libre en calibrage : si Starter et ≥ 500 pts cumulés (toutes périodes
     // confondues), promotion. Les pts Starter ne se remettent JAMAIS à zéro pour
@@ -3441,7 +3446,16 @@ async function onLoginSuccess(user, isNew){
         var curIdx=LEAGUES.findIndex(function(l){return l.key===curLk;});
         var tgtIdx=LEAGUES.findIndex(function(l){return l.key===targetLg.key;});
         if(tgtIdx>curIdx){
-          await supabaseClient.from('players').update({league:targetLg.key}).eq('id',user.id);
+          // Promotion auto en cours de période : on enregistre calibration_period
+          // = période SUIVANTE UNIQUEMENT si on sort de Starter (= 1ère entrée
+          // en calibrage). La période suivante sera leur 1ère période complète
+          // de calibrage. Sinon c'est juste un changement de league interne au
+          // calibrage, on ne touche pas (sinon on prolonge artificiellement).
+          var _patchData={league:targetLg.key};
+          if(curLk==='starter' && _periodData && _periodData.period){
+            _patchData.calibration_period=_periodData.period+1;
+          }
+          await supabaseClient.from('players').update(_patchData).eq('id',user.id);
           window.__myPlayer.leagueKey=targetLg.key;
         }
       }
@@ -3536,7 +3550,7 @@ async function loadPlayersFromSupabase(){
   // 1. Charger tous les joueurs
   const { data: playersData, error: playersErr } = await supabaseClient
     .from('players')
-    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods');
+    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods,pts_cumulated');
 
   if(playersErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur players : ' + playersErr.message + '</div>';
@@ -3580,6 +3594,12 @@ async function loadPlayersFromSupabase(){
     if(!LEAGUES.find(function(l){ return l.key === leagueKey; })){
       leagueKey = 'starter';
     }
+    // Pour les Starters, on affiche le cumul lifetime (pts_cumulated + pts période)
+    // au lieu des seuls pts période — sinon après chaque rotation ils tombent à 0
+    // et perdent leur progression vers les 500 pts qui les sortent de la zone.
+    var _isStarter=(leagueKey==='starter');
+    var _ptsCumDb=p.pts_cumulated||0;
+    var _displayPts=_isStarter ? (_ptsCumDb+pts) : pts;
     return {
       id       : idCounter++,
       _uuid    : p.id,
@@ -3587,8 +3607,8 @@ async function loadPlayersFromSupabase(){
       nat      : p.nat  || '🏳️',
       grade    : p.grade || 'debutant',
       leagueKey: leagueKey,
-      pts      : pts,
-      ptsCum   : Math.round(pts * (1 + Math.random() * 3)),
+      pts      : _displayPts,
+      ptsCum   : _ptsCumDb+pts,
       km       : Math.round(pts / 8),
       courses  : courses || Math.max(1, Math.round(pts / 400)),
       source   : 'strava',
@@ -7686,10 +7706,24 @@ var _periodProcessing=false;
 async function processEndOfPeriod(){
   if(_periodProcessing){console.warn('[PERIOD] Déjà en cours, ignoré');return;}
   _periodProcessing=true;
+  try {
+    return await _processEndOfPeriodInner();
+  } catch(eRot){
+    console.error('[rotation] exception non rattrapée :', eRot);
+    var _msgErr=document.getElementById('admin-period-msg');
+    if(_msgErr) _msgErr.innerHTML='<span style="color:var(--red)">❌ Erreur rotation — voir console</span>';
+  } finally {
+    // Garantit que le flag est libéré même si tout plante : permet de
+    // relancer la rotation manuellement après diagnostic.
+    _periodProcessing=false;
+  }
+}
+
+async function _processEndOfPeriodInner(){
   var msg=document.getElementById('admin-period-msg');
 
   // 1. Charger tous les joueurs avec leurs points
-  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt');
+  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period');
   var {data:allRuns}=await supabaseClient.from('runs').select('player_id,points').eq('period',0);
   if(!allPlayers||!allRuns){return;}
 
@@ -7763,19 +7797,29 @@ async function processEndOfPeriod(){
   }
 
   // 5b. Passage en compétition
-  // Les RP qui ont fait 1 période complète en league (hors Starter) et sont encore competitive=false → passent à true
-  // Logique : si le RP est en league (pas Starter) et competitive=false, il vient de finir sa période de calibrage
+  // Un RP en calibrage (competitive=false, hors Starter) passe compétitif
+  // UNIQUEMENT s'il a complété au moins 1 période COMPLÈTE en calibrage.
+  // On utilise calibration_period (numéro de période où il est entré en
+  // calibrage) : si calibration_period < période courante (qui se termine),
+  // alors la période de calibrage est terminée → on peut le passer compétitif.
+  // Sinon (RP juste arrivé en calibrage durant cette période) il garde son
+  // calibrage pour la période suivante.
   for(var ci=0;ci<ranked.length;ci++){
     var cp=ranked[ci];
     var cpFull=allPlayers.find(function(x){return x.id===cp.id;})||{};
     var cpInInf=cpFull.infirmerie_until && new Date(cpFull.infirmerie_until)>new Date();
     if(cpInInf) continue; // en infirmerie → on touche à rien
     if(!cp.competitive && (cp.league||'starter').toLowerCase()!=='starter'){
-      // Check : passe compétitif uniquement si pts >= seuil min de sa league
-      // (sinon reste en R/calibrage). Gère calibrage normal ET reprise post-infirmerie.
+      var cpCalibPeriod=cpFull.calibration_period;
+      // Sémantique : calibration_period = numéro de la période durant laquelle
+      // le RP doit faire son calibrage complet. À la rotation, si la période
+      // qui se termine (= _periodData.period avant incrémentation) est >= à
+      // calibration_period, alors le calibrage est terminé → compétitif.
+      if(cpCalibPeriod===null||cpCalibPeriod===undefined||cpCalibPeriod>_periodData.period) continue;
+      // Period complète terminée + pts >= seuil min de sa league → compétitif
       var cpLg=LEAGUES.find(function(l){return l.key===(cp.league||'').toLowerCase();});
       if(cpLg && cp.pts>=(cpLg.min||0)){
-        await supabaseClient.from('players').update({competitive:true}).eq('id',cp.id);
+        await supabaseClient.from('players').update({competitive:true,calibration_period:null}).eq('id',cp.id);
       }
     }
   }
@@ -7803,8 +7847,8 @@ async function processEndOfPeriod(){
       if(newConsecutiveZero>=2){
         // 2ème période consécutive 0 pt → retour Starter
         targetKey='starter';
-        // competitive reset (retour calibrage)
-        await supabaseClient.from('players').update({competitive:false}).eq('id',rp.id);
+        // competitive reset + calibration_period reset (retour zone Starter pure)
+        await supabaseClient.from('players').update({competitive:false,calibration_period:null}).eq('id',rp.id);
       } else {
         // 1ère période 0 pt → descente -1 league + invisible
         if(currentIdx>0){
@@ -7849,14 +7893,18 @@ async function processEndOfPeriod(){
   // On interroge les pts lifetime via runs car la période courante a été archivée
   // juste avant — se baser sur sp.pts (période 0 archivée) ignorerait les pts
   // accumulés sur les périodes précédentes d'un petit coureur.
+  // À la sortie de Starter on enregistre calibration_period = nouvelle période
+  // (= la période suivante, qui sera leur 1ère période de calibrage). Ainsi à
+  // la rotation suivante l'étape 5b ne les passera PAS encore en compétitif.
   if(byLeague['starter']){
+    var _newCalibPeriod=_periodData.period+1; // la période qui démarre après cette rotation
     for(var si=0;si<byLeague['starter'].length;si++){
       var sp=byLeague['starter'][si];
       var {data:lifeRuns}=await supabaseClient.from('runs').select('points').eq('player_id',sp.id);
       var lifePts=(lifeRuns||[]).reduce(function(s,r){return s+(r.points||0);},0);
       if(lifePts>=500){
         var tg=LEAGUES.slice().reverse().find(function(l){return lifePts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
-        if(tg) await supabaseClient.from('players').update({league:tg.key}).eq('id',sp.id);
+        if(tg) await supabaseClient.from('players').update({league:tg.key,competitive:false,calibration_period:_newCalibPeriod}).eq('id',sp.id);
       }
     }
   }
@@ -7976,52 +8024,38 @@ async function processEndOfPeriod(){
     }
   }
 
-  // 10. Sauvegarder les stats cumulées AVANT de supprimer les runs
-  var {data:allRunsDetailed}=await supabaseClient.from('runs').select('player_id,points,distance,time,elevation').eq('period',0);
-  var cumByPlayer={};
-  (allRunsDetailed||[]).forEach(function(r){
-    if(!cumByPlayer[r.player_id]) cumByPlayer[r.player_id]={pts:0,km:0,time:0,elv:0,runs:0};
-    var c=cumByPlayer[r.player_id];
-    c.pts+=(r.points||0);
-    c.km+=(r.distance||0);
-    c.time+=(r.time||0);
-    c.elv+=(r.elevation||0);
-    c.runs++;
-  });
-  for(var cumPid in cumByPlayer){
-    var c=cumByPlayer[cumPid];
-    // Charger les cumulés existants et ajouter
-    var {data:existing}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated').eq('id',cumPid).single();
-    if(existing){
-      await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(cumPid),{
-        method:'PATCH',
-        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-        body:JSON.stringify({
-          pts_cumulated:(existing.pts_cumulated||0)+c.pts,
-          km_cumulated:(existing.km_cumulated||0)+c.km,
-          elv_cumulated:(existing.elv_cumulated||0)+c.elv,
-          time_cumulated:(existing.time_cumulated||0)+c.time,
-          runs_cumulated:(existing.runs_cumulated||0)+c.runs
-        })
-      });
-    }
-  }
+  // 10. Archiver les runs (marquer avec le numéro de période).
+  // BUG FIX 2026-04-26 : `period` n'était jamais défini (var manquante depuis
+  // l'origine). On utilise _periodData.period qui contient bien le numéro de
+  // la période qui se termine (avant incrémentation §13).
+  try {
+    await window.fetch(supabaseUrl+'/rest/v1/runs?period=eq.0',{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({period:_periodData.period})
+    });
+  } catch(eArch){ console.error('[rotation] archive runs :', eArch); }
 
-  // 11. Archiver les runs (marquer avec le numéro de période) au lieu de supprimer
-  await window.fetch(supabaseUrl+'/rest/v1/runs?period=eq.0',{
-    method:'PATCH',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({period:period})
-  });
+  // 11. Recalculer les stats cumulées via la fonction Postgres SECURITY DEFINER
+  //     (bypass RLS — l'ancien code PATCH cross-user plantait systématiquement
+  //     en 400 sur les autres joueurs). Doit s'exécuter APRÈS l'archivage des
+  //     runs (sinon les runs de la période qui vient de se clore ne sont pas
+  //     encore en period >= 1 et donc pas comptés dans les cumulés).
+  try {
+    await supabaseClient.rpc('refresh_cumulated_from_runs');
+  } catch(eRpc){ console.error('[rotation] refresh_cumulated_from_runs :', eRpc); }
 
   // 12. Reset rendement mensuel des lands
-  await window.fetch(supabaseUrl+'/rest/v1/lands?status=neq.free',{
-    method:'PATCH',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({monthly_revenue:0})
-  });
+  try {
+    await window.fetch(supabaseUrl+'/rest/v1/lands?status=neq.free',{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({monthly_revenue:0})
+    });
+  } catch(eLand){ console.error('[rotation] reset rendement lands :', eLand); }
 
-  // 11. Incrémenter la période
+  // 13. Incrémenter la période — CRITIQUE. Si l'un des 3 updates plante, on
+  //     log mais on continue (la rotation peut être finalisée manuellement).
   var newPeriod=_periodData.period+1;
   var now=getParisDate();
   // Prochain mois, minuit heure de Paris
@@ -8031,9 +8065,12 @@ async function processEndOfPeriod(){
   var nextStart=new Date(nextStartParis.toLocaleString('en-US',{timeZone:'Europe/Paris'}));
   var nextEnd=new Date(nextEndParis.toLocaleString('en-US',{timeZone:'Europe/Paris'}));
 
-  await supabaseClient.from('game_settings').update({value:String(newPeriod)}).eq('key','current_period');
-  await supabaseClient.from('game_settings').update({value:nextStart.toISOString()}).eq('key','period_start');
-  await supabaseClient.from('game_settings').update({value:nextEnd.toISOString()}).eq('key','period_end');
+  try { await supabaseClient.from('game_settings').update({value:String(newPeriod)}).eq('key','current_period'); }
+  catch(e){ console.error('[rotation] update current_period :', e); }
+  try { await supabaseClient.from('game_settings').update({value:nextStart.toISOString()}).eq('key','period_start'); }
+  catch(e){ console.error('[rotation] update period_start :', e); }
+  try { await supabaseClient.from('game_settings').update({value:nextEnd.toISOString()}).eq('key','period_end'); }
+  catch(e){ console.error('[rotation] update period_end :', e); }
 
   _periodData.period=newPeriod;
   _periodData.start=nextStart.toISOString();
@@ -8049,7 +8086,7 @@ async function processEndOfPeriod(){
   if(typeof renderHistory==='function') renderHistory();
 
   if(msg) msg.innerHTML='<span style="color:var(--green)">✓ P'+(newPeriod-1)+' traitée — P'+newPeriod+' démarrée</span>';
-  _periodProcessing=false;
+  // _periodProcessing reset dans le finally du wrapper processEndOfPeriod()
 }
 
 // ── Popup récap fin de période ────────────────────────────────────────
@@ -8115,15 +8152,20 @@ async function renderPeriodRecap(player, closedPeriod, opts){
   }
   // 3. Fenêtre de la période :
   //    - mode test : depuis le 1er du mois courant (badges/RPC gagnés "cette période")
-  //    - prod : entre le 1er du mois précédent et le 1er du mois courant
+  //    - prod : entre period_start - 1 mois et period_start
+  //      (period_start = début de la NOUVELLE période courante = fin de la
+  //      période close. Plus fiable que `now` qui peut différer si la rotation
+  //      a été déclenchée manuellement avant la fin du mois.)
   var nowParis=new Date();
   var fromIso, toIso;
   if(opts.testMode){
     fromIso=new Date(nowParis.getFullYear(),nowParis.getMonth(),1).toISOString();
     toIso=new Date(nowParis.getFullYear(),nowParis.getMonth()+1,1).toISOString();
   } else {
-    fromIso=new Date(nowParis.getFullYear(),nowParis.getMonth()-1,1).toISOString();
-    toIso=new Date(nowParis.getFullYear(),nowParis.getMonth(),1).toISOString();
+    var _psDate=new Date(_periodData.start);
+    toIso=_psDate.toISOString();
+    var _psBefore=new Date(_psDate); _psBefore.setMonth(_psBefore.getMonth()-1);
+    fromIso=_psBefore.toISOString();
   }
   var {data:newBadges}=await supabaseClient.from('player_badges')
     .select('badge_id,earned_at')
@@ -8141,13 +8183,24 @@ async function renderPeriodRecap(player, closedPeriod, opts){
   var rpcGained=(walletGains||[]).reduce(function(s,t){return s+(t.rpc_delta||0);},0);
 
   // 4. Construction du popup
-  // Libellé du mois : en mode test = mois courant, en prod = mois précédent
-  // (= le mois qui vient de se clore au moment de la rotation).
+  // Libellé du mois : en mode test = mois courant, en prod = mois de la
+  // période close (= mois précédent du period_start, calculé en heure Paris
+  // pour éviter les décalages timezone autour du 1er du mois).
   var _monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  var _monthDate=opts.testMode
-    ? new Date(nowParis.getFullYear(), nowParis.getMonth(), 1)
-    : new Date(nowParis.getFullYear(), nowParis.getMonth()-1, 1);
-  var _monthLabel=_monthNames[_monthDate.getMonth()]+' '+_monthDate.getFullYear();
+  var _monthLabel;
+  if(opts.testMode){
+    _monthLabel=_monthNames[nowParis.getMonth()]+' '+nowParis.getFullYear();
+  } else {
+    var _psParts=new Intl.DateTimeFormat('en-US',{timeZone:'Europe/Paris',year:'numeric',month:'numeric'}).formatToParts(new Date(_periodData.start));
+    var _psY=2026,_psM=1;
+    _psParts.forEach(function(p){
+      if(p.type==='year') _psY=parseInt(p.value,10);
+      if(p.type==='month') _psM=parseInt(p.value,10);
+    });
+    var _closedM=_psM-1, _closedY=_psY;
+    if(_closedM<1){ _closedM=12; _closedY--; }
+    _monthLabel=_monthNames[_closedM-1]+' '+_closedY;
+  }
   if(opts.testMode){
     document.getElementById('prc-title').textContent='🧪 Test : Période '+(_periodData.period)+' — '+_monthLabel+' (en cours)';
     document.getElementById('prc-sub').textContent='Aperçu — données live de la période courante';
