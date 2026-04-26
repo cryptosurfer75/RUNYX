@@ -2391,10 +2391,27 @@ function askConfirm(message, opts){
     }
     ok.onclick = function(){ done(true); };
     cancel.onclick = function(){ done(false); };
+    // singleAction : popup info-only (un seul bouton OK, cancel masqué)
+    cancel.style.display = opts.singleAction ? 'none' : '';
     modal.classList.add('open');
   });
 }
 </script>
+
+<!-- Modal Récap Fin de Période — affiché à la 1ère connexion après rotation -->
+<div class="modal" id="period-recap-modal" style="z-index:600">
+  <div class="modal-box" style="max-width:460px">
+    <div style="text-align:center;margin-bottom:.6rem">
+      <div style="font-size:2.4rem;line-height:1">🏁</div>
+      <div id="prc-title" class="modal-title" style="text-align:center;margin-top:.2rem">Période terminée !</div>
+      <div id="prc-sub" class="modal-sub" style="text-align:center">Voici ton bilan du mois</div>
+    </div>
+    <div id="prc-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin:.8rem 0"></div>
+    <div id="prc-rank-line" style="text-align:center;padding:.55rem;border-radius:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);margin-bottom:.7rem;font-size:.82rem;color:var(--text)"></div>
+    <div id="prc-league-result" style="text-align:center;padding:.7rem .55rem;border-radius:9px;margin-bottom:1rem;font-size:.85rem;font-weight:600;line-height:1.4"></div>
+    <button onclick="closePeriodRecap()" style="width:100%;padding:.65rem;border-radius:8px;border:1.5px solid var(--gold);background:linear-gradient(175deg,rgba(245,200,66,.22),rgba(200,160,20,.12));color:var(--gold);font-weight:700;font-size:.88rem;cursor:pointer;letter-spacing:.3px">Continuer</button>
+  </div>
+</div>
 
 <!-- Modal Validation Loyer Mensuel -->
 <div class="modal" id="rent-validation-modal">
@@ -2621,6 +2638,7 @@ function askConfirm(message, opts){
           <button onclick="adminSimulateEndPeriod()" style="padding:.45rem .8rem;border-radius:6px;border:1.5px solid rgba(255,96,32,.6);background:rgba(255,96,32,.08);color:#ff8040;font-weight:700;font-size:.78rem;cursor:pointer">⚠️ Simuler fin de période</button>
           <button onclick="adminSetPeriodEnd(5)" style="padding:.45rem .8rem;border-radius:6px;border:1px solid var(--orange);background:rgba(255,96,32,.08);color:var(--orange);font-weight:700;font-size:.72rem;cursor:pointer">⏩ Fin dans 5 min</button>
           <button onclick="adminSetPeriodEnd(1)" style="padding:.45rem .8rem;border-radius:6px;border:1px solid var(--orange);background:rgba(255,96,32,.08);color:var(--orange);font-weight:700;font-size:.72rem;cursor:pointer">⏩ Fin dans 1 min</button>
+          <button onclick="adminTestPeriodRecap()" style="padding:.45rem .8rem;border-radius:6px;border:1px solid var(--gold);background:rgba(245,200,66,.08);color:var(--gold);font-weight:700;font-size:.72rem;cursor:pointer">🧪 Tester popup récap</button>
         </div>
         <div id="admin-period-msg" style="font-size:.72rem;margin-top:.4rem;min-height:1rem"></div>
       </div>
@@ -3484,6 +3502,11 @@ async function onLoginSuccess(user, isNew){
   // Loyer mensuel lands — vérifier et débiter le 5 du mois
   if(typeof processMonthlyRent==='function'){
     setTimeout(function(){ processMonthlyRent(); }, 2000);
+  }
+  // Récap fin de période — afficher si le RP n'a pas vu la dernière rotation.
+  // Délai 1500ms : on attend que loadPeriodSettings ait peuplé _periodData.
+  if(typeof checkAndShowPeriodRecap==='function'){
+    setTimeout(function(){ checkAndShowPeriodRecap(); }, 1500);
   }
   // Vérifier les notifications sociales
   if(typeof checkSocialNotifs==='function'){
@@ -6429,7 +6452,7 @@ async function showLandDetail(landId){
     +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
     +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
     +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
-    +'Passages ce mois : <strong style="color:var(--cyan)">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
+    +'Passages ce mois : <strong onclick="showLandPassersList(\''+landId+'\')" style="color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
     +'Rendement ce mois : <strong style="color:var(--gold)">'+(land.monthly_revenue||0).toLocaleString('fr')+' RPC</strong>'
   +'</div>';
 
@@ -6487,6 +6510,43 @@ async function showLandDetail(landId){
   document.getElementById('lm-sub').textContent='Détail de la Land';
   document.getElementById('lm-body').innerHTML=body;
   openModal('land-modal');
+}
+
+// Affiche la liste des RPs qui sont passés sur une Land ce mois-ci,
+// triée par nombre de passages décroissant. Cliquable depuis le détail Land.
+async function showLandPassersList(landId){
+  try{
+    var _now=new Date();
+    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0,10);
+    var _resp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_firstOfMonth+'&select=player_id',{
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
+    });
+    var _list=await _resp.json();
+    if(!Array.isArray(_list)||_list.length===0){
+      askConfirm('Aucun RP n\'est encore passé ce mois-ci.',{title:'Passages ce mois',emoji:'🚶',okLabel:'OK',singleAction:true});
+      return;
+    }
+    var counts={};
+    _list.forEach(function(p){ if(p.player_id) counts[p.player_id]=(counts[p.player_id]||0)+1; });
+    var ids=Object.keys(counts);
+    var {data:players}=await supabaseClient.from('players').select('id,username,nat').in('id',ids);
+    var byId={}; (players||[]).forEach(function(p){ byId[p.id]=p; });
+    var rows=ids.map(function(id){
+      var p=byId[id]||{username:'(inconnu)',nat:''};
+      return {username:p.username, nat:p.nat||'', count:counts[id]};
+    }).sort(function(a,b){ return b.count-a.count; });
+    var html='<div style="display:flex;flex-direction:column;gap:.4rem;max-height:320px;overflow-y:auto;text-align:left">';
+    rows.forEach(function(r){
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .65rem;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid var(--border2)">'
+        +'<span style="font-size:.82rem;color:var(--text)">'+natFlag(r.nat)+' '+r.username+'</span>'
+        +'<strong style="color:var(--cyan);font-family:Space Mono,monospace;font-size:.85rem">'+r.count+'×</strong>'
+        +'</div>';
+    });
+    html+='</div>';
+    askConfirm(html,{title:'Passages ce mois',emoji:'🚶',okLabel:'Fermer',singleAction:true});
+  }catch(e){
+    showToast('⚠️ Erreur chargement');
+  }
 }
 
 async function rentLand(landId){
@@ -7776,6 +7836,11 @@ async function processEndOfPeriod(){
     if(targetKey!==currentLk) updates.league=targetKey;
     if(newConsecutiveZero!==(rpFull.consecutive_zero_periods||0)) updates.consecutive_zero_periods=newConsecutiveZero;
     if(newVisible!==(rpFull.is_visible!==false)) updates.is_visible=newVisible;
+    // Snapshot de l'ancienne league pour le popup récap fin de période :
+    // on stocke TOUJOURS la league courante (même si pas de changement) afin
+    // que le popup puisse comparer previous_league vs league et afficher
+    // "tu montes / tu descends / tu te maintiens".
+    updates.previous_league=currentLk;
     if(Object.keys(updates).length>0){
       await supabaseClient.from('players').update(updates).eq('id',rp.id);
     }
@@ -7900,6 +7965,15 @@ async function processEndOfPeriod(){
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
       body:JSON.stringify(patchData2)
     });
+    // Audit wallet_tx pour les bonus Premium (sinon invisibles dans le récap & historique)
+    if(_bpPrem){
+      await supabaseClient.from('wallet_tx').insert({
+        player_id:_bp.id,
+        rpc_delta:20000,
+        nyx_delta:20,
+        reason:'Bonus mensuel Premium P'+_periodData.period
+      });
+    }
   }
 
   // 10. Sauvegarder les stats cumulées AVANT de supprimer les runs
@@ -7976,6 +8050,200 @@ async function processEndOfPeriod(){
 
   if(msg) msg.innerHTML='<span style="color:var(--green)">✓ P'+(newPeriod-1)+' traitée — P'+newPeriod+' démarrée</span>';
   _periodProcessing=false;
+}
+
+// ── Popup récap fin de période ────────────────────────────────────────
+// Affiché à la 1ère connexion d'un RP après une rotation de période.
+// Détection : on compare players.last_period_seen au current_period.
+// Si décalage → on calcule le bilan du joueur sur la période juste close
+// et on affiche le popup. Au close, on patche last_period_seen pour ne
+// plus le réafficher.
+async function checkAndShowPeriodRecap(){
+  if(!currentUser) return;
+  if(!_periodData||!_periodData.period) return;
+  // Re-fetch le player pour avoir last_period_seen + previous_league à jour
+  var {data:p}=await supabaseClient.from('players')
+    .select('id,username,league,previous_league,last_period_seen')
+    .eq('id',currentUser.id).maybeSingle();
+  if(!p) return;
+  var current=_periodData.period;
+  var lastSeen=p.last_period_seen||0;
+
+  // Cas 1 : nouveau RP (jamais init) → on aligne sans afficher le popup
+  if(lastSeen===0){
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(p.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({last_period_seen:current})
+    });
+    return;
+  }
+  // Cas 2 : déjà à jour (a déjà vu le récap de la dernière période)
+  if(lastSeen>=current) return;
+  // Cas 3 : décalage → afficher le récap de la dernière période close (current-1)
+  await renderPeriodRecap(p, current-1);
+}
+
+async function renderPeriodRecap(player, closedPeriod, opts){
+  opts=opts||{};
+  // En mode test, on tolère closedPeriod=0 (= période courante) pour pouvoir
+  // afficher le popup même sans rotation préalable. En prod, on refuse.
+  if(closedPeriod<1 && !opts.testMode) return;
+  // 1. Stats du joueur sur la période close (depuis runs archivés period=closedPeriod)
+  var {data:myRuns}=await supabaseClient.from('runs')
+    .select('points,distance,time,elevation')
+    .eq('player_id',player.id).eq('period',closedPeriod);
+  var pts=0,km=0,elv=0,nb=0;
+  (myRuns||[]).forEach(function(r){
+    pts+=(r.points||0); km+=(r.distance||0);
+    elv+=(r.elevation||0); nb++;
+  });
+  // 2. Classement global (tous les RP ayant participé à cette période)
+  var {data:allRuns}=await supabaseClient.from('runs')
+    .select('player_id,points').eq('period',closedPeriod);
+  var ptsByPlayer={};
+  (allRuns||[]).forEach(function(r){
+    ptsByPlayer[r.player_id]=(ptsByPlayer[r.player_id]||0)+(r.points||0);
+  });
+  var ranked=Object.keys(ptsByPlayer)
+    .map(function(pid){return {id:pid,pts:ptsByPlayer[pid]};})
+    .filter(function(x){return x.pts>0;})
+    .sort(function(a,b){return b.pts-a.pts;});
+  var myRank=0;
+  for(var i=0;i<ranked.length;i++){
+    if(ranked[i].id===player.id){ myRank=i+1; break; }
+  }
+  // 3. Fenêtre de la période :
+  //    - mode test : depuis le 1er du mois courant (badges/RPC gagnés "cette période")
+  //    - prod : entre le 1er du mois précédent et le 1er du mois courant
+  var nowParis=new Date();
+  var fromIso, toIso;
+  if(opts.testMode){
+    fromIso=new Date(nowParis.getFullYear(),nowParis.getMonth(),1).toISOString();
+    toIso=new Date(nowParis.getFullYear(),nowParis.getMonth()+1,1).toISOString();
+  } else {
+    fromIso=new Date(nowParis.getFullYear(),nowParis.getMonth()-1,1).toISOString();
+    toIso=new Date(nowParis.getFullYear(),nowParis.getMonth(),1).toISOString();
+  }
+  var {data:newBadges}=await supabaseClient.from('player_badges')
+    .select('badge_id,earned_at')
+    .eq('player_id',player.id)
+    .gte('earned_at',fromIso)
+    .lt('earned_at',toIso);
+  var nbBadges=(newBadges||[]).length;
+  // 3b. RPC total gagné sur la période (somme des wallet_tx positifs)
+  var {data:walletGains}=await supabaseClient.from('wallet_tx')
+    .select('rpc_delta,created_at')
+    .eq('player_id',player.id)
+    .gt('rpc_delta',0)
+    .gte('created_at',fromIso)
+    .lt('created_at',toIso);
+  var rpcGained=(walletGains||[]).reduce(function(s,t){return s+(t.rpc_delta||0);},0);
+
+  // 4. Construction du popup
+  // Libellé du mois : en mode test = mois courant, en prod = mois précédent
+  // (= le mois qui vient de se clore au moment de la rotation).
+  var _monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var _monthDate=opts.testMode
+    ? new Date(nowParis.getFullYear(), nowParis.getMonth(), 1)
+    : new Date(nowParis.getFullYear(), nowParis.getMonth()-1, 1);
+  var _monthLabel=_monthNames[_monthDate.getMonth()]+' '+_monthDate.getFullYear();
+  if(opts.testMode){
+    document.getElementById('prc-title').textContent='🧪 Test : Période '+(_periodData.period)+' — '+_monthLabel+' (en cours)';
+    document.getElementById('prc-sub').textContent='Aperçu — données live de la période courante';
+  } else {
+    document.getElementById('prc-title').textContent='🏁 Période '+closedPeriod+' — '+_monthLabel+' terminée !';
+    document.getElementById('prc-sub').textContent='Voici ton bilan';
+  }
+  // Stats grid (6 cases : pts, km, D+, sorties, badges, rang)
+  var hStats='';
+  function _stat(label,value,color){
+    return '<div style="padding:.5rem;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid var(--border2);text-align:center">'
+      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.2rem">'+label+'</div>'
+      +'<div style="font-family:Space Mono,monospace;font-size:1rem;font-weight:700;color:'+color+'">'+value+'</div>'
+    +'</div>';
+  }
+  // Couleurs alignées sur la Player Card (pour cohérence visuelle)
+  hStats+=_stat('Points',pts.toLocaleString('fr'),'var(--gold)');
+  hStats+=_stat('Distance',(Math.round(km*10)/10).toLocaleString('fr')+' km','#4a90ff');
+  hStats+=_stat('Dénivelé',Math.round(elv)+' m','var(--green)');
+  hStats+=_stat('Sorties',nb,'var(--cyan)');
+  hStats+=_stat('Badges',nbBadges,'var(--gold)');
+  hStats+=_stat('RPC gagné',rpcGained.toLocaleString('fr'),'var(--gold)');
+  document.getElementById('prc-stats').innerHTML=hStats;
+  // Rang général final (pas de total volontairement)
+  var rankLine;
+  if(myRank>0){
+    rankLine='🏅 Classement général final : <strong style="color:var(--gold);font-family:Space Mono,monospace;font-size:1rem">#'+myRank+'</strong>';
+  } else {
+    rankLine='<span style="color:var(--muted2)">Pas de classement (aucune course sur la période)</span>';
+  }
+  document.getElementById('prc-rank-line').innerHTML=rankLine;
+  // Promotion / rétrogradation / maintien
+  var prevKey=(player.previous_league||'').toLowerCase();
+  var newKey=(player.league||'starter').toLowerCase();
+  var prevLg=LEAGUES.find(function(l){return l.key===prevKey;});
+  var newLg=LEAGUES.find(function(l){return l.key===newKey;});
+  var prevIdx=LEAGUES.findIndex(function(l){return l.key===prevKey;});
+  var newIdx=LEAGUES.findIndex(function(l){return l.key===newKey;});
+  var resultBox=document.getElementById('prc-league-result');
+  if(!prevKey||!prevLg||!newLg||prevIdx<0||newIdx<0){
+    // Pas de previous_league enregistré (1ère période ou RP non traité par rotation)
+    resultBox.style.background='rgba(120,140,180,.08)';
+    resultBox.style.border='1px solid rgba(120,140,180,.25)';
+    resultBox.style.color='var(--muted2)';
+    resultBox.innerHTML='League actuelle : <strong style="color:'+(newLg?newLg.color:'var(--text)')+'">'+(newLg?newLg.emoji+' '+newLg.name+' — '+newLg.label:'—')+'</strong>';
+  } else if(newIdx>prevIdx){
+    // MONTÉE
+    resultBox.style.background='rgba(45,219,128,.10)';
+    resultBox.style.border='1.5px solid rgba(45,219,128,.45)';
+    resultBox.style.color='var(--green)';
+    resultBox.innerHTML='🎉 Félicitations ! Tu montes en <strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
+  } else if(newIdx<prevIdx){
+    // RÉTROGRADATION
+    resultBox.style.background='rgba(255,68,68,.10)';
+    resultBox.style.border='1.5px solid rgba(255,68,68,.4)';
+    resultBox.style.color='var(--red)';
+    resultBox.innerHTML='Désolé, tu es rétrogradé en <strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
+  } else {
+    // MAINTIEN
+    resultBox.style.background='rgba(245,200,66,.08)';
+    resultBox.style.border='1px solid rgba(245,200,66,.3)';
+    resultBox.style.color='var(--gold)';
+    resultBox.innerHTML='Tu te maintiens en <strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
+  }
+  // Mémoriser pour le close (skip patch si test)
+  window._prcCurrentPeriod=_periodData.period;
+  window._prcTestMode=!!opts.testMode;
+  openModal('period-recap-modal');
+}
+
+async function closePeriodRecap(){
+  closeModal('period-recap-modal');
+  // En mode test, on ne touche PAS last_period_seen (pour pouvoir rejouer)
+  if(window._prcTestMode){ window._prcTestMode=false; return; }
+  // Patch last_period_seen pour ne plus réafficher le popup pour cette période
+  if(currentUser&&window._prcCurrentPeriod){
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({last_period_seen:window._prcCurrentPeriod})
+    });
+  }
+}
+
+// ── Admin : tester le popup récap fin de période sans rotation réelle ─
+// Affiche le popup avec les data de la période courante (period=0) en proxy.
+// Au close, on ne touche pas last_period_seen → réutilisable à volonté.
+// Pour simuler montée/rétrogradation, modifier temporairement previous_league
+// dans la DB (ex: SQL : UPDATE players SET previous_league='l5' WHERE id='...';)
+async function adminTestPeriodRecap(){
+  if(!isAdmin()){showToast('⚠️ Accès refusé');return;}
+  if(!currentUser){showToast('⚠️ Pas de user');return;}
+  var {data:p}=await supabaseClient.from('players')
+    .select('id,username,league,previous_league').eq('id',currentUser.id).maybeSingle();
+  if(!p){showToast('⚠️ Player introuvable');return;}
+  await renderPeriodRecap(p, 0, {testMode:true});
 }
 
 // ── Admin : simuler fin de période ────────────────────────────────────
