@@ -1758,7 +1758,7 @@ select option{background:#040c1c}
               <div style="flex:1"><div style="font-size:.75rem;color:var(--text);font-weight:600">Team #1</div></div>
               <div style="text-align:right">
                 <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--gold);font-weight:700">50 000 RPC</div>
-                <div style="font-size:.6rem;color:var(--muted2)">+ 5 NYX / membre</div>
+                <div style="font-size:.6rem;color:var(--muted2)">+ 80 NYX / membre</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;background:rgba(192,192,192,.06);border-radius:6px;border:1px solid rgba(192,192,192,.15)">
@@ -1772,7 +1772,7 @@ select option{background:#040c1c}
               <div style="flex:1"><div style="font-size:.75rem;color:var(--text);font-weight:600">Team #2</div></div>
               <div style="text-align:right">
                 <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:#c0c0c0;font-weight:700">30 000 RPC</div>
-                <div style="font-size:.6rem;color:var(--muted2)">+ 3 NYX / membre</div>
+                <div style="font-size:.6rem;color:var(--muted2)">+ 60 NYX / membre</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;background:rgba(205,127,50,.07);border-radius:6px;border:1px solid rgba(205,127,50,.2)">
@@ -1786,18 +1786,12 @@ select option{background:#040c1c}
               <div style="flex:1"><div style="font-size:.75rem;color:var(--text);font-weight:600">Team #3</div></div>
               <div style="text-align:right">
                 <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:#cd7f32;font-weight:700">15 000 RPC</div>
-                <div style="font-size:.6rem;color:var(--muted2)">+ 1 NYX / membre</div>
+                <div style="font-size:.6rem;color:var(--muted2)">+ 30 NYX / membre</div>
               </div>
             </div>
           </div>
-          <!-- Bonus Engagement -->
-          <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted2);margin-bottom:.4rem">Bonus Engagement</div>
-          <div class="eco-row">
-            <span style="font-size:.78rem">🔥 Meilleure activité / membre</span>
-            <span class="eco-price">2 000 RPC <span style="color:var(--muted2);font-size:.65rem">/ membre</span></span>
-          </div>
           <div style="font-size:.62rem;color:var(--muted2);margin-top:.5rem;line-height:1.6">
-            RPC partagés proportionnellement aux pts individuels · Badges conservés définitivement sur la Player Card
+            RPC partagés équitablement entre les membres de la team · Badges conservés définitivement sur la Player Card
           </div>
         </div>
       </div>
@@ -7771,17 +7765,21 @@ async function _processEndOfPeriodInner(){
     }
   }
 
-  // 5. Médailles teams
+  // 5. Médailles teams + prize pool teams
   var {data:allTeams}=await supabaseClient.from('teams').select('id,name').order('name');
   var {data:allTM}=await supabaseClient.from('team_members').select('team_id,player_id');
+  var teamScores=[];
   if(allTeams&&allTM){
-    var teamScores=allTeams.map(function(t){
+    teamScores=allTeams.map(function(t){
       var members=allTM.filter(function(m){return m.team_id===t.id;});
       var memberPts=members.map(function(m){return ptsByPlayer[m.player_id]||0;}).sort(function(a,b){return b-a;});
       var top6=memberPts.slice(0,6);
       // Toujours diviser par 6 : les places manquantes comptent 0. Pénalise les teams incomplètes.
       var base=top6.length>0?Math.round(top6.reduce(function(s,v){return s+v;},0)/6):0;
-      var extra=Math.max(0,members.length-6);
+      // Bonus 2% par RP supplémentaire au-delà des 6 meilleurs, MAIS uniquement
+      // si ce RP a fait au moins 40 pts dans la période (sinon les inactifs
+      // gonfleraient artificiellement le score sans contribution réelle).
+      var extra=memberPts.slice(6).filter(function(p){return p>=40;}).length;
       return {id:t.id,name:t.name,score:Math.round(base*(1+extra*2/100))};
     }).filter(function(t){return t.score>0;}).sort(function(a,b){return b.score-a.score;});
 
@@ -7795,6 +7793,35 @@ async function _processEndOfPeriodInner(){
       });
     }
   }
+
+  // 5c. Prize pool teams — distribué SEULEMENT si le flag est activé dans
+  //     game_settings. Tant que la beta n'a pas assez de teams pour que la
+  //     compétition fasse sens, on garde le flag à false côté DB.
+  //     RPC : 50 000 / 30 000 / 15 000 RPC divisés ÉQUITABLEMENT par le
+  //     nombre de membres de la team gagnante.
+  //     NYX : 80 / 60 / 30 NYX par membre (montant fixe).
+  try {
+    if(teamScores.length > 0){
+      var {data:flagRow}=await supabaseClient.from('game_settings').select('value').eq('key','teams_prize_pool_enabled').maybeSingle();
+      var flagOn=(flagRow && (flagRow.value==='true' || flagRow.value===true));
+      if(flagOn){
+        var prizePoolRpc=[50000, 30000, 15000];
+        var nyxPerMember=[80, 60, 30];
+        for(var pi=0; pi<Math.min(3, teamScores.length); pi++){
+          var winnerTeam=teamScores[pi];
+          var teamMembers=allTM.filter(function(m){return m.team_id===winnerTeam.id;});
+          if(!teamMembers.length) continue;
+          var rpcPerMember=Math.round(prizePoolRpc[pi] / teamMembers.length);
+          for(var mi=0; mi<teamMembers.length; mi++){
+            var tmm=teamMembers[mi];
+            try {
+              await walletCreditOther(tmm.player_id, rpcPerMember, nyxPerMember[pi], 'Prize pool team #'+(pi+1)+' P'+_periodData.period+' — '+winnerTeam.name);
+            } catch(eppt){ console.warn('[rotation] prize pool team RP '+tmm.player_id+' :', eppt); }
+          }
+        }
+      }
+    }
+  } catch(ePool){ console.error('[rotation] prize pool teams :', ePool); }
 
   // 5b. Passage en compétition
   // Un RP en calibrage (competitive=false, hors Starter) passe compétitif
@@ -8202,10 +8229,10 @@ async function renderPeriodRecap(player, closedPeriod, opts){
     _monthLabel=_monthNames[_closedM-1]+' '+_closedY;
   }
   if(opts.testMode){
-    document.getElementById('prc-title').textContent='🧪 Test : Période '+(_periodData.period)+' — '+_monthLabel+' (en cours)';
+    document.getElementById('prc-title').textContent='Test : Période '+(_periodData.period)+' — '+_monthLabel+' (en cours)';
     document.getElementById('prc-sub').textContent='Aperçu — données live de la période courante';
   } else {
-    document.getElementById('prc-title').textContent='🏁 Période '+closedPeriod+' — '+_monthLabel+' terminée !';
+    document.getElementById('prc-title').textContent='Période '+closedPeriod+' — '+_monthLabel+' terminée !';
     document.getElementById('prc-sub').textContent='Voici ton bilan';
   }
   // Stats grid (6 cases : pts, km, D+, sorties, badges, rang)
@@ -13243,10 +13270,13 @@ async function renderTeams(){
       .select('team_id, player_id, role, joined_at, players(id, username, grade, nat, avatar)');
     if(errM2) throw errM2;
 
-    // 3. Charger tous les runs pour calculer les pts par joueur
+    // 3. Charger les runs de la PÉRIODE COURANTE (period=0) pour calculer
+    //    les pts par joueur. Sans ce filtre, on cumulait les pts lifetime →
+    //    après rotation les scores teams ne se reset pas.
     var {data:allRuns,error:errR}=await supabaseClient
       .from('runs')
-      .select('player_id, points, run_date');
+      .select('player_id, points, run_date')
+      .eq('period', 0);
     if(errR) throw errR;
 
     var ptsByPlayer={};
@@ -13284,8 +13314,10 @@ async function renderTeams(){
       var top6=sorted.slice(0,6);
       // Toujours diviser par 6 : les places manquantes comptent 0. Pénalise les teams incomplètes.
       var base=top6.length>0?Math.round(top6.reduce(function(s,m){return s+m.ptsForTeam;},0)/6):0;
-      var extraMembers=Math.max(0,nb-6);
-      var bonusPct=extraMembers*2;
+      // Bonus 2% par RP supp au-delà des 6 meilleurs, MAIS uniquement si ≥ 40 pts
+      // dans la période (cohérent avec le calcul rotation processEndOfPeriod).
+      var extraMembersActive=sorted.slice(6).filter(function(m){return m.ptsForTeam>=40;}).length;
+      var bonusPct=extraMembersActive*2;
       t._score=Math.round(base*(1+bonusPct/100));
       t._base=base;
       t._bonusPct=bonusPct;
