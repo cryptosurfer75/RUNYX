@@ -1448,12 +1448,16 @@ select option{background:#040c1c}
       <div id="challenges-summary" style="font-size:.65rem;color:var(--muted2)">—</div>
     </div>
     <div style="padding:.6rem .6rem 1rem">
-      <!-- Onglets Défis / Challenges -->
+      <!-- Onglets Défis / Challenges / Voisins -->
       <div style="display:flex;gap:.3rem;margin-bottom:.8rem;border-bottom:1px solid var(--border);padding-bottom:.45rem">
         <button id="challenges-tab-defis" onclick="switchChallengesTab('defis')" style="flex:1;padding:.35rem .6rem;border-radius:5px;border:1px solid var(--gold);background:rgba(245,200,66,.12);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer">🎖️ Défis</button>
         <button id="challenges-tab-events" onclick="switchChallengesTab('events')" style="flex:1;position:relative;padding:.35rem .6rem;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer">
           🏁 Challenges
           <span id="challenges-tab-events-badge" style="display:none;position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span>
+        </button>
+        <button id="challenges-tab-collab" onclick="switchChallengesTab('collab')" style="flex:1;position:relative;padding:.35rem .6rem;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer">
+          🤜🤛 Voisins
+          <span id="challenges-tab-collab-badge" style="display:none;position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span>
         </button>
       </div>
       <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
@@ -1467,6 +1471,8 @@ select option{background:#040c1c}
           <span id="challenges-chevron" style="transition:transform .2s">▼</span>
         </button>
       </div>
+      <!-- Zone défis collaboratifs (cachée par défaut) -->
+      <div id="challenges-collab-wrap" style="display:none;flex-direction:column;gap:.7rem"></div>
     </div>
   </div>
 
@@ -2404,6 +2410,55 @@ function askConfirm(message, opts){
     <div id="prc-rank-line" style="text-align:center;padding:.55rem;border-radius:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);margin-bottom:.7rem;font-size:.82rem;color:var(--text)"></div>
     <div id="prc-league-result" style="text-align:center;padding:.7rem .55rem;border-radius:9px;margin-bottom:1rem;font-size:.85rem;font-weight:600;line-height:1.4"></div>
     <button onclick="closePeriodRecap()" style="width:100%;padding:.65rem;border-radius:8px;border:1.5px solid var(--green);background:linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12));color:var(--green);font-weight:700;font-size:.88rem;cursor:pointer;letter-spacing:.3px">Continuer</button>
+  </div>
+</div>
+
+<!-- Modal "Comment ça marche ?" — explication des défis collaboratifs entre voisins -->
+<div class="modal" id="collab-help-modal" style="z-index:601">
+  <div class="modal-box" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('collab-help-modal')">✕</button>
+    <div style="text-align:center;margin-bottom:.6rem">
+      <div style="font-size:2.2rem;line-height:1">🤜🤛</div>
+      <div class="modal-title" style="text-align:center;margin-top:.2rem">Défis collaboratifs entre voisins</div>
+      <div class="modal-sub" style="text-align:center">Coopère avec tes voisins pour gagner des récompenses ensemble</div>
+    </div>
+    <div style="font-size:.83rem;color:var(--text);line-height:1.7;margin:.8rem 0">
+      <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(32,208,224,.06);border:1px solid rgba(32,208,224,.2);margin-bottom:.5rem">
+        <strong style="color:var(--cyan)">1. Détection d'un voisin</strong><br>
+        <span style="font-size:.78rem;color:var(--muted2)">Speedix détecte automatiquement un voisin dès que tu partages au moins 1 côté frontalier de ta Land sur la carte.</span>
+      </div>
+      <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);margin-bottom:.5rem">
+        <strong style="color:var(--gold)">2. Réception d'un défi</strong><br>
+        <span style="font-size:.78rem;color:var(--muted2)">Le 1er défi te sera proposé <strong>5 jours après</strong> la détection de ta frontière commune, puis un nouveau défi tous les <strong>30 jours</strong> avec chaque voisin.</span>
+      </div>
+      <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(45,219,128,.06);border:1px solid rgba(45,219,128,.2);margin-bottom:.5rem">
+        <strong style="color:var(--green)">3. Déroulement du défi</strong><br>
+        <span style="font-size:.78rem;color:var(--muted2)">Vous avez chacun <strong>48h</strong> pour accepter le défi. Le chrono démarre dès que les 2 RPs ont validé. Vous pouvez suivre votre progression en temps réel dans cet onglet.</span>
+      </div>
+      <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(144,80,208,.06);border:1px solid rgba(144,80,208,.25);margin-bottom:.5rem">
+        <strong style="color:#9050d0">4. Récompenses</strong><br>
+        <span style="font-size:.78rem;color:var(--muted2)">RPC + NYX <strong>partagés équitablement</strong> en cas de succès, ou bien une <strong>land gratuite chacun pendant 6 mois</strong> qui agrandit votre frontière commune.</span>
+      </div>
+      <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid var(--border2)">
+        <strong style="color:var(--text)">5. Résultat du défi</strong><br>
+        <span style="font-size:.78rem;color:var(--muted2);display:block;margin-top:.25rem"><strong style="color:var(--green)">✅ Validé :</strong> distribution des récompenses.</span>
+        <span style="font-size:.78rem;color:var(--muted2);display:block;margin-top:.2rem"><strong style="color:var(--red)">❌ Échec :</strong> aucune conséquence. Speedix vous proposera un autre défi quelques jours plus tard. C'est 100% positif !</span>
+      </div>
+    </div>
+    <button onclick="closeModal('collab-help-modal')" style="width:100%;padding:.65rem;border-radius:8px;border:1.5px solid var(--gold);background:linear-gradient(175deg,rgba(245,200,66,.22),rgba(200,160,20,.12));color:var(--gold);font-weight:700;font-size:.88rem;cursor:pointer;letter-spacing:.3px">J'ai compris</button>
+  </div>
+</div>
+
+<!-- Modal Résolution défi voisin (popup au login après résolution) -->
+<div class="modal" id="collab-result-modal" style="z-index:601">
+  <div class="modal-box" style="max-width:440px">
+    <div style="text-align:center;margin-bottom:.6rem">
+      <div id="ccr-emoji" style="font-size:2.4rem;line-height:1">🎉</div>
+      <div id="ccr-title" class="modal-title" style="text-align:center;margin-top:.2rem">Défi terminé !</div>
+      <div id="ccr-sub" class="modal-sub" style="text-align:center"></div>
+    </div>
+    <div id="ccr-body" style="margin:.6rem 0 1rem;font-size:.85rem;color:var(--text);line-height:1.55;text-align:center"></div>
+    <button id="ccr-ok" onclick="closeCollabResultPopup()" style="width:100%;padding:.65rem;border-radius:8px;border:1.5px solid var(--green);background:linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12));color:var(--green);font-weight:700;font-size:.88rem;cursor:pointer;letter-spacing:.3px">Continuer</button>
   </div>
 </div>
 
@@ -3516,6 +3571,17 @@ async function onLoginSuccess(user, isNew){
   if(typeof checkAndShowPeriodRecap==='function'){
     setTimeout(function(){ checkAndShowPeriodRecap(); }, 1500);
   }
+  // Défis collaboratifs voisins — pastille onglet + bandeau si défi en attente
+  if(typeof refreshCollabBadge==='function'){
+    setTimeout(function(){ refreshCollabBadge(); }, 2200);
+  }
+  if(typeof checkCollabPendingBanner==='function'){
+    setTimeout(function(){ checkCollabPendingBanner(); }, 3500);
+  }
+  // Notifications de résolution (succès / échec / annulé) — popup au login
+  if(typeof checkCollabResolutionNotifications==='function'){
+    setTimeout(function(){ checkCollabResolutionNotifications(); }, 4500);
+  }
   // Vérifier les notifications sociales
   if(typeof checkSocialNotifs==='function'){
     setTimeout(function(){ checkSocialNotifs(); }, 2500);
@@ -4053,6 +4119,74 @@ const LEAGUES=[
   {key:'l2',      name:'L2',       label:'Argent',     emoji:'🩶',  min:10001, max:13000, color:'#b0c0d0', buyin:13000},
   {key:'l1',      name:'L1',       label:'Or',         emoji:'💛',  min:13001, max:20000, max2:null, color:'#f5c842', buyin:20000},
   {key:'lelite',  name:'L Elite',  label:'Diamant',    emoji:'💎',  min:20001, max:null,  color:'#a0e0ff', buyin:25000},
+];
+
+// ────────────────────────────────────────────────────────────────────
+// COLLAB_CHALLENGE_CATALOG — Catalogue V1 des défis collaboratifs entre voisins
+// ────────────────────────────────────────────────────────────────────
+// Spec figée 2026-04-26 (cf project_collab_challenges_voisins.md).
+// 12 défis. Tirage aléatoire au moment de proposer à une paire (avec
+// anti-répétition par rapport au défi précédent de cette même paire).
+//
+// Champs :
+//   code              identifiant stable (utilisé en DB challenge_code)
+//   title             libellé court affiché à l'utilisateur
+//   description       phrase complète pour la notif/bandeau
+//   duration_hours    durée du chrono (déclenché à l'acceptation du 2e RP)
+//   criteria          { type, value } — règle de validation (cf check ci-dessous)
+//   reward_rpc        RPC partagés (montant total, divisé en 2 à la résolution)
+//   reward_nyx        NYX partagés (idem)
+//   reward_type       'rpc' | 'land_6m' (= récompense territoriale)
+//   proposal_constraint (optionnel) — 'friday_morning_only' pour le défi 4
+//
+// Types de critère :
+//   km_each            chaque RP doit cumuler `value` km
+//   km_total           les 2 RPs ensemble doivent cumuler `value` km
+//   runs_each          chaque RP doit valider `value` sorties (de 5km min)
+//   dplus_each         chaque RP doit cumuler `value` m de D+
+//   long_run_each      chaque RP doit faire 1 sortie ≥ `value` km
+//   long_run_same_day  chaque RP doit faire 1 sortie ≥ `value` km le même jour
+//   streak_each        chaque RP doit avoir `value` jours de course consécutifs
+//   explore_total      les 2 RPs ensemble doivent explorer `value` lands neuves
+//   referrals_each     chaque RP doit parrainer `value` filleuls (avec 1ère course)
+const COLLAB_CHALLENGE_CATALOG = [
+  { code:'CC01', title:'Cours 10 km chacun en 48h',
+    description:'Réalisez 10 km chacun dans les 48h après acceptation du défi.',
+    duration_hours:48, criteria:{type:'km_each',value:10}, reward_rpc:3000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC02', title:'Cours 20 km avec ton voisin en 72h',
+    description:'Réalisez 20 km au total (50/50) dans les 72h après acceptation du défi.',
+    duration_hours:72, criteria:{type:'km_total',value:20}, reward_rpc:4000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC03', title:'4 sorties de 5 km chacun cette semaine',
+    description:'Validez chacun 4 sorties de 5 km (8 au total) dans les 7 jours après acceptation du défi.',
+    duration_hours:24*7, criteria:{type:'runs_each',value:4,min_distance:5}, reward_rpc:6000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC04', title:'Explorez 100 Lands ensemble ce week-end',
+    description:'Explorez à deux 100 nouvelles Lands ce week-end (50/50).',
+    duration_hours:24*3, criteria:{type:'explore_total',value:100}, reward_rpc:0, reward_nyx:0, reward_type:'land_6m',
+    proposal_constraint:'friday_morning_only' },
+  { code:'CC05', title:'1000 m de D+ à deux cette semaine',
+    description:'Cumulez 500 m de D+ chacun dans les 7 jours après acceptation du défi.',
+    duration_hours:24*7, criteria:{type:'dplus_each',value:500}, reward_rpc:3000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC06', title:'Sortie de 15 km chacun cette semaine',
+    description:'Faites chacun une sortie d\'au moins 15 km dans les 7 jours après acceptation du défi.',
+    duration_hours:24*7, criteria:{type:'long_run_each',value:15}, reward_rpc:3000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC07', title:'5 jours de course consécutifs chacun',
+    description:'Validez chacun 5 jours de course consécutifs dans les 7 jours après acceptation du défi.',
+    duration_hours:24*7, criteria:{type:'streak_each',value:5}, reward_rpc:6000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC08', title:'50 km à deux en 10 jours',
+    description:'Cumulez 50 km à deux en 10 jours (25 chacun) après acceptation du défi.',
+    duration_hours:24*10, criteria:{type:'km_each',value:25}, reward_rpc:6000, reward_nyx:20, reward_type:'rpc' },
+  { code:'CC09', title:'Sortie de 8 km chacun cette semaine',
+    description:'Faites chacun une sortie d\'au moins 8 km dans les 7 jours après acceptation du défi.',
+    duration_hours:24*7, criteria:{type:'long_run_each',value:8}, reward_rpc:3000, reward_nyx:10, reward_type:'rpc' },
+  { code:'CC10', title:'200 km cumulés en 30 jours',
+    description:'Cumulez 200 km à deux en 30 jours (100 chacun) après acceptation du défi.',
+    duration_hours:24*30, criteria:{type:'km_each',value:100}, reward_rpc:0, reward_nyx:0, reward_type:'land_6m' },
+  { code:'CC11', title:'Sortie de 21 km (semi) chacun',
+    description:'Faites chacun une sortie d\'au moins 21 km dans les 15 jours après acceptation du défi.',
+    duration_hours:24*15, criteria:{type:'long_run_each',value:21}, reward_rpc:10000, reward_nyx:40, reward_type:'rpc' },
+  { code:'CC12', title:'Parrainez 2 amis chacun cette semaine',
+    description:'Parrainez chacun 2 amis (avec une 1ère course validée) dans les 7 jours après acceptation du défi.',
+    duration_hours:24*7, criteria:{type:'referrals_each',value:2}, reward_rpc:6000, reward_nyx:0, reward_type:'rpc' }
 ];
 
 // Grade → avatar border/glow color
@@ -6462,8 +6596,16 @@ async function showLandDetail(landId){
     nbPassages=Array.isArray(_passList)?_passList.length:0;
   }catch(e){}
 
+  // Land offerte par défi voisin (gratuité jusqu'à free_until)
+  var _ldFreeLine='';
+  if(land.free_until && new Date(land.free_until).getTime()>Date.now()){
+    var _fuD=new Date(land.free_until);
+    var _fuTxt=_fuD.toLocaleDateString('fr',{day:'2-digit',month:'long',year:'numeric'});
+    _ldFreeLine='<span style="color:var(--green);font-weight:700">🎁 Gratuite jusqu\'au '+_fuTxt+'</span><br>';
+  }
   var body='<div style="font-size:.82rem;color:var(--muted2);line-height:2">'
     +statusLine+'<br>'
+    +_ldFreeLine
     +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
     +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
     +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
@@ -6897,7 +7039,7 @@ async function renderMyLands(page){
       ? 'Lands <span class="hl">de '+(window.__viewedPlayer.name||'RP')+'</span>'
       : 'Mes <span class="hl">Lands</span>';
   }
-  var {data:myLands}=await supabaseClient.from('lands').select('id,status,stars,rent_periods,rent_start_period,monthly_revenue,owner_id,tenant_id')
+  var {data:myLands}=await supabaseClient.from('lands').select('id,status,stars,rent_periods,rent_start_period,monthly_revenue,owner_id,tenant_id,free_until')
     .or('tenant_id.eq.'+_lTargetUuid+',owner_id.eq.'+_lTargetUuid)
     .order('status');
   if(!myLands||!myLands.length){
@@ -6925,10 +7067,13 @@ async function renderMyLands(page){
     +'<span style="font-size:.68rem;color:var(--gold)">'+totalRevenue.toLocaleString('fr')+' RPC ce mois</span>';
   var rpcPassage=[3,6,9,12];
   var period=_periodData.period||1;
-  // Calculer le loyer total
+  // Calculer le loyer total — exclure les lands en gratuité (free_until > now)
+  var nowMs=Date.now();
   var totalLoyer=0;
   myLands.forEach(function(l){
     if(l.status==='rented'){
+      var isFree=l.free_until && new Date(l.free_until).getTime()>nowMs;
+      if(isFree) return;
       var rp=_computeRentPeriods(l);
       totalLoyer+=(rp<=1?5000:rp<=6?4800:4600);
     }
@@ -6961,15 +7106,31 @@ async function renderMyLands(page){
     // Permet de localiser visuellement une land sur la carte sans devoir
     // naviguer manuellement (utile quand on a beaucoup de lands éparpillées).
     var clickAttr='onclick="focusLandOnMap(\''+l.id+'\')" title="Voir sur la carte" style="cursor:pointer;';
+    // Detection : land offerte par défi voisin (gratuite jusqu'à free_until)
+    var isFree=l.free_until && new Date(l.free_until).getTime()>nowMs;
+    var freeUntilTxt='';
+    if(isFree){
+      var fuD=new Date(l.free_until);
+      freeUntilTxt=fuD.toLocaleDateString('fr',{day:'2-digit',month:'short'});
+    }
     var statusBadge=isOwned
       ?(isForSale
         ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(32,208,224,.12);border:1px solid rgba(32,208,224,.4);color:var(--cyan)">À vendre · '+activeSaleSet[l.id]+' NYX</span>'
         :'<span class="badge g-confirme" '+clickAttr+'font-size:.55rem">Propriété</span>')
-      :'<span class="badge g-debutant" '+clickAttr+'font-size:.55rem">Location</span>';
-    // Loyer selon la période de location
+      :(isFree
+        ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(45,219,128,.15);border:1px solid rgba(45,219,128,.45);color:var(--green)" title="Land offerte par défi voisin — gratuite jusqu\'au '+freeUntilTxt+'">🎁 Gratuite</span>'
+        :'<span class="badge g-debutant" '+clickAttr+'font-size:.55rem">Location</span>');
+    // Loyer selon la période de location (gratuit si free_until > now)
     var rp=_computeRentPeriods(l);
     var rentCost=rp<=1?5000:rp<=6?4800:4600;
-    var loyerCell=isOwned?'<span style="color:var(--green);font-size:.7rem">—</span>':'<span style="color:var(--red)">−'+rentCost.toLocaleString('fr')+'</span>';
+    var loyerCell;
+    if(isOwned){
+      loyerCell='<span style="color:var(--green);font-size:.7rem">—</span>';
+    } else if(isFree){
+      loyerCell='<span style="color:var(--green);font-size:.7rem;font-weight:700">Gratuit</span>';
+    } else {
+      loyerCell='<span style="color:var(--red)">−'+rentCost.toLocaleString('fr')+'</span>';
+    }
     // Prix d'achat possible
     var buyPrice='—';
     if(!isOwned&&rp>=3){
@@ -14503,39 +14664,711 @@ async function updateChallengeNavBadge(){
 function switchChallengesTab(tab){
   _CHALLENGES_TAB=tab;
   _CHALLENGES_EXTRA_PAGE=0;
-  // Mise à jour visuelle des onglets
-  var tabDefis=document.getElementById('challenges-tab-defis');
-  var tabEvents=document.getElementById('challenges-tab-events');
-  if(tabDefis&&tabEvents){
-    if(tab==='defis'){
-      tabDefis.style.borderColor='var(--gold)';
-      tabDefis.style.background='rgba(245,200,66,.12)';
-      tabDefis.style.color='var(--gold)';
-      tabEvents.style.borderColor='var(--border2)';
-      tabEvents.style.background='transparent';
-      tabEvents.style.color='var(--muted2)';
+  // Mise à jour visuelle des onglets (3 onglets : defis / events / collab)
+  var tabs={
+    defis : document.getElementById('challenges-tab-defis'),
+    events: document.getElementById('challenges-tab-events'),
+    collab: document.getElementById('challenges-tab-collab')
+  };
+  Object.keys(tabs).forEach(function(k){
+    var t=tabs[k]; if(!t) return;
+    if(k===tab){
+      t.style.borderColor='var(--gold)';
+      t.style.background='rgba(245,200,66,.12)';
+      t.style.color='var(--gold)';
     } else {
-      tabEvents.style.borderColor='var(--gold)';
-      tabEvents.style.background='rgba(245,200,66,.12)';
-      tabEvents.style.color='var(--gold)';
-      tabDefis.style.borderColor='var(--border2)';
-      tabDefis.style.background='transparent';
-      tabDefis.style.color='var(--muted2)';
+      t.style.borderColor='var(--border2)';
+      t.style.background='transparent';
+      t.style.color='var(--muted2)';
     }
+  });
+  // Show/hide les zones d'affichage
+  var grid=document.getElementById('challenges-grid');
+  var extra=document.getElementById('challenges-extra-wrap');
+  var toggle=document.getElementById('challenges-toggle-btn');
+  var collabWrap=document.getElementById('challenges-collab-wrap');
+  if(tab==='collab'){
+    if(grid) grid.style.display='none';
+    if(extra) extra.style.display='none';
+    if(toggle) toggle.style.display='none';
+    if(collabWrap) collabWrap.style.display='flex';
+    renderCollabChallenges();
+    // Marquer comme vus → pastille onglet s'éteint
+    if(typeof _markCollabSeen==='function') _markCollabSeen();
+  } else {
+    if(grid) grid.style.display='grid';
+    if(collabWrap) collabWrap.style.display='none';
+    // events / defis : marquage Events si onglet events
+    if(tab==='events'){
+      var today=new Date().toISOString().slice(0,10);
+      var activeIds=(_badgesCatalog||[]).filter(function(b){
+        return b.threshold_type==='event_run'
+          && b.event_date && (b.event_date_end || b.event_date) >= today;
+      }).map(function(b){return b.id;});
+      if(activeIds.length) _markChallengesAsSeen(activeIds);
+      if(typeof updateChallengeNavBadge==='function') updateChallengeNavBadge();
+    }
+    renderChallenges();
   }
-  // Quand on ouvre l'onglet Challenges : on marque tous les events actifs comme "vus"
-  // → les pastilles Races + onglet Challenges s'éteignent jusqu'à l'ajout d'un nouveau challenge
-  if(tab==='events'){
-    var today=new Date().toISOString().slice(0,10);
-    var activeIds=(_badgesCatalog||[]).filter(function(b){
-      return b.threshold_type==='event_run'
-        && b.event_date && (b.event_date_end || b.event_date) >= today;
-    }).map(function(b){return b.id;});
-    if(activeIds.length) _markChallengesAsSeen(activeIds);
-    // Rafraîchir les pastilles
-    if(typeof updateChallengeNavBadge==='function') updateChallengeNavBadge();
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// DÉFIS COLLABORATIFS ENTRE VOISINS
+// ──────────────────────────────────────────────────────────────────────
+// Recalcule la progression d'un joueur sur tous ses défis 'in_progress'.
+// Patch collab_challenge_participants.progress + completed_individually.
+// La RÉSOLUTION FINALE (vérifier que les 2 RPs ont rempli + attribuer la
+// récompense) est gérée par l'Edge Function resolve-collab-challenges
+// (brique 7, à venir) — ici on se contente de mettre à jour les compteurs.
+async function _recomputeCollabProgressForPlayer(playerId){
+  if(!playerId) return;
+  try {
+    // Charger les défis in_progress où le joueur participe
+    var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('id,challenge_id,progress,completed_individually')
+      .eq('player_id',playerId);
+    if(!myParts || !myParts.length) return;
+    var chalIds=myParts.map(function(p){return p.challenge_id;});
+    var {data:chals}=await supabaseClient.from('collab_challenges')
+      .select('id,challenge_code,status,started_at,deadline')
+      .in('id',chalIds).eq('status','in_progress');
+    if(!chals || !chals.length) return;
+    var chalById={}; chals.forEach(function(c){chalById[c.id]=c;});
+
+    for(var i=0;i<myParts.length;i++){
+      var part=myParts[i];
+      var chal=chalById[part.challenge_id];
+      if(!chal) continue;
+      var meta=COLLAB_CHALLENGE_CATALOG.find(function(x){return x.code===chal.challenge_code;});
+      if(!meta || !meta.criteria) continue;
+      var startedAt=chal.started_at;
+      var deadline=chal.deadline;
+      if(!startedAt) continue;
+
+      var crit=meta.criteria;
+      var newProgress={};
+      var completed=false;
+
+      // Cas qui se basent sur les runs du joueur
+      if(['km_each','km_total','runs_each','dplus_each','long_run_each','long_run_same_day','streak_each'].indexOf(crit.type)>=0){
+        var {data:runs}=await supabaseClient.from('runs')
+          .select('distance,time,elevation,run_date')
+          .eq('player_id',playerId)
+          .gte('run_date',startedAt)
+          .lte('run_date',deadline);
+        runs=runs||[];
+
+        if(crit.type==='km_each'){
+          var totalKm=runs.reduce(function(s,r){return s+(r.distance||0);},0);
+          newProgress.km_done=Math.round(totalKm*100)/100;
+          completed=totalKm>=crit.value;
+        } else if(crit.type==='km_total'){
+          // Progression individuelle (la combinaison se fait à la résolution)
+          var totalKm=runs.reduce(function(s,r){return s+(r.distance||0);},0);
+          newProgress.km_done=Math.round(totalKm*100)/100;
+        } else if(crit.type==='runs_each'){
+          var minD=crit.min_distance||5;
+          var validRuns=runs.filter(function(r){return (r.distance||0)>=minD;});
+          newProgress.runs_done=validRuns.length;
+          completed=validRuns.length>=crit.value;
+        } else if(crit.type==='dplus_each'){
+          var totalElv=runs.reduce(function(s,r){return s+(r.elevation||0);},0);
+          newProgress.dplus_done=Math.round(totalElv);
+          completed=totalElv>=crit.value;
+        } else if(crit.type==='long_run_each'){
+          var hasLong=runs.some(function(r){return (r.distance||0)>=crit.value;});
+          newProgress.long_run_done=hasLong;
+          completed=hasLong;
+        } else if(crit.type==='long_run_same_day'){
+          // Stocker les jours où on a fait ≥ value km (combiné à la résolution)
+          var validDays=[...new Set(runs
+            .filter(function(r){return (r.distance||0)>=crit.value && r.run_date;})
+            .map(function(r){return r.run_date.slice(0,10);}))];
+          newProgress.long_run_days=validDays;
+          newProgress.completed_individually=validDays.length>0;
+        } else if(crit.type==='streak_each'){
+          var dates=[...new Set(runs.filter(function(r){return r.run_date;}).map(function(r){return r.run_date.slice(0,10);}))].sort();
+          var longest=0,current=0,prev=null;
+          dates.forEach(function(d){
+            if(prev){
+              var diff=(new Date(d)-new Date(prev))/86400000;
+              if(Math.round(diff)===1) current++;
+              else { longest=Math.max(longest,current); current=1; }
+            } else current=1;
+            prev=d;
+          });
+          var streakDays=Math.max(longest,current);
+          newProgress.streak_days=streakDays;
+          completed=streakDays>=crit.value;
+        }
+      }
+      // CC04 : explore_total — passages sur lands neuves
+      else if(crit.type==='explore_total'){
+        var startDay=startedAt.slice(0,10);
+        var endDay=deadline.slice(0,10);
+        var {data:passages}=await supabaseClient.from('land_passages')
+          .select('land_id,passage_date')
+          .eq('player_id',playerId)
+          .gte('passage_date',startDay)
+          .lte('passage_date',endDay);
+        var uniqueLands=new Set((passages||[]).map(function(p){return p.land_id;}));
+        newProgress.lands_done=uniqueLands.size;
+        // completed = combiné avec l'autre RP, vérifié à la résolution
+      }
+      // CC12 : referrals_each — filleuls qui ont fait leur 1ère course pendant la fenêtre
+      else if(crit.type==='referrals_each'){
+        var {data:newRefs}=await supabaseClient.from('referral_rewards')
+          .select('filleul_id,created_at')
+          .eq('parrain_id',playerId)
+          .eq('reward_type','first_run')
+          .gte('created_at',startedAt)
+          .lte('created_at',deadline);
+        var nb=(newRefs||[]).length;
+        newProgress.referrals_done=nb;
+        completed=nb>=crit.value;
+      }
+
+      // Patch si changement détecté
+      var oldProg=part.progress||{};
+      var changed=JSON.stringify(oldProg)!==JSON.stringify(newProgress);
+      var completedChanged=part.completed_individually!==completed;
+      if(changed || completedChanged){
+        var patch={progress:newProgress};
+        if(completedChanged){
+          patch.completed_individually=completed;
+          if(completed) patch.completed_at=new Date().toISOString();
+        }
+        await supabaseClient.from('collab_challenge_participants')
+          .update(patch).eq('id',part.id);
+      }
+    }
+  } catch(e){
+    console.warn('[collab] recompute progress error:', e);
   }
-  renderChallenges();
+}
+
+
+// Récupère et affiche les défis collaboratifs du joueur connecté.
+// Chaque défi a 4 états visuels :
+//   - À ACCEPTER : status=proposed + mes accepted_at IS NULL → boutons Accepter/Refuser
+//   - EN ATTENTE : status=proposed + j'ai accepté + voisin pas encore → message d'attente
+//   - EN COURS : status=in_progress → barre progress + chrono restant
+//   - TERMINÉ (success/failed/expired/cancelled) → message de résolution
+async function renderCollabChallenges(){
+  var wrap=document.getElementById('challenges-collab-wrap');
+  if(!wrap) return;
+  if(!currentUser){
+    wrap.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Connecte-toi pour voir tes défis voisins.</div>';
+    return;
+  }
+  wrap.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Chargement…</div>';
+
+  try {
+    // 0. Recalculer la progression de mes défis in_progress avant l'affichage
+    //    (à l'ouverture de l'onglet, on rafraîchit d'abord les compteurs).
+    await _recomputeCollabProgressForPlayer(currentUser.id);
+
+    // 1. Charger mes lignes participants + leur défi associé + l'autre participant
+    var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('id,challenge_id,player_id,accepted_at,declined,progress,completed_individually,completed_at')
+      .eq('player_id',currentUser.id);
+    if(!myParts || !myParts.length){
+      wrap.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.85rem;line-height:1.6">'
+        +'<div style="font-size:2rem;margin-bottom:.4rem">🤜🤛</div>'
+        +'Aucun défi voisin pour le moment.<br><span style="font-size:.72rem">Speedix te proposera des défis collaboratifs dès qu\'une frontière sera détectée avec un autre RP (5 jours après).</span>'
+        +'</div>';
+      return;
+    }
+    // 2. Charger les défis liés
+    var chalIds=myParts.map(function(p){return p.challenge_id;});
+    var {data:chals}=await supabaseClient.from('collab_challenges')
+      .select('*').in('id',chalIds);
+    var chalById={}; (chals||[]).forEach(function(c){chalById[c.id]=c;});
+    // 3. Charger les autres participants (= mon voisin) pour chaque défi
+    var {data:allParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('challenge_id,player_id,accepted_at,declined,progress,completed_individually')
+      .in('challenge_id',chalIds).neq('player_id',currentUser.id);
+    var neighborByChal={}; (allParts||[]).forEach(function(p){neighborByChal[p.challenge_id]=p;});
+    // 4. Charger les usernames des voisins
+    var neighIds=Object.values(neighborByChal).map(function(p){return p.player_id;});
+    var neighByUuid={};
+    if(neighIds.length){
+      var {data:neighPlayers}=await supabaseClient.from('players')
+        .select('id,username,avatar,nat').in('id',neighIds);
+      (neighPlayers||[]).forEach(function(n){neighByUuid[n.id]=n;});
+    }
+
+    // 5. Catégoriser les défis pour affichage propre (ordre : à accepter > en attente > en cours > terminés)
+    var toAccept=[], waiting=[], inProgress=[], finished=[];
+    myParts.forEach(function(mp){
+      var c=chalById[mp.challenge_id]; if(!c) return;
+      var n=neighborByChal[mp.challenge_id];
+      var item={part:mp, chal:c, neighbor:n, neighborInfo:n?neighByUuid[n.player_id]:null};
+      if(c.status==='proposed'){
+        if(!mp.accepted_at && !mp.declined) toAccept.push(item);
+        else if(mp.accepted_at && (!n || (!n.accepted_at && !n.declined))) waiting.push(item);
+        else finished.push(item); // refusé par moi ou voisin
+      } else if(c.status==='in_progress'){
+        inProgress.push(item);
+      } else {
+        finished.push(item); // success/failed/expired/cancelled
+      }
+    });
+
+    var html='';
+    function _challengeMeta(code){
+      return COLLAB_CHALLENGE_CATALOG.find(function(x){return x.code===code;}) || {title:code, description:''};
+    }
+    function _rewardLine(c){
+      if(c.reward_type==='land_6m') return '<span style="color:var(--green)">🏞️ 1 land gratuite chacun pendant 6 mois</span>';
+      var parts=[];
+      if(c.reward_rpc) parts.push('<span style="color:var(--gold)">+'+c.reward_rpc.toLocaleString('fr')+' RPC</span>');
+      if(c.reward_nyx) parts.push('<span style="color:var(--green)">+'+c.reward_nyx+' 💎 NYX</span>');
+      return parts.join(' · ')+' <span style="color:var(--muted2)">à partager</span>';
+    }
+    function _neighborChip(neighInfo){
+      if(!neighInfo) return '<span style="color:var(--muted2)">voisin</span>';
+      return '<strong style="color:var(--cyan)">'+(neighInfo.username||'voisin')+'</strong>';
+    }
+    function _timeLeft(deadline){
+      if(!deadline) return '';
+      var ms=new Date(deadline)-new Date();
+      if(ms<=0) return 'expiré';
+      var s=Math.floor(ms/1000);
+      var d=Math.floor(s/86400); s=s%86400;
+      var h=Math.floor(s/3600); s=s%3600;
+      var m=Math.floor(s/60); s=s%60;
+      var pad=function(n){return n<10?'0'+n:''+n;};
+      if(d>0) return d+'j '+pad(h)+'h '+pad(m)+'m '+pad(s)+'s';
+      return pad(h)+'h '+pad(m)+'m '+pad(s)+'s';
+    }
+    function _countdownSpan(deadline){
+      // Span auto-rafraîchi par _collabCountdownTick (interval global ci-dessous)
+      return '<span data-collab-deadline="'+deadline+'">'+_timeLeft(deadline)+'</span>';
+    }
+
+    // À ACCEPTER (priorité haute)
+    if(toAccept.length){
+      html+='<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.5px;color:var(--cyan);margin-bottom:.3rem">⚡ À ACCEPTER</div>';
+      toAccept.forEach(function(it){
+        var meta=_challengeMeta(it.chal.challenge_code);
+        html+='<div style="padding:.85rem;border-radius:10px;border:1.5px solid var(--cyan);background:linear-gradient(180deg,rgba(32,208,224,.08),rgba(32,208,224,.03))">'
+          // Intro
+          +'<div style="font-size:.82rem;color:var(--text);margin-bottom:.25rem;line-height:1.5">Speedix te propose de relever un défi avec ton voisin '+_neighborChip(it.neighborInfo)+' :</div>'
+          +'<div style="font-size:.7rem;color:var(--muted2);margin-bottom:.7rem;line-height:1.5;font-style:italic">Vous partagez une frontière commune ce qui vous ouvre l\'accès aux défis collaboratifs.</div>'
+          // Bloc Défi
+          +'<div style="padding:.55rem .65rem;border-radius:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);margin-bottom:.5rem">'
+          +'<div style="font-size:.62rem;color:var(--gold);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.7px;font-weight:700">🤜🤛 Défi</div>'
+          +'<div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.35rem">'+meta.title+'</div>'
+          +'<div style="font-size:.72rem;color:var(--muted2);line-height:1.55">'+meta.description+'</div>'
+          +'</div>'
+          // Bloc Récompense
+          +'<div style="padding:.5rem .65rem;border-radius:8px;background:rgba(45,219,128,.08);border:1px solid rgba(45,219,128,.3);margin-bottom:.65rem">'
+          +'<div style="font-size:.78rem;color:var(--text)">🎁 <strong>Récompense</strong> · '+_rewardLine(it.chal)+'</div>'
+          +'</div>'
+          // Compte à rebours
+          +'<div style="font-size:.68rem;color:var(--muted2);margin-bottom:.6rem;font-family:Space Mono,monospace;text-align:center">⏱ Réponse attendue avant : '+_countdownSpan(it.chal.acceptance_deadline)+'</div>'
+          // Boutons
+          +'<div style="display:flex;gap:.45rem">'
+          +'<button onclick="declineCollabChallenge(\''+it.part.id+'\')" style="flex:1;padding:.55rem;border-radius:7px;border:1px solid var(--border2);background:rgba(255,255,255,.03);color:var(--muted2);font-weight:700;font-size:.78rem;cursor:pointer">Refuser</button>'
+          +'<button onclick="acceptCollabChallenge(\''+it.part.id+'\')" style="flex:1;padding:.55rem;border-radius:7px;border:1.5px solid var(--green);background:linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12));color:var(--green);font-weight:700;font-size:.85rem;cursor:pointer">✓ Accepter</button>'
+          +'</div>'
+          +'</div>';
+      });
+    }
+    // EN ATTENTE
+    if(waiting.length){
+      html+='<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.5px;color:var(--gold);margin-top:.6rem;margin-bottom:.3rem">⏳ EN ATTENTE</div>';
+      waiting.forEach(function(it){
+        var meta=_challengeMeta(it.chal.challenge_code);
+        html+='<div style="padding:.6rem;border-radius:8px;border:1px solid var(--border2);background:rgba(245,200,66,.04)">'
+          +'<div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.2rem">'+meta.title+'</div>'
+          +'<div style="font-size:.72rem;color:var(--muted2)">Tu as accepté ✓ — en attente que '+_neighborChip(it.neighborInfo)+' valide.</div>'
+          +'<div style="font-size:.65rem;color:var(--muted2);margin-top:.3rem;font-family:Space Mono,monospace">⏱ Délai : '+_countdownSpan(it.chal.acceptance_deadline)+'</div>'
+          +'</div>';
+      });
+    }
+    // EN COURS
+    if(inProgress.length){
+      html+='<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.5px;color:var(--green);margin-top:.6rem;margin-bottom:.3rem">🏃 EN COURS</div>';
+      inProgress.forEach(function(it){
+        var meta=_challengeMeta(it.chal.challenge_code);
+        var myProg=(it.part.progress&&typeof it.part.progress==='object')?it.part.progress:{};
+        var neighProg=(it.neighbor&&it.neighbor.progress&&typeof it.neighbor.progress==='object')?it.neighbor.progress:{};
+        var crit=meta.criteria||{};
+        var progLine='';
+        // Affichage progress selon type
+        if(crit.type==='km_each'){
+          progLine='Toi : '+(myProg.km_done||0).toFixed(1)+'/'+crit.value+' km · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.km_done||0).toFixed(1)+'/'+crit.value+' km';
+        } else if(crit.type==='km_total'){
+          var tot=(myProg.km_done||0)+(neighProg.km_done||0);
+          progLine='Total à deux : '+tot.toFixed(1)+'/'+crit.value+' km';
+        } else if(crit.type==='runs_each'){
+          progLine='Toi : '+(myProg.runs_done||0)+'/'+crit.value+' sorties · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.runs_done||0)+'/'+crit.value+' sorties';
+        } else if(crit.type==='dplus_each'){
+          progLine='Toi : '+(myProg.dplus_done||0)+'/'+crit.value+' m D+ · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.dplus_done||0)+'/'+crit.value+' m D+';
+        } else if(crit.type==='long_run_each'){
+          progLine='Toi : '+(myProg.completed_individually?'✓':'—')+' · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.completed_individually?'✓':'—');
+        } else if(crit.type==='long_run_same_day'){
+          progLine='Toi : '+(myProg.completed_individually?'✓':'—')+' · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.completed_individually?'✓':'—')+' (même jour requis)';
+        } else if(crit.type==='streak_each'){
+          progLine='Toi : '+(myProg.streak_days||0)+'/'+crit.value+' j · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.streak_days||0)+'/'+crit.value+' j';
+        } else if(crit.type==='explore_total'){
+          var totL=(myProg.lands_done||0)+(neighProg.lands_done||0);
+          progLine='Total à deux : '+totL+'/'+crit.value+' lands';
+        } else if(crit.type==='referrals_each'){
+          progLine='Toi : '+(myProg.referrals_done||0)+'/'+crit.value+' filleuls · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.referrals_done||0)+'/'+crit.value+' filleuls';
+        }
+        html+='<div style="padding:.6rem;border-radius:8px;border:1px solid var(--green);background:rgba(45,219,128,.06)">'
+          +'<div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.2rem">'+meta.title+'</div>'
+          +'<div style="font-size:.72rem;color:var(--text);margin-bottom:.3rem">'+progLine+'</div>'
+          +'<div style="font-size:.65rem;color:var(--muted2);font-family:Space Mono,monospace">⏱ '+_countdownSpan(it.chal.deadline)+' · 🎁 '+_rewardLine(it.chal)+'</div>'
+          +'</div>';
+      });
+    }
+    // TERMINÉS (les 5 derniers max)
+    if(finished.length){
+      html+='<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.5px;color:var(--muted2);margin-top:.6rem;margin-bottom:.3rem">📜 HISTORIQUE</div>';
+      finished.slice(0,5).forEach(function(it){
+        var meta=_challengeMeta(it.chal.challenge_code);
+        var label, color;
+        if(it.chal.status==='success'){ label='✅ Réussi'; color='var(--green)'; }
+        else if(it.chal.status==='failed'){ label='❌ Échec'; color='var(--red)'; }
+        else if(it.chal.status==='expired'){ label='⏱ Expiré'; color='var(--orange)'; }
+        else if(it.chal.status==='cancelled'){ label='🚫 Annulé'; color='var(--muted2)'; }
+        else if(it.part.declined){ label='Refusé'; color='var(--muted2)'; }
+        else { label=it.chal.status; color='var(--muted2)'; }
+        // Récompense obtenue (uniquement si success)
+        var rewardLine='';
+        if(it.chal.status==='success'){
+          // Détecter si c'est une land 6m réelle ou un fallback RPC
+          var grantedHexMine=null;
+          if(it.neighbor){
+            var pairAB=(it.neighbor.player_id===it.part.player_id);
+            // Heuristique : grantedHex stocké côté chal selon position dans la pair.
+            // Si l'utilisateur courant est player_a → granted_land_a_hex, sinon b.
+            // Ici on utilise neighborInfo qui correspond à l'autre RP, donc grantedHex
+            // pour MOI = (granted_land_a_hex si je suis player_a, sinon b).
+            // Comme on n'a pas direct accès à la pair, on utilise la convention :
+            // grantedHex = celui qui n'est pas attribué au voisin.
+          }
+          // On consulte les hex stockés sur le chal
+          var myHex=null;
+          // grantedHex pour le RP courant : on regarde via neighbor
+          // Si neighbor.player_id === player_a_id, alors je suis B → mon hex = granted_land_b_hex
+          // sinon mon hex = granted_land_a_hex
+          // Ici neighbor c'est l'autre, donc :
+          if(it.chal.granted_land_a_hex || it.chal.granted_land_b_hex){
+            // On ne connaît pas la pair côté front, on se contente d'afficher
+            // "land 6 mois offerte" si reward_type='land_6m' avec au moins 1 hex assigné
+            myHex='ok';
+          }
+          if(it.chal.reward_type==='land_6m' && myHex){
+            rewardLine='🏞️ Land 6 mois';
+          } else {
+            // RPC (avec fallback éventuel pour land_6m)
+            var rpcEach=Math.round((it.chal.reward_rpc||0)/2);
+            var nyxEach=Math.round((it.chal.reward_nyx||0)/2);
+            if(it.chal.reward_type==='land_6m' && !myHex){ rpcEach=2500; nyxEach=0; }
+            var parts=[];
+            if(rpcEach>0) parts.push('+'+rpcEach.toLocaleString('fr')+' RPC');
+            if(nyxEach>0) parts.push('+'+nyxEach+' NYX');
+            rewardLine=parts.length?('🎁 '+parts.join(' · ')):'';
+          }
+        }
+        // Retire "avec ton voisin" du titre car on suffix déjà avec le nom du voisin
+        var titleNoVoisin=meta.title.replace(/\s*avec ton voisin/i,'');
+        // Date de résolution (succès / échec / annulation)
+        var resolvedTxt='';
+        if(it.chal.resolved_at){
+          var d=new Date(it.chal.resolved_at);
+          resolvedTxt=d.toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'});
+        }
+        var subLine=[];
+        if(rewardLine) subLine.push(rewardLine);
+        if(resolvedTxt) subLine.push('le '+resolvedTxt);
+        html+='<div style="padding:.55rem .65rem;border-radius:7px;border:1px solid var(--border2);background:rgba(255,255,255,.02);margin-bottom:.35rem">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">'
+          +'<span style="font-size:.78rem;color:var(--text);line-height:1.4">'+titleNoVoisin+' avec '+_neighborChip(it.neighborInfo)+'</span>'
+          +'<span style="font-size:.7rem;font-weight:700;color:'+color+';flex-shrink:0">'+label+'</span>'
+          +'</div>'
+          +(subLine.length?'<div style="font-size:.7rem;color:var(--muted2);margin-top:.25rem">'+subLine.join(' · ')+'</div>':'')
+          +'</div>';
+      });
+    }
+    if(!html){
+      html='<div style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.85rem">Aucun défi actif.</div>';
+    }
+    // En-tête avec bouton "Comment ça marche ?" (toujours visible dans l'onglet)
+    var helpHeader='<div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">'
+      +'<button onclick="openModal(\'collab-help-modal\')" style="padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.7rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem">❓ Comment ça marche ?</button>'
+      +'</div>';
+    wrap.innerHTML=helpHeader+html;
+  } catch(e){
+    console.error('renderCollabChallenges error:', e);
+    wrap.innerHTML='<div style="color:var(--red);padding:1rem;font-size:.8rem">Erreur de chargement des défis voisins.</div>';
+  }
+}
+
+// Timer global qui rafraîchit tous les compte à rebours des défis collaboratifs
+// (éléments avec data-collab-deadline). Un seul interval par session, idempotent.
+function _collabCountdownTick(){
+  var els=document.querySelectorAll('[data-collab-deadline]');
+  if(!els.length) return;
+  els.forEach(function(el){
+    var dl=el.getAttribute('data-collab-deadline');
+    if(!dl) return;
+    var ms=new Date(dl)-new Date();
+    if(ms<=0){
+      el.textContent='expiré';
+      el.style.color='var(--red)';
+      el.style.fontWeight='700';
+      return;
+    }
+    var s=Math.floor(ms/1000);
+    var d=Math.floor(s/86400); s=s%86400;
+    var h=Math.floor(s/3600); s=s%3600;
+    var m=Math.floor(s/60); s=s%60;
+    var pad=function(n){return n<10?'0'+n:''+n;};
+    el.textContent=(d>0?(d+'j '):'')+pad(h)+'h '+pad(m)+'m '+pad(s)+'s';
+    // Urgence visuelle : rouge + bold si moins d'1h restante
+    if(ms<3600000){
+      el.style.color='var(--red)';
+      el.style.fontWeight='700';
+    } else {
+      el.style.color='';
+      el.style.fontWeight='';
+    }
+  });
+}
+if(!window._collabCountdownInterval){
+  window._collabCountdownInterval=setInterval(_collabCountdownTick, 1000);
+}
+
+async function acceptCollabChallenge(participantId){
+  if(!currentUser) return;
+  try {
+    var nowIso=new Date().toISOString();
+    // 1. Patch ma ligne participant
+    var {data:upd, error:errU}=await supabaseClient.from('collab_challenge_participants')
+      .update({accepted_at:nowIso, declined:false}).eq('id',participantId).select('challenge_id').maybeSingle();
+    if(errU || !upd) throw errU || new Error('update fail');
+    // 2. Vérifier si l'autre participant a déjà accepté → si oui, démarrer le chrono
+    var chalId=upd.challenge_id;
+    var {data:allP}=await supabaseClient.from('collab_challenge_participants')
+      .select('player_id,accepted_at,declined').eq('challenge_id',chalId);
+    var bothAccepted=(allP||[]).length===2 && allP.every(function(p){return p.accepted_at && !p.declined;});
+    if(bothAccepted){
+      var {data:chal}=await supabaseClient.from('collab_challenges')
+        .select('challenge_code').eq('id',chalId).maybeSingle();
+      var meta=COLLAB_CHALLENGE_CATALOG.find(function(x){return x.code===(chal?chal.challenge_code:null);});
+      var durHours=meta?meta.duration_hours:24;
+      var startedAt=new Date();
+      var deadline=new Date(startedAt.getTime() + durHours*3600000);
+      await supabaseClient.from('collab_challenges').update({
+        status:'in_progress',
+        started_at:startedAt.toISOString(),
+        deadline:deadline.toISOString()
+      }).eq('id',chalId);
+      showToast('🏃 Défi démarré ! Chrono lancé.');
+    } else {
+      showToast('✓ Tu as accepté. En attente du voisin.');
+    }
+    renderCollabChallenges();
+  } catch(e){
+    console.error('acceptCollabChallenge error:', e);
+    showToast('⚠️ Erreur, réessaye.');
+  }
+}
+
+async function declineCollabChallenge(participantId){
+  if(!currentUser) return;
+  if(!await askConfirm('Tu confirmes refuser ce défi ? Speedix te proposera un autre défi avec ce voisin dans 7 jours.',{title:'Refuser le défi ?',emoji:'🤔',okLabel:'Refuser',destructive:true})) return;
+  try {
+    var {data:upd}=await supabaseClient.from('collab_challenge_participants')
+      .update({declined:true,accepted_at:null}).eq('id',participantId).select('challenge_id').maybeSingle();
+    if(upd){
+      // Marquer le défi comme expired (pour libérer la paire et permettre re-proposition dans 7j)
+      await supabaseClient.from('collab_challenges')
+        .update({status:'expired',resolved_at:new Date().toISOString()})
+        .eq('id',upd.challenge_id);
+    }
+    showToast('Défi refusé. Un autre te sera proposé dans 7 jours.');
+    renderCollabChallenges();
+  } catch(e){
+    console.error('declineCollabChallenge error:', e);
+    showToast('⚠️ Erreur, réessaye.');
+  }
+}
+
+// Compte le nombre de défis 'à accepter' pour le RP, pour la pastille de l'onglet
+async function countCollabPendingForBadge(){
+  if(!currentUser) return 0;
+  try {
+    var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('id,challenge_id,accepted_at,declined')
+      .eq('player_id',currentUser.id).is('accepted_at',null).eq('declined',false);
+    if(!myParts || !myParts.length) return 0;
+    var ids=myParts.map(function(p){return p.challenge_id;});
+    var {data:chals}=await supabaseClient.from('collab_challenges')
+      .select('id,status').in('id',ids).eq('status','proposed');
+    return (chals||[]).length;
+  } catch(e){ return 0; }
+}
+
+async function refreshCollabBadge(){
+  var badge=document.getElementById('challenges-tab-collab-badge');
+  if(!badge) return;
+  var n=await countCollabPendingForBadge();
+  badge.style.display=(n>0?'block':'none');
+}
+
+function _markCollabSeen(){
+  // L'ouverture de l'onglet éteint la pastille (les défis restent visibles).
+  var badge=document.getElementById('challenges-tab-collab-badge');
+  if(badge) badge.style.display='none';
+}
+
+// Notifie le RP des défis collaboratifs résolus (success / failed / cancelled)
+// qu'il n'a pas encore vus. Affiche un popup par défi (queue), puis marque
+// notified_at au close pour ne plus le réafficher.
+async function checkCollabResolutionNotifications(){
+  if(!currentUser) return;
+  try {
+    // 1. Mes participations non encore notifiées
+    var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('id, challenge_id, progress')
+      .eq('player_id',currentUser.id)
+      .is('notified_at',null);
+    if(!myParts || !myParts.length) return;
+    // 2. Charger les défis correspondants en statut terminal
+    var chalIds=myParts.map(function(p){return p.challenge_id;});
+    var {data:chals}=await supabaseClient.from('collab_challenges')
+      .select('id, challenge_code, status, reward_rpc, reward_nyx, reward_type, granted_land_a_hex, granted_land_b_hex, pair_id, resolved_at')
+      .in('id',chalIds).in('status',['success','failed','cancelled']);
+    if(!chals || !chals.length) return;
+    // 3. Charger les pairs + voisin info pour les défis concernés
+    var pairIds=chals.map(function(c){return c.pair_id;});
+    var {data:pairs}=await supabaseClient.from('collab_neighbor_pairs')
+      .select('id, player_a_id, player_b_id').in('id',pairIds);
+    var pairById={}; (pairs||[]).forEach(function(p){pairById[p.id]=p;});
+    var neighIds=[];
+    chals.forEach(function(c){
+      var p=pairById[c.pair_id]; if(!p) return;
+      var nid=(p.player_a_id===currentUser.id)?p.player_b_id:p.player_a_id;
+      neighIds.push(nid);
+    });
+    var {data:neighPlayers}=await supabaseClient.from('players')
+      .select('id,username').in('id',neighIds);
+    var neighByUuid={}; (neighPlayers||[]).forEach(function(n){neighByUuid[n.id]=n;});
+    // 4. File d'attente de popups
+    var queue=[];
+    chals.forEach(function(c){
+      var part=myParts.find(function(p){return p.challenge_id===c.id;});
+      if(!part) return;
+      var pair=pairById[c.pair_id];
+      var nid=pair?((pair.player_a_id===currentUser.id)?pair.player_b_id:pair.player_a_id):null;
+      var neighInfo=nid?neighByUuid[nid]:null;
+      var grantedHex=(pair && pair.player_a_id===currentUser.id)?c.granted_land_a_hex:c.granted_land_b_hex;
+      queue.push({chal:c, part:part, neighborInfo:neighInfo, grantedHex:grantedHex});
+    });
+    if(!queue.length) return;
+    // 5. Afficher 1 par 1 (queue séquentielle gérée par closeCollabResultPopup)
+    window._collabResultQueue=queue;
+    _showNextCollabResult();
+  } catch(e){
+    console.warn('checkCollabResolutionNotifications error:', e);
+  }
+}
+
+function _showNextCollabResult(){
+  var q=window._collabResultQueue;
+  if(!q || !q.length){ return; }
+  var item=q[0];
+  var chal=item.chal;
+  var meta=COLLAB_CHALLENGE_CATALOG.find(function(x){return x.code===chal.challenge_code;}) || {title:chal.challenge_code};
+  var neighName=item.neighborInfo?item.neighborInfo.username:'ton voisin';
+  var emoji,title,sub,body,btnColor;
+  var neighChip='<strong style="color:var(--cyan)">'+neighName+'</strong>';
+  if(chal.status==='success'){
+    emoji='🎉'; title='Défi réussi !'; btnColor='var(--green)';
+    sub=meta.title;
+    if(chal.reward_type==='land_6m' && item.grantedHex){
+      // Récompense territoriale réelle
+      body='<div style="font-size:.88rem;margin-bottom:.7rem;line-height:1.55">Tu viens de valider un défi avec ton voisin '+neighChip+'.<br>Speedix vous félicite ! 🎁</div>'
+        +'<div style="font-size:.95rem;margin-bottom:.4rem">🏞️ Félicitation tu remportes <strong style="color:var(--green)">une nouvelle land gratuite</strong> pendant 6 mois !</div>'
+        +'<div style="font-size:.65rem;color:var(--muted2);font-family:Space Mono,monospace;word-break:break-all">Hex : '+item.grantedHex+'</div>'
+        +'<div style="font-size:.7rem;color:var(--muted2);margin-top:.4rem">Visible sur ta carte des Lands. À la fin des 6 mois : la garder (loyer normal), la rendre, ou l\'acheter pour 80 NYX.</div>';
+    } else {
+      // Récompense RPC (ou fallback RPC du land_6m)
+      var rpcEach=Math.round((chal.reward_rpc||0)/2);
+      var nyxEach=Math.round((chal.reward_nyx||0)/2);
+      var fallbackNote=(chal.reward_type==='land_6m'&&!item.grantedHex)
+        ?'<div style="font-size:.7rem;color:var(--orange);margin-top:.5rem">Carte saturée → conversion en récompense RPC (2 500 RPC chacun en consolation).</div>'
+        :'';
+      var rewardLine='<span style="color:var(--gold)">+'+rpcEach.toLocaleString('fr')+' RPC</span>';
+      if(nyxEach>0) rewardLine+=' · <span style="color:var(--green)">+'+nyxEach+' 💎 NYX</span>';
+      if(chal.reward_type==='land_6m' && !item.grantedHex){
+        rewardLine='<span style="color:var(--gold)">+2 500 RPC</span>';
+      }
+      body='<div style="font-size:.88rem;margin-bottom:.7rem;line-height:1.55">Tu viens de valider un défi avec ton voisin '+neighChip+'.<br>Speedix vous félicite ! 🎁</div>'
+        +'<div style="font-size:.95rem">Félicitation tu remportes '+rewardLine+'</div>'
+        +fallbackNote;
+    }
+  } else if(chal.status==='failed'){
+    emoji='😔'; title='Défi loupé'; btnColor='var(--red)';
+    sub=meta.title;
+    body='<div style="font-size:.88rem;margin-bottom:.5rem;line-height:1.55">Le défi avec '+neighChip+' n\'a pas été validé à temps.</div>'
+      +'<div style="font-size:.78rem;color:var(--muted2)">Pas de récompense cette fois — un nouveau défi vous sera proposé bientôt.</div>';
+  } else if(chal.status==='cancelled'){
+    emoji='🚫'; title='Défi annulé'; btnColor='var(--orange)';
+    sub=meta.title;
+    body='<div style="font-size:.88rem;margin-bottom:.5rem;line-height:1.55">Le défi avec '+neighChip+' a été annulé.</div>'
+      +'<div style="font-size:.78rem;color:var(--muted2)">Raison : frontière disparue ou un des RPs en infirmerie. Aucune conséquence.</div>';
+  }
+  document.getElementById('ccr-emoji').textContent=emoji;
+  document.getElementById('ccr-title').textContent=title;
+  document.getElementById('ccr-sub').textContent=sub;
+  document.getElementById('ccr-body').innerHTML=body;
+  var btn=document.getElementById('ccr-ok');
+  btn.style.borderColor=btnColor;
+  btn.style.color=btnColor;
+  if(btnColor==='var(--green)') btn.style.background='linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12))';
+  else if(btnColor==='var(--red)') btn.style.background='linear-gradient(175deg,rgba(255,68,68,.22),rgba(180,40,40,.12))';
+  else if(btnColor==='var(--orange)') btn.style.background='linear-gradient(175deg,rgba(255,128,32,.22),rgba(200,90,20,.12))';
+  openModal('collab-result-modal');
+}
+
+async function closeCollabResultPopup(){
+  closeModal('collab-result-modal');
+  var q=window._collabResultQueue;
+  if(!q || !q.length) return;
+  var item=q.shift();
+  // Marquer notified_at en DB pour ne plus réafficher ce défi
+  try {
+    await supabaseClient.from('collab_challenge_participants')
+      .update({notified_at:new Date().toISOString()})
+      .eq('id',item.part.id);
+  } catch(e){ console.warn('notif update fail', e); }
+  // Afficher le suivant après court délai (pour transition fluide)
+  if(q.length){
+    setTimeout(function(){ _showNextCollabResult(); }, 350);
+  } else {
+    window._collabResultQueue=null;
+    // Refresh badge + onglet si ouvert
+    if(typeof refreshCollabBadge==='function') refreshCollabBadge();
+    if(typeof renderCollabChallenges==='function' && _CHALLENGES_TAB==='collab') renderCollabChallenges();
+  }
+}
+
+// Bandeau in-app à l'ouverture : affiche un toast + ouvre la page DÉFIS
+// onglet Voisins si au moins un défi en attente d'acceptation.
+async function checkCollabPendingBanner(){
+  if(!currentUser) return;
+  var n=await countCollabPendingForBadge();
+  if(n<=0) return;
+  showToast('🤜🤛 '+n+' défi'+(n>1?'s':'')+' voisin en attente — Onglet DÉFIS / Voisins');
+  refreshCollabBadge();
 }
 
 // Marque le RP comme "inscrit" à un événement. Persistance BDD + cache local.
