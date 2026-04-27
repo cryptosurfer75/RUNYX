@@ -1758,7 +1758,7 @@ select option{background:#040c1c}
               <div style="flex:1"><div style="font-size:.75rem;color:var(--text);font-weight:600">Team #1</div></div>
               <div style="text-align:right">
                 <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--gold);font-weight:700">50 000 RPC</div>
-                <div style="font-size:.6rem;color:var(--muted2)">+ 80 NYX / membre</div>
+                <div style="font-size:.6rem;color:var(--muted2)">+ 80 NYX</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;background:rgba(192,192,192,.06);border-radius:6px;border:1px solid rgba(192,192,192,.15)">
@@ -1772,7 +1772,7 @@ select option{background:#040c1c}
               <div style="flex:1"><div style="font-size:.75rem;color:var(--text);font-weight:600">Team #2</div></div>
               <div style="text-align:right">
                 <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:#c0c0c0;font-weight:700">30 000 RPC</div>
-                <div style="font-size:.6rem;color:var(--muted2)">+ 60 NYX / membre</div>
+                <div style="font-size:.6rem;color:var(--muted2)">+ 60 NYX</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;background:rgba(205,127,50,.07);border-radius:6px;border:1px solid rgba(205,127,50,.2)">
@@ -1786,7 +1786,7 @@ select option{background:#040c1c}
               <div style="flex:1"><div style="font-size:.75rem;color:var(--text);font-weight:600">Team #3</div></div>
               <div style="text-align:right">
                 <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:#cd7f32;font-weight:700">15 000 RPC</div>
-                <div style="font-size:.6rem;color:var(--muted2)">+ 30 NYX / membre</div>
+                <div style="font-size:.6rem;color:var(--muted2)">+ 30 NYX</div>
               </div>
             </div>
           </div>
@@ -5707,12 +5707,13 @@ async function renderHistory(page){
       ? 'Courses <span style="color:var(--gold)">de '+(window.__viewedPlayer.name||'RP')+'</span>'
       : 'Mes <span style="color:var(--gold)">Courses</span>';
   }
-  // Charger toutes les courses pour les stats
+  // Charger TOUTES les courses lifetime (pas de filtre period — sinon après
+  // une rotation l'historique disparaîtrait alors que les runs sont juste
+  // archivés en period >= 1).
   var {data:allRuns,error}=await supabaseClient
     .from('runs')
     .select('id,distance,time,elevation,points,run_date,name,avg_hr,max_hr,calories,avg_cadence,strava_activity_id')
     .eq('player_id',_targetUuid)
-    .eq('period',0)
     .order('run_date',{ascending:false});
   _allHistRuns=allRuns||[];
   var totalPages=Math.ceil(_allHistRuns.length/_histPerPage);
@@ -7805,17 +7806,20 @@ async function _processEndOfPeriodInner(){
       var {data:flagRow}=await supabaseClient.from('game_settings').select('value').eq('key','teams_prize_pool_enabled').maybeSingle();
       var flagOn=(flagRow && (flagRow.value==='true' || flagRow.value===true));
       if(flagOn){
+        // RPC ET NYX divisés ÉQUITABLEMENT par le nombre de membres de la team
+        // (calibré pour rester soutenable côté économie NYX vu les prix licences).
         var prizePoolRpc=[50000, 30000, 15000];
-        var nyxPerMember=[80, 60, 30];
+        var prizePoolNyx=[80, 60, 30];
         for(var pi=0; pi<Math.min(3, teamScores.length); pi++){
           var winnerTeam=teamScores[pi];
           var teamMembers=allTM.filter(function(m){return m.team_id===winnerTeam.id;});
           if(!teamMembers.length) continue;
           var rpcPerMember=Math.round(prizePoolRpc[pi] / teamMembers.length);
+          var nyxPerMember=Math.round(prizePoolNyx[pi] / teamMembers.length);
           for(var mi=0; mi<teamMembers.length; mi++){
             var tmm=teamMembers[mi];
             try {
-              await walletCreditOther(tmm.player_id, rpcPerMember, nyxPerMember[pi], 'Prize pool team #'+(pi+1)+' P'+_periodData.period+' — '+winnerTeam.name);
+              await walletCreditOther(tmm.player_id, rpcPerMember, nyxPerMember, 'Prize pool team #'+(pi+1)+' P'+_periodData.period+' — '+winnerTeam.name);
             } catch(eppt){ console.warn('[rotation] prize pool team RP '+tmm.player_id+' :', eppt); }
           }
         }
