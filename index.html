@@ -2499,10 +2499,6 @@ function askConfirm(message, opts){
         <span style="font-size:.85rem;color:var(--text);font-weight:700">10 Boosts</span>
         <span style="font-family:'Space Mono',monospace;font-size:.82rem;color:var(--green);font-weight:700">18 💎 NYX</span>
       </button>
-      <button onclick="buyBoosts(20,30)" style="display:flex;align-items:center;justify-content:space-between;padding:.55rem .85rem;border-radius:8px;border:1.5px solid rgba(45,219,128,.35);background:rgba(45,219,128,.06);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='rgba(45,219,128,.7)';this.style.background='rgba(45,219,128,.12)'" onmouseout="this.style.borderColor='rgba(45,219,128,.35)';this.style.background='rgba(45,219,128,.06)'">
-        <span style="font-size:.85rem;color:var(--text);font-weight:700">20 Boosts</span>
-        <span style="font-family:'Space Mono',monospace;font-size:.82rem;color:var(--green);font-weight:700">30 💎 NYX</span>
-      </button>
     </div>
     <div id="boost-shop-stock" style="font-size:.7rem;color:var(--muted2)"></div>
   </div>
@@ -6635,9 +6631,15 @@ async function showLandDetail(landId){
     }
     body+='</div>';
   }
-  if(isMine&&land.stars<3){
-    var nextStarCost=[8000,20000,40000][land.stars||0];
-    body+='<button onclick="addStar(\''+landId+'\')" style="margin-top:.5rem;padding:.35rem .8rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.08);color:var(--gold);font-weight:700;font-size:.75rem;cursor:pointer">+ Étoile ('+nextStarCost.toLocaleString('fr')+' RPC)</button>';
+  if(isMine){
+    var _maxStars=(typeof isPremium==='function'&&isPremium())?3:1;
+    if(land.stars<_maxStars){
+      var nextStarCost=[8000,20000,40000][land.stars||0];
+      body+='<button onclick="addStar(\''+landId+'\')" style="margin-top:.5rem;padding:.35rem .8rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.08);color:var(--gold);font-weight:700;font-size:.75rem;cursor:pointer">+ Étoile ('+nextStarCost.toLocaleString('fr')+' RPC)</button>';
+    } else if(_maxStars===1 && land.stars>=1){
+      // Free RP qui veut plus d'étoiles → CTA Premium
+      body+='<div style="margin-top:.5rem;padding:.35rem .8rem;border-radius:6px;border:1px dashed rgba(245,200,66,.4);background:rgba(245,200,66,.04);color:var(--muted2);font-size:.7rem">⭐ 2★/3★ réservé Premium</div>';
+    }
   }
   if(land.status==='free'){
     var period=_periodData.period||1;
@@ -6682,6 +6684,12 @@ async function showLandDetail(landId){
 // Affiche la liste des RPs qui sont passés sur une Land ce mois-ci,
 // triée par nombre de passages décroissant. Cliquable depuis le détail Land.
 async function showLandPassersList(landId){
+  // Restriction Premium : voir le détail des RPs qui sont passés sur ses lands
+  // est une fonctionnalité d'observation avancée → réservée aux Premium.
+  if(typeof isPremium==='function' && !isPremium()){
+    askConfirm('Voir la liste détaillée des RPs qui passent sur tes Lands est une fonctionnalité <strong style="color:var(--gold)">Premium</strong>.<br><br>Le compteur reste visible pour tous, mais le détail des passages est réservé aux abonnés Premium.',{title:'🔒 Fonctionnalité Premium',emoji:'⭐',okLabel:'OK',singleAction:true});
+    return;
+  }
   try{
     var _now=new Date();
     var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0,10);
@@ -6718,6 +6726,17 @@ async function showLandPassersList(landId){
 
 async function rentLand(landId){
   if(!currentUser){showToast('⚠️ Connecte-toi');return;}
+  // Limite Premium : free RPs plafonnés à 12 Lands en location simultanée.
+  // Premium = illimité (= incite la conversion quand on devient territorial).
+  if(typeof isPremium==='function' && !isPremium()){
+    var {count:_nbLoc}=await supabaseClient.from('lands')
+      .select('id',{count:'exact',head:true})
+      .eq('tenant_id',currentUser.id).eq('status','rented');
+    if((_nbLoc||0)>=12){
+      showToast('⚠️ Limite atteinte : 12 Lands max en location pour les non-Premium');
+      return;
+    }
+  }
   var period=_periodData.period||1;
   var rentCost=period<=1?5000:period<=6?4800:4600;
   var w=window.__wallet||{rpc:0};
@@ -6761,7 +6780,24 @@ async function rentLand(landId){
 
 // Couleur carte du joueur
 var _myMapColor='#4a90ff';
-var MAP_COLOR_OPTIONS=['#4a90ff','#2ddb80','#ff6020','#9060f0','#e040a0','#20d0e0','#f5c842','#ff4444','#c07030','#80a0ff'];
+var MAP_COLOR_OPTIONS=[
+  // Bleus
+  '#4a90ff','#80a0ff','#2080e0','#0066cc','#00bfff',
+  // Verts
+  '#2ddb80','#20b080','#50e0a0','#a0e060','#208030',
+  // Oranges / Rouges
+  '#ff6020','#ff8800','#cc4400','#ff4444','#c07030',
+  // Roses / Magentas
+  '#e040a0','#ff80c0','#ff0066','#c020c0',
+  // Violets
+  '#9060f0','#a040d0','#6020a0',
+  // Cyans / Turquoises
+  '#20d0e0','#40c0c0','#0099aa',
+  // Jaunes / Or / Olive
+  '#f5c842','#ffd000','#aab000','#a08020',
+  // Marron / Gris
+  '#8b4513'
+];
 
 async function loadMapColor(){
   if(!currentUser) return;
@@ -7016,7 +7052,14 @@ async function addStar(landId){
   if(!land) return;
   if(land.tenant_id!==currentUser.id&&land.owner_id!==currentUser.id){showToast('⚠️ Ce n\'est pas ta Land');return;}
   var costs=[8000,20000,40000];
-  if(land.stars>=3){showToast('⚠️ Maximum 3 étoiles');return;}
+  // Limite Premium : free RPs plafonnés à 1★ par Land. Premium jusqu'à 3★ (= +RPC/passage).
+  var maxStars=(typeof isPremium==='function'&&isPremium())?3:1;
+  if(land.stars>=maxStars){
+    showToast(maxStars===1
+      ?'⚠️ Maximum 1 étoile pour les non-Premium (Premium = 3 étoiles)'
+      :'⚠️ Maximum 3 étoiles');
+    return;
+  }
   var cost=costs[land.stars];
   var w=window.__wallet||{rpc:0};
   if(w.rpc<cost){showToast('⚠️ Pas assez de RPC ('+cost.toLocaleString('fr')+' requis)');return;}
