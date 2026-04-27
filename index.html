@@ -5319,6 +5319,14 @@ function renderLeaguePanel(){
   var maxPts=league.max||Infinity;
   var max2Pts=league.max2||Infinity; // second promo line threshold (for L7 → L5)
 
+  // Jour courant de la période (1-indexed) : utilisé pour différer l'alarme rouge
+  // sur les RPs en zone de rétrogradation. Avant le 21e jour, on garde le doré
+  // pour ne pas stresser inutilement (ils ont encore le temps de remonter).
+  var _dayOfPeriod=1;
+  if(_periodData && _periodData.start){
+    _dayOfPeriod=Math.max(1, Math.floor((Date.now()-new Date(_periodData.start).getTime())/86400000)+1);
+  }
+
   function buildRow(p, rankNum, isPromo, isReleg, paidRanks, compRank){
     var isCalib=(p.competitive===false);
     // compRank = rang parmi les compétitifs (pour médailles/places payées), 0 si calibrage
@@ -5331,7 +5339,9 @@ function renderLeaguePanel(){
     var initials=p.name.split(' ').map(function(w){return w[0];}).join('');
     var rowBg=isReleg?'background:rgba(255,68,68,.04);':isPromo?'background:rgba(45,219,128,.04);':(isMe?'background:rgba(4,12,35,.85);':'');
     var rowStyle=isMe?'box-shadow:inset 0 0 0 1.5px rgba(74,144,255,.65);':'';
-    var ptColor=isReleg?'var(--red)':'var(--gold)';
+    // Rouge UNIQUEMENT si en zone de rétrogradation ET au moins 21 jours dans la
+    // période courante (= alarme tardive). Sinon doré comme tout le monde.
+    var ptColor=(isReleg && _dayOfPeriod>=21)?'var(--red)':'var(--gold)';
     var parrainColors={A:'#2ddb80',G:'#ff6020',E:'#9060f0',F:'#f5c842'};
     var meBadge='';
     // Badge S = zone Starter (jamais sorti, < 500 pts cumulés)
@@ -14873,7 +14883,11 @@ async function renderCollabChallenges(){
       .select('id,challenge_id,player_id,accepted_at,declined,progress,completed_individually,completed_at')
       .eq('player_id',currentUser.id);
     if(!myParts || !myParts.length){
-      wrap.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.85rem;line-height:1.6">'
+      var helpHeaderEmpty='<div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">'
+        +'<button onclick="openModal(\'collab-help-modal\')" style="padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.7rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem">❓ Comment ça marche ?</button>'
+        +'</div>';
+      wrap.innerHTML=helpHeaderEmpty
+        +'<div style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.85rem;line-height:1.6">'
         +'<div style="font-size:2rem;margin-bottom:.4rem">🤜🤛</div>'
         +'Aucun défi voisin pour le moment.<br><span style="font-size:.72rem">Speedix te proposera des défis collaboratifs dès qu\'une frontière sera détectée avec un autre RP (5 jours après).</span>'
         +'</div>';
