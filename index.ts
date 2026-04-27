@@ -1,17 +1,25 @@
-// Edge Function : detect-neighbor-pairs
+// Edge Function : propose-collab-challenges
 // ──────────────────────────────────────────────────────────────
-// Scan tous les hexes possédés par des RPs et détecte les paires
-// de RPs dont les territoires sont frontaliers (au moins 1 hex
-// H3 adjacent commun). Met à jour collab_neighbor_pairs (active /
-// inactive selon le résultat).
+// Pour chaque paire de voisins active, vérifie si on doit proposer
+// un nouveau défi collaboratif et le crée (status='proposed' + 2
+// lignes participants).
 //
-// À déclencher quotidiennement via cron pg_cron ou manuellement
-// par admin avec le secret partagé ADMIN_TRIGGER_SECRET.
+// Règles temporelles (cf project_collab_challenges_voisins.md) :
+//   - 1ère proposition : 5 jours après first_detected_at
+//   - Récurrence : 30 jours après proposed_at du dernier défi
+//   - Après refus / expiration : 7 jours plus tard (re-proposition d'un autre défi)
+//
+// Règles d'éligibilité :
+//   - Aucun défi non-terminal en cours pour la paire
+//   - Aucun des 2 RPs en infirmerie active
+//   - Tirage aléatoire dans le catalogue (anti-répétition vs dernier défi)
+//   - Défi CC04 (week-end) : proposé uniquement le vendredi matin (heure Paris)
+//
+// À déclencher quotidiennement via cron pg_cron ou manuellement.
 // ──────────────────────────────────────────────────────────────
 
 import { serve }        from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import * as h3          from 'https://esm.sh/h3-js@4.1.0';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -27,10 +35,43 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-secret'
 };
 
+// Catalogue des 12 défis (DOIT rester aligné avec COLLAB_CHALLENGE_CATALOG côté front)
+const CATALOG = [
+  { code:'CC01', duration_hours:48,    reward_rpc:3000,  reward_nyx:0,  reward_type:'rpc'     },
+  { code:'CC02', duration_hours:72,    reward_rpc:4000,  reward_nyx:0,  reward_type:'rpc'     },
+  { code:'CC03', duration_hours:24*7,  reward_rpc:6000,  reward_nyx:0,  reward_type:'rpc'     },
+  { code:'CC04', duration_hours:24*3,  reward_rpc:0,     reward_nyx:0,  reward_type:'land_6m', proposal_constraint:'friday_morning_only' },
+  { code:'CC05', duration_hours:24*7,  reward_rpc:3000,  reward_nyx:0,  reward_type:'rpc'     },
+  { code:'CC06', duration_hours:24*7,  reward_rpc:3000,  reward_nyx:0,  reward_type:'rpc'     },
+  { code:'CC07', duration_hours:24*7,  reward_rpc:6000,  reward_nyx:0,  reward_type:'rpc'     },
+  { code:'CC08', duration_hours:24*10, reward_rpc:6000,  reward_nyx:20, reward_type:'rpc'     },
+  { code:'CC09', duration_hours:24*7,  reward_rpc:3000,  reward_nyx:10, reward_type:'rpc'     },
+  { code:'CC10', duration_hours:24*30, reward_rpc:0,     reward_nyx:0,  reward_type:'land_6m' },
+  { code:'CC11', duration_hours:24*15, reward_rpc:10000, reward_nyx:40, reward_type:'rpc'     },
+  { code:'CC12', duration_hours:24*7,  reward_rpc:6000,  reward_nyx:0,  reward_type:'rpc'     }
+];
+
+function isFridayMorningParis(now: Date): boolean {
+  // Vendredi en heure Paris = jour 5 (lun=1..dim=0). On considère "matin" = avant 12h.
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone:'Europe/Paris', weekday:'short', hour:'2-digit', hour12:false
+  });
+  const parts = fmt.formatToParts(now);
+  const wd = parts.find(p => p.type==='weekday')?.value || '';
+  const hr = parseInt(parts.find(p => p.type==='hour')?.value || '0', 10);
+  return wd === 'Fri' && hr < 12;
+}
+
+async function isPlayerInInfirmerie(playerId: string): Promise<boolean> {
+  const { data } = await supabase.from('players')
+    .select('infirmerie_until').eq('id', playerId).maybeSingle();
+  if (!data || !data.infirmerie_until) return false;
+  return new Date(data.infirmerie_until) > new Date();
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
-  // Auth admin (ou cron interne)
   const provided = req.headers.get('x-admin-secret') || '';
   if (!ADMIN_SECRET || provided !== ADMIN_SECRET) {
     return new Response(JSON.stringify({ error: 'Forbidden' }),
@@ -38,92 +79,116 @@ serve(async (req: Request) => {
   }
 
   try {
-    // 1. Charger tous les hexes possédés (owner ou tenant)
-    const { data: lands, error: errL } = await supabase
-      .from('lands')
-      .select('id, owner_id, tenant_id, status')
-      .neq('status', 'free');
-    if (errL) throw errL;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const fridayMorning = isFridayMorningParis(now);
 
-    // 2. Map hex_id -> player_id (priorité owner > tenant)
-    const hexOwner = new Map<string, string>();
-    for (const l of (lands || [])) {
-      const pid = l.owner_id || l.tenant_id;
-      if (pid && l.id) hexOwner.set(l.id, pid);
+    // 1. Marquer les défis 'proposed' dont la deadline d'acceptation est dépassée
+    const { data: expiredCandidates } = await supabase.from('collab_challenges')
+      .select('id').eq('status', 'proposed').lt('acceptance_deadline', nowIso);
+    let expiredCount = 0;
+    for (const ec of (expiredCandidates || [])) {
+      await supabase.from('collab_challenges')
+        .update({ status: 'expired', resolved_at: nowIso })
+        .eq('id', ec.id);
+      expiredCount++;
     }
 
-    // 3. Pour chaque hex, regarder ses 6 voisins H3 et détecter les paires
-    //    de RPs frontaliers. Compteur par paire = nb d'occurrences (chaque
-    //    hex frontalier est compté 2 fois car on scan les deux côtés, on
-    //    divisera par 2 à la fin).
-    const pairCounts = new Map<string, { a: string, b: string, count: number }>();
-    for (const [hexId, pidA] of hexOwner.entries()) {
-      let neighbors: string[];
-      try { neighbors = h3.gridDisk(hexId, 1).filter(n => n !== hexId); }
-      catch { continue; }
-      for (const n of neighbors) {
-        const pidB = hexOwner.get(n);
-        if (!pidB || pidB === pidA) continue;
-        // Ordre canonique pour respecter la contrainte CHECK (a < b)
-        const [pA, pB] = pidA < pidB ? [pidA, pidB] : [pidB, pidA];
-        const key = `${pA}|${pB}`;
-        const cur = pairCounts.get(key);
-        if (cur) cur.count += 1;
-        else pairCounts.set(key, { a: pA, b: pB, count: 1 });
-      }
-    }
-
-    // 4. UPSERT dans collab_neighbor_pairs
-    const detectedKeys = new Set<string>();
-    let inserted = 0, updated = 0;
-    for (const [key, p] of pairCounts.entries()) {
-      detectedKeys.add(key);
-      const sharedCount = Math.max(1, Math.floor(p.count / 2));
-      const { data: existing } = await supabase.from('collab_neighbor_pairs')
-        .select('id').eq('player_a_id', p.a).eq('player_b_id', p.b).maybeSingle();
-      if (existing) {
-        await supabase.from('collab_neighbor_pairs')
-          .update({
-            shared_hex_count: sharedCount,
-            last_seen_at: new Date().toISOString(),
-            is_active: true
-          })
-          .eq('id', existing.id);
-        updated++;
-      } else {
-        await supabase.from('collab_neighbor_pairs').insert({
-          player_a_id: p.a,
-          player_b_id: p.b,
-          shared_hex_count: sharedCount,
-          is_active: true
-        });
-        inserted++;
-      }
-    }
-
-    // 5. Désactiver les paires qui n'ont plus de frontière commune
-    const { data: allPairs } = await supabase.from('collab_neighbor_pairs')
-      .select('id, player_a_id, player_b_id, is_active')
+    // 2. Charger toutes les paires actives
+    const { data: pairs } = await supabase.from('collab_neighbor_pairs')
+      .select('id, player_a_id, player_b_id, first_detected_at')
       .eq('is_active', true);
-    let deactivated = 0;
-    for (const p of (allPairs || [])) {
-      const key = `${p.player_a_id}|${p.player_b_id}`;
-      if (!detectedKeys.has(key)) {
-        await supabase.from('collab_neighbor_pairs')
-          .update({ is_active: false })
-          .eq('id', p.id);
-        deactivated++;
+
+    let proposed = 0, skipped = 0;
+    const skipReasons: Record<string, number> = {};
+    const incrementSkip = (reason: string) => {
+      skipReasons[reason] = (skipReasons[reason] || 0) + 1;
+      skipped++;
+    };
+
+    for (const pair of (pairs || [])) {
+      // 2a. Skip si défi non terminal en cours
+      const { data: open } = await supabase.from('collab_challenges')
+        .select('id').eq('pair_id', pair.id)
+        .in('status', ['proposed', 'in_progress']).limit(1);
+      if (open && open.length) { incrementSkip('open_challenge'); continue; }
+
+      // 2b. Récupérer le dernier défi terminal pour calculer la date de prochaine proposition
+      const { data: lastList } = await supabase.from('collab_challenges')
+        .select('challenge_code, proposed_at, status, resolved_at')
+        .eq('pair_id', pair.id)
+        .order('proposed_at', { ascending: false })
+        .limit(1);
+      const last = lastList && lastList[0];
+
+      let nextProposeAt: Date;
+      let lastCode: string | null = null;
+      if (!last) {
+        // Jamais eu de défi → 5 jours après détection
+        nextProposeAt = new Date(new Date(pair.first_detected_at).getTime() + 5 * 86400000);
+      } else {
+        lastCode = last.challenge_code;
+        if (last.status === 'expired') {
+          // Re-proposition rapide : 7 jours après l'expiration
+          const baseDate = last.resolved_at ? new Date(last.resolved_at) : new Date(last.proposed_at);
+          nextProposeAt = new Date(baseDate.getTime() + 7 * 86400000);
+        } else {
+          // Cycle normal : 30 jours après le dernier défi proposé
+          nextProposeAt = new Date(new Date(last.proposed_at).getTime() + 30 * 86400000);
+        }
       }
+      if (now < nextProposeAt) { incrementSkip('not_yet'); continue; }
+
+      // 2c. Vérifier infirmerie des 2 RPs
+      const [infA, infB] = await Promise.all([
+        isPlayerInInfirmerie(pair.player_a_id),
+        isPlayerInInfirmerie(pair.player_b_id)
+      ]);
+      if (infA || infB) { incrementSkip('infirmerie'); continue; }
+
+      // 2d. Filtrer le catalogue selon contraintes
+      let eligible = CATALOG.filter(c => c.code !== lastCode);
+      // Contrainte CC04 : uniquement vendredi matin
+      eligible = eligible.filter(c => {
+        if (c.proposal_constraint === 'friday_morning_only') return fridayMorning;
+        return true;
+      });
+      if (eligible.length === 0) { incrementSkip('no_eligible_catalog'); continue; }
+
+      // 2e. Tirage aléatoire
+      const pick = eligible[Math.floor(Math.random() * eligible.length)];
+      const acceptanceDeadline = new Date(now.getTime() + 48 * 3600000).toISOString();
+
+      const { data: created, error: errIns } = await supabase.from('collab_challenges').insert({
+        pair_id: pair.id,
+        challenge_code: pick.code,
+        status: 'proposed',
+        acceptance_deadline: acceptanceDeadline,
+        reward_rpc: pick.reward_rpc,
+        reward_nyx: pick.reward_nyx,
+        reward_type: pick.reward_type
+      }).select('id').single();
+      if (errIns || !created) { incrementSkip('insert_fail'); continue; }
+
+      // 2f. Créer les 2 lignes participants
+      await supabase.from('collab_challenge_participants').insert([
+        { challenge_id: created.id, player_id: pair.player_a_id },
+        { challenge_id: created.id, player_id: pair.player_b_id }
+      ]);
+      proposed++;
     }
 
     return new Response(JSON.stringify({
       ok: true,
-      hexes_scanned: hexOwner.size,
-      pairs_detected: pairCounts.size,
-      inserted, updated, deactivated
+      pairs_scanned: (pairs || []).length,
+      expired: expiredCount,
+      proposed,
+      skipped,
+      skip_reasons: skipReasons,
+      friday_morning_paris: fridayMorning
     }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
-    console.error('detect-neighbor-pairs error:', err);
+    console.error('propose-collab-challenges error:', err);
     return new Response(JSON.stringify({ error: String(err) }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
   }
