@@ -15304,7 +15304,28 @@ async function declineCollabChallenge(participantId){
   }
 }
 
-// Compte le nombre de défis 'à accepter' pour le RP, pour la pastille de l'onglet
+// localStorage : IDs des défis collab déjà vus par le RP (pour ne pas re-pulser
+// la pastille à chaque reconnexion tant qu'aucun nouveau défi n'arrive).
+function _collabSeenKey(){
+  return 'collab_seen_'+(currentUser?currentUser.id:'anon');
+}
+function _getCollabSeenIds(){
+  try { var raw=localStorage.getItem(_collabSeenKey()); return raw?JSON.parse(raw):[]; }
+  catch(e){ return []; }
+}
+function _addCollabSeenIds(ids){
+  if(!ids||!ids.length) return;
+  try {
+    var set={}; _getCollabSeenIds().forEach(function(id){set[id]=true;});
+    ids.forEach(function(id){set[id]=true;});
+    var arr=Object.keys(set);
+    if(arr.length>200) arr=arr.slice(-200); // cap pour éviter ballonnement
+    localStorage.setItem(_collabSeenKey(),JSON.stringify(arr));
+  } catch(e){}
+}
+
+// Compte le nombre de défis 'à accepter' pour le RP, pour la pastille de l'onglet.
+// Exclut les défis déjà vus (présents en localStorage).
 async function countCollabPendingForBadge(){
   if(!currentUser) return 0;
   try {
@@ -15315,7 +15336,9 @@ async function countCollabPendingForBadge(){
     var ids=myParts.map(function(p){return p.challenge_id;});
     var {data:chals}=await supabaseClient.from('collab_challenges')
       .select('id,status').in('id',ids).eq('status','proposed');
-    return (chals||[]).length;
+    if(!chals || !chals.length) return 0;
+    var seenSet={}; _getCollabSeenIds().forEach(function(id){seenSet[id]=true;});
+    return chals.filter(function(c){return !seenSet[c.id];}).length;
   } catch(e){ return 0; }
 }
 
@@ -15326,10 +15349,24 @@ async function refreshCollabBadge(){
   badge.style.display=(n>0?'block':'none');
 }
 
-function _markCollabSeen(){
-  // L'ouverture de l'onglet éteint la pastille (les défis restent visibles).
+async function _markCollabSeen(){
+  // L'ouverture de l'onglet éteint la pastille ET persiste les IDs des défis
+  // 'proposed' actuels en localStorage, pour que la pastille ne réapparaisse pas
+  // après refresh/reconnexion (jusqu'à ce qu'un NOUVEAU défi soit proposé).
   var badge=document.getElementById('challenges-tab-collab-badge');
   if(badge) badge.style.display='none';
+  if(!currentUser) return;
+  try {
+    var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('id,challenge_id,accepted_at,declined')
+      .eq('player_id',currentUser.id).is('accepted_at',null).eq('declined',false);
+    if(!myParts || !myParts.length) return;
+    var ids=myParts.map(function(p){return p.challenge_id;});
+    var {data:chals}=await supabaseClient.from('collab_challenges')
+      .select('id,status').in('id',ids).eq('status','proposed');
+    if(!chals || !chals.length) return;
+    _addCollabSeenIds(chals.map(function(c){return c.id;}));
+  } catch(e){}
 }
 
 // Notifie le RP des défis collaboratifs résolus (success / failed / cancelled)
