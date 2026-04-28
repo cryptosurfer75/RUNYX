@@ -4580,6 +4580,16 @@ async function saveManualRun(){
     // Comparaison au niveau JOUR : aujourd'hui OK, demain et après refusé
     const todayStr=new Date().toISOString().substring(0,10);
     if(dateStr>todayStr){showToast('⚠️ Date dans le futur impossible');return;}
+    // Refuse les dates avant le début de la période courante (anti-triche :
+    // un RP ne peut pas saisir tout son historique d'avril après coup pour
+    // gonfler son classement).
+    if(_periodData && _periodData.start){
+      const periodStartStr=_periodData.start.substring(0,10);
+      if(dateStr<periodStartStr){
+        showToast('⚠️ Date avant le début de la période courante ('+periodStartStr+')');
+        return;
+      }
+    }
     runDate=d.toISOString();
   } else {
     runDate=new Date().toISOString();
@@ -7910,6 +7920,15 @@ async function loadPeriodSettings(){
     if(s.key==='period_start') _periodData.start=s.value;
     if(s.key==='period_end') _periodData.end=s.value;
   });
+  // Borne le sélecteur de date du simulateur entre début de période et aujourd'hui
+  // (anti-triche : pas de saisie rétroactive de courses des périodes précédentes).
+  if(_periodData.start){
+    var simDate=document.getElementById('c-date');
+    if(simDate){
+      simDate.min=_periodData.start.substring(0,10);
+      simDate.max=new Date().toISOString().substring(0,10);
+    }
+  }
   // Afficher le badge
   var badge=document.getElementById('period-badge');
   if(badge) badge.textContent='P'+_periodData.period+' test';
