@@ -4903,7 +4903,7 @@ function renderDashboard(){
   // ── Avatar Builder (créateur d'avatar DiceBear) ──
   var _avatarOpts={
     skinColor:['fdbcb4','edb98a','d08b5b','ae5d29','614335','f8d25c'],
-    top:['shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
+    top:['noHair','shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
     hairColor:['a55728','2c1b18','b58143','d6b370','724133','4a312c','c93305','e8e1e1','f59797'],
     hatColor:['none','hat','winterHat1','winterHat04','hijab','turban'],
     accessories:['blank','kurt','prescription01','prescription02','round','sunglasses','wayfarers'],
@@ -4923,11 +4923,16 @@ function renderDashboard(){
     var url='https://api.dicebear.com/9.x/avataaars/svg?seed=custom';
     var hatVal=_avatarOpts.hatColor[_avatarCurrent.hatColor];
     var useHat=(hatVal&&hatVal!=='none');
-    // Cheveux ou chapeau
+    // Cheveux ou chapeau (option spéciale 'noHair' = crâne nu via topProbability=0)
     if(useHat){
       url+='&top='+hatVal;
     } else {
-      url+='&top='+_avatarOpts.top[_avatarCurrent.top];
+      var topVal=_avatarOpts.top[_avatarCurrent.top];
+      if(topVal==='noHair'){
+        url+='&topProbability=0';
+      } else {
+        url+='&top='+topVal;
+      }
     }
     url+='&skinColor='+_avatarOpts.skinColor[_avatarCurrent.skinColor];
     url+='&hairColor='+_avatarOpts.hairColor[_avatarCurrent.hairColor];
@@ -6769,6 +6774,8 @@ async function rentLand(landId){
   await walletCredit(-rentCost,0,'Loyer Land '+landId.substring(0,8));
   closeModal('land-modal');
   showToast('🔑 Land louée ! −'+rentCost.toLocaleString('fr')+' RPC');
+  // Retirer cet hex de pending_exploration (il est maintenant matérialisé en land)
+  if(typeof _removeFromPendingExploration==='function') _removeFromPendingExploration(landId);
   loadLandsOnMap();
   renderMyLands();
   // Déclenche la vérif du badge PROSPECTEUR (fenêtre 60 min)
@@ -7545,17 +7552,53 @@ async function adminForceRent(){
 }
 
 // Charger les explorations en attente depuis la DB
+// Helpers pending_exploration : persistance robuste des hexes explorés.
+// Modèle V2 (2026-04-28) : on NE PURGE PLUS au load. Le pending reste en DB
+// jusqu'à action explicite ("Terminer l'exploration" OU avoir loué tous les
+// hexes). Évite les pertes de tracé en cas de refresh inopiné.
+async function _mergePendingExploration(hexes, lat, lng){
+  if(!currentUser || !hexes || !hexes.length) return;
+  try {
+    var {data:p}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
+    var existing={hexes:[]};
+    if(p && p.pending_exploration){
+      try{ existing=JSON.parse(p.pending_exploration); }catch(e){ existing={hexes:[]}; }
+    }
+    var merged=Array.from(new Set((existing.hexes||[]).concat(hexes)));
+    var pendingData=JSON.stringify({hexes:merged, lat:(lat!=null?lat:existing.lat), lng:(lng!=null?lng:existing.lng), updated_at:new Date().toISOString()});
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:JSON.stringify({pending_exploration:pendingData})
+    });
+  } catch(e){ console.warn('[pending] merge fail',e); }
+}
+
+async function _removeFromPendingExploration(hexId){
+  if(!currentUser || !hexId) return;
+  try {
+    var {data:p}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
+    if(!p || !p.pending_exploration) return;
+    var data; try{ data=JSON.parse(p.pending_exploration); }catch(e){ return; }
+    if(!data || !data.hexes) return;
+    data.hexes=data.hexes.filter(function(h){return h!==hexId;});
+    var body=(data.hexes.length===0)
+      ? JSON.stringify({pending_exploration:null})
+      : JSON.stringify({pending_exploration:JSON.stringify(Object.assign(data,{updated_at:new Date().toISOString()}))});
+    await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+      method:'PATCH',
+      headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+      body:body
+    });
+  } catch(e){ console.warn('[pending] remove fail',e); }
+}
+
 async function loadPendingExploration(){
   if(!currentUser) return;
   var {data:player}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
   if(!player||!player.pending_exploration) return;
-  // Effacer en DB DÈS qu'on a lu la valeur — la modale ne ressortira plus au prochain login
-  // (le tracé et le bouton Terminer restent gérés par loadLandsOnMap selon les passages)
-  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
-    method:'PATCH',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-    body:JSON.stringify({pending_exploration:null})
-  });
+  // V2 : on NE PURGE PLUS au load — le pending reste jusqu'à "Terminer
+  // l'exploration" ou jusqu'à avoir loué tous les hexes.
   try{
     var data=JSON.parse(player.pending_exploration);
     if(!data||!data.hexes||!data.hexes.length) return;
@@ -12015,11 +12058,16 @@ async function syncStravaActivities(silent){
             }
           }
         }
-        // Stocker les hexes explorés pour affichage sur la carte (client-side only)
+        // Stocker les hexes explorés (client-side pour affichage immédiat
+        // + persistance DB via pending_exploration pour survivre aux refresh).
         if(!window._recentExploredHexes) window._recentExploredHexes=[];
         window._hidePassages=false;
         if(currentUser) localStorage.removeItem('expl-done-'+currentUser.id);
         window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
+        // Récupérer un point central de la course pour centrer la carte au prochain login
+        var _ctrLat=null,_ctrLng=null;
+        try { var _ll=h3.cellToLatLng(hexes[0]); _ctrLat=_ll[0]; _ctrLng=_ll[1]; } catch(e){}
+        await _mergePendingExploration(hexes, _ctrLat, _ctrLng);
       }
       resultsHtml+='<div style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;border-radius:4px">'
         +'<span style="color:var(--text)">'+a.name+' <span style="color:var(--muted2)">'+Math.round(km*10)/10+'km</span></span>'
@@ -12042,17 +12090,13 @@ async function syncStravaActivities(silent){
       if(resultsDiv) resultsDiv.style.display='block';
       if(listDiv) listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">Courses importées · Passages Lands enregistrés automatiquement</div>'+resultsHtml;
       showToast('✓ '+newActivities.length+' activité'+(newActivities.length>1?'s':'')+' importée'+(newActivities.length>1?'s':''));
-      // Un nouveau run écrase l'ancien tracé : purger toute trace périmée
+      // V2 (2026-04-28) : on NE PURGE PLUS pending_exploration sur sync — au
+      // contraire, _mergePendingExploration ajoute les nouveaux hexes au pending
+      // existant. Le RP libère explicitement via "Terminer l'exploration" ou
+      // en louant tous les hexes. Reset uniquement le flag local d'affichage.
       var hasNewHexes=newActivities.some(function(a){return a.hexes&&a.hexes.length;});
       if(hasNewHexes){
         _lastExploredHexes=[];
-        // Purger pending_exploration (admin explore obsolète)
-        await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
-          method:'PATCH',
-          headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-          body:JSON.stringify({pending_exploration:null})
-        });
-        // Purger les flags "terminer" pour que les nouveaux passages s'affichent
         if(currentUser){
           localStorage.removeItem('expl-hide-'+currentUser.id);
           localStorage.removeItem('expl-hide-at-'+currentUser.id);
@@ -12556,9 +12600,12 @@ async function saveCapturedRun(captured, runName){
         }
       }
     }
-    // Marquer pour rendu carte
+    // Marquer pour rendu carte (mémoire) + persistance DB pour survivre au refresh
     if(!window._recentExploredHexes) window._recentExploredHexes=[];
     window._recentExploredHexes=window._recentExploredHexes.concat(hexes);
+    var _ctrLat2=null,_ctrLng2=null;
+    try { var _ll2=h3.cellToLatLng(hexes[0]); _ctrLat2=_ll2[0]; _ctrLng2=_ll2[1]; } catch(e){}
+    await _mergePendingExploration(hexes, _ctrLat2, _ctrLng2);
   }
 
   // 4. Trigger badge check côté serveur (fire-and-forget) — l'Edge Function
