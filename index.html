@@ -3563,6 +3563,46 @@ async function onLoginSuccess(user, isNew){
   }
   // Présence live — s'abonner au canal "online_users" pour tracker qui est connecté
   if(typeof initPresence==='function') initPresence(user);
+  // Reprise course interrompue : si la WebView a été tuée pendant un run
+  // (memory pressure iOS, network reload), un snapshot existe en localStorage.
+  // On propose à l'utilisateur de reprendre.
+  if(typeof RunTracker!=='undefined' && RunTracker.hasInProgressRun && RunTracker.hasInProgressRun()){
+    setTimeout(function(){
+      if(typeof showRunRecoveryBanner==='function') showRunRecoveryBanner();
+    }, 1200);
+  }
+}
+
+// Bandeau "Course interrompue détectée — reprendre ?" affiché si le snapshot
+// localStorage indique une course en cours quand l'app revient (reload iOS).
+function showRunRecoveryBanner(){
+  if(!RunTracker || !RunTracker.hasInProgressRun || !RunTracker.hasInProgressRun()) return;
+  // Vire un éventuel bandeau précédent
+  var old=document.getElementById('run-recovery-banner');
+  if(old) old.remove();
+  var banner=document.createElement('div');
+  banner.id='run-recovery-banner';
+  banner.style.cssText='position:fixed;bottom:80px;left:1rem;right:1rem;z-index:9000;background:linear-gradient(135deg,#f5c842,#d49d20);color:#0a0f1a;padding:1rem;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:.6rem;font-family:Rajdhani,sans-serif;font-weight:600';
+  banner.innerHTML=
+    '<div style="font-family:Bebas Neue,sans-serif;font-size:1.1rem;letter-spacing:2px">⚠️ COURSE INTERROMPUE</div>'+
+    '<div style="font-size:.85rem;line-height:1.4">Une course en cours a été détectée. L\'app a été rechargée, mais ton tracé est sauvegardé.</div>'+
+    '<div style="display:flex;gap:.5rem;margin-top:.3rem">'+
+      '<button id="run-recovery-resume" style="flex:1;padding:.6rem;border-radius:8px;border:none;background:#0a0f1a;color:#f5c842;font-family:Bebas Neue,sans-serif;font-size:.85rem;letter-spacing:1.5px;cursor:pointer">REPRENDRE</button>'+
+      '<button id="run-recovery-discard" style="padding:.6rem 1rem;border-radius:8px;border:1px solid rgba(10,15,26,.3);background:transparent;color:#0a0f1a;font-family:Bebas Neue,sans-serif;font-size:.85rem;letter-spacing:1.5px;cursor:pointer">JETER</button>'+
+    '</div>';
+  document.body.appendChild(banner);
+  document.getElementById('run-recovery-resume').onclick=function(){
+    if(RunTracker.restoreInProgressRun()){
+      banner.remove();
+      if(typeof nav==='function') nav('points'); // amène à la page Races
+      if(typeof showToast==='function') showToast('Course reprise — continue ta sortie 🏃');
+    }
+  };
+  document.getElementById('run-recovery-discard').onclick=function(){
+    RunTracker.discardInProgressRun();
+    banner.remove();
+    if(typeof showToast==='function') showToast('Course interrompue jetée');
+  };
 }
 
 async function checkExistingSession(){
@@ -12246,6 +12286,70 @@ var RunTracker=(function(){
   var _pausedAt=0;              // ms epoch du début de la pause courante
   var _totalPausedMs=0;         // cumul des temps de pause depuis le start
 
+  // ── Persistance localStorage : si la WebView est tuée par iOS pendant la
+  // course (memory pressure, screen lock, network blip → reload), on doit
+  // pouvoir reprendre exactement où on en était. Sans ça, un reload =
+  // perte totale de la course.
+  var _PERSIST_KEY='speedix_run_state_v1';
+  var _persistThrottle=0;       // ms epoch dernière sauvegarde (throttle 3s)
+  var _wakeLock=null;           // WakeLockSentinel (Screen Wake Lock API)
+
+  function _persistSnapshot(force){
+    try {
+      var now=Date.now();
+      if(!force && (now-_persistThrottle)<3000) return;
+      _persistThrottle=now;
+      if(_state==='idle'){ localStorage.removeItem(_PERSIST_KEY); return; }
+      var snap={
+        v:1, ts:now, state:_state,
+        points:_points, stats:_stats,
+        startedAt:_startedAt, pausedAt:_pausedAt, totalPausedMs:_totalPausedMs,
+        lastAccepted:_lastAccepted, lastAlt:_lastAlt
+      };
+      localStorage.setItem(_PERSIST_KEY, JSON.stringify(snap));
+    } catch(e){}
+  }
+  function _loadPersistSnapshot(){
+    try {
+      var raw=localStorage.getItem(_PERSIST_KEY);
+      if(!raw) return null;
+      var snap=JSON.parse(raw);
+      if(!snap || snap.v!==1) return null;
+      // Stale check : > 12h = course abandonnée, on ignore
+      if(Date.now()-snap.ts > 12*60*60*1000){
+        localStorage.removeItem(_PERSIST_KEY);
+        return null;
+      }
+      return snap;
+    } catch(e){ return null; }
+  }
+  function _clearPersistSnapshot(){
+    try { localStorage.removeItem(_PERSIST_KEY); } catch(e){}
+  }
+
+  // ── Wake Lock : empêche l'écran iOS/Android de s'éteindre pendant la
+  // course. Sans ça, WKWebView (iOS) suspend le JS dès écran off, et même
+  // si le plugin natif continue à collecter le GPS, les callbacks JS ne se
+  // déclenchent plus → points perdus. Wake Lock garantit JS actif.
+  async function _acquireWakeLock(){
+    try {
+      if(!('wakeLock' in navigator)) return;
+      if(_wakeLock) return;
+      _wakeLock=await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release', function(){ _wakeLock=null; });
+    } catch(e){ console.warn('[RunTracker] WakeLock fail',e); }
+  }
+  async function _releaseWakeLock(){
+    try { if(_wakeLock){ await _wakeLock.release(); _wakeLock=null; } }
+    catch(e){}
+  }
+  // Re-acquire si l'app revient au premier plan pendant une course
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && (_state==='tracking'||_state==='paused')){
+      _acquireWakeLock();
+    }
+  });
+
   function _resetStats(){
     _points=[];_lastAccepted=null;_lastAlt=null;
     _stats={km:0,elv:0,spdInst:0,spdAvg:0,durMs:0};
@@ -12299,6 +12403,7 @@ var RunTracker=(function(){
     var durH=_stats.durMs/3600000;
     if(durH>0) _stats.spdAvg=_stats.km/durH;
     if(_onPoint) _onPoint(pt,_stats);
+    _persistSnapshot(); // throttled, robuste si WebView tuée par iOS
   }
 
   function _onGpsError(err){
@@ -12411,6 +12516,7 @@ var RunTracker=(function(){
       if(_state!=='tracking') return;
       _pausedAt=Date.now();
       _state='paused';
+      _persistSnapshot(true);
     },
     // resume() : reprend l'enregistrement. On reset _lastAccepted pour ne pas
     // créer un faux delta de distance entre le point d'avant-pause et le 1er
@@ -12422,11 +12528,13 @@ var RunTracker=(function(){
       _pausedAt=0;
       _lastAccepted=null; // pas de delta avec le pre-pause
       _state='tracking';
+      _persistSnapshot(true);
     },
     // arm() : démarre le watch GPS pour verrouiller le signal sans accumuler.
     // Permet à l'utilisateur de voir "GPS prêt" avant d'appuyer sur START.
     arm:async function(){
       if(_state!=='idle') return;
+      _clearPersistSnapshot(); // nouveau run = on jette tout vieux snapshot
       _resetStats();
       _lastFix=null;
       _startWatch();
@@ -12440,15 +12548,19 @@ var RunTracker=(function(){
       _resetStats();
       _startedAt=Date.now();
       _state='tracking';
+      _acquireWakeLock();        // garde l'écran allumé → JS reste actif iOS
+      _persistSnapshot(true);
     },
     stop:async function(){
       if(_state==='idle') return null;
       _stopWatch();
+      _releaseWakeLock();
       var wasRunning=(_state==='tracking'||_state==='paused');
       // Fige la durée finale (utile si on stop pendant une pause)
       var finalDurMs=_currentDurMs();
       _state='idle';
       _onPoint=null;_onLock=null;
+      _clearPersistSnapshot();   // course terminée = jette le snapshot
       if(!wasRunning) return null; // arm sans start = on ne sauve rien
       var pts=_points.map(function(p){return [p.lat,p.lng];});
       return {
@@ -12461,7 +12573,35 @@ var RunTracker=(function(){
         spdAvg:Math.round(_stats.spdAvg*10)/10,
         startedAt:_startedAt
       };
-    }
+    },
+    // hasInProgressRun() : retourne true s'il existe un snapshot localStorage
+    // d'une course non terminée (WebView tuée par iOS, app rechargée, etc.).
+    // L'UI peut appeler ça au load pour proposer "Reprendre la course ?".
+    hasInProgressRun:function(){
+      var snap=_loadPersistSnapshot();
+      return !!(snap && (snap.state==='tracking' || snap.state==='paused'));
+    },
+    // restoreInProgressRun() : restaure l'état interne depuis le snapshot et
+    // relance le watch GPS. Appeler après confirmation utilisateur.
+    // Retourne true si OK, false si rien à restaurer.
+    restoreInProgressRun:function(){
+      var snap=_loadPersistSnapshot();
+      if(!snap || (snap.state!=='tracking' && snap.state!=='paused')) return false;
+      _points=snap.points||[];
+      _stats=snap.stats||{km:0,elv:0,spdInst:0,spdAvg:0,durMs:0};
+      _startedAt=snap.startedAt||Date.now();
+      _pausedAt=snap.pausedAt||0;
+      _totalPausedMs=snap.totalPausedMs||0;
+      _lastAccepted=snap.lastAccepted||null;
+      _lastAlt=snap.lastAlt!=null?snap.lastAlt:null;
+      _state=snap.state;
+      _startWatch();
+      _acquireWakeLock();
+      return true;
+    },
+    // discardInProgressRun() : jette le snapshot persisté (user a refusé
+    // de reprendre).
+    discardInProgressRun:function(){ _clearPersistSnapshot(); }
   };
 })();
 
