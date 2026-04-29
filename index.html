@@ -971,10 +971,10 @@ select option{background:#040c1c}
       </div>
       <div id="pc-period-info" style="font-size:.78rem;color:var(--muted2);margin-top:.1rem"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end;margin-left:auto">
-      <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .85rem;border-radius:6px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;box-shadow:0 2px 10px rgba(45,138,50,.4)">🏃 NOUVELLE COURSE</button>
-      <button onclick="openModal('sync-modal')" title="Strava — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY STRAVA</button>
-      <button onclick="openModal('sync-modal')" title="Garmin — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#007cc3;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY GARMIN</button>
+    <div style="display:flex;flex-direction:column;gap:.3rem;align-items:stretch;margin-left:auto">
+      <button onclick="openModal('sync-modal')" title="Connecter ton compte Strava" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer">⚡ POWERED BY STRAVA</button>
+      <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;box-shadow:0 2px 6px rgba(45,138,50,.35)">🏃 NOUVELLE COURSE</button>
+      <button onclick="openModal('sync-modal')" title="Garmin — en attente d'approbation API" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#007cc3;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY GARMIN</button>
       <!-- Bouton infirmerie discret (visible uniquement sur sa propre PC) -->
       <button id="infirmerie-btn" onclick="openInfirmerieModal()" title="Te déclarer en infirmerie en cas de blessure" style="display:none;align-items:center;gap:.25rem;padding:.18rem .5rem;border-radius:4px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.58rem;font-weight:600;letter-spacing:.5px;cursor:pointer">🏥 <span id="infirmerie-btn-label">Infirmerie</span></button>
     </div>
@@ -1324,7 +1324,7 @@ select option{background:#040c1c}
       </div>
     </div>
     <div style="flex-shrink:0">
-      <button onclick="openModal('sync-modal')" title="Strava — en attente d'approbation API" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY STRAVA</button>
+      <button onclick="openModal('sync-modal')" title="Connecter ton compte Strava" style="display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer">⚡ POWERED BY STRAVA</button>
     </div>
   </div>
 
@@ -1481,8 +1481,11 @@ select option{background:#040c1c}
           </div>
         </div>
 
-        <!-- ── Bloc Enregistrement réel ── -->
-        <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.08)">
+        <!-- ── Bloc Enregistrement réel ── DÉSACTIVÉ avant lancement public :
+             on force les RP à connecter Strava pour éviter doublons + saisies
+             approximatives. Le simulateur calculateur reste actif au-dessus.
+             Pour réactiver : retirer le style display:none ci-dessous. -->
+        <div style="display:none;margin-top:1.25rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-size:.7rem;color:var(--muted2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:.6rem;font-weight:700">📝 Enregistrer cette course pour de vrai</div>
           <div class="form-grid" style="grid-template-columns:2fr 1fr">
             <div class="fgroup">
