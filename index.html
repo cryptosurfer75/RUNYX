@@ -6517,6 +6517,11 @@ async function loadLandsOnMap(){
   window._rpColorMap=rpColorMap;
 
   // ── Check hide-flag : session terminée sans nouveau run depuis ? ──
+  // Reset défensif : on repart toujours de "tracé visible". Le flag est
+  // ensuite re-activé UNIQUEMENT si le localStorage l'indique explicitement.
+  // Sans ce reset, un flag in-memory passé à true (par un autre flow) restait
+  // collé pour toute la session et masquait le tracé sans raison apparente.
+  window._hidePassages=false;
   if(myId&&localStorage.getItem('expl-hide-'+myId)==='1'){
     try{
       var hideAt=localStorage.getItem('expl-hide-at-'+myId);
