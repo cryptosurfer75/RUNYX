@@ -4720,15 +4720,25 @@ async function saveManualRun(){
     // Comparaison au niveau JOUR : aujourd'hui OK, demain et après refusé
     const todayStr=new Date().toISOString().substring(0,10);
     if(dateStr>todayStr){showToast('⚠️ Date dans le futur impossible');return;}
-    // Refuse les dates avant le début de la période courante (anti-triche :
-    // un RP ne peut pas saisir tout son historique d'avril après coup pour
-    // gonfler son classement).
+    // Refuse les dates avant MAX(début de période, inscription du RP).
+    // Anti-triche : un RP ne peut pas saisir tout son historique d'avril après
+    // coup pour gonfler son classement, et un nouveau RP ne peut pas saisir
+    // de courses faites avant son inscription, même si la période est ouverte
+    // depuis longtemps.
+    let minDateStr=null;
     if(_periodData && _periodData.start){
-      const periodStartStr=_periodData.start.substring(0,10);
-      if(dateStr<periodStartStr){
-        showToast('⚠️ Date avant le début de la période courante ('+periodStartStr+')');
-        return;
+      minDateStr=_periodData.start.substring(0,10);
+    }
+    if(currentUser){
+      const meCreated=currentUser.created_at||(currentUser.user_metadata&&currentUser.user_metadata.created_at);
+      if(meCreated){
+        const inscriptionStr=meCreated.substring(0,10);
+        if(!minDateStr || inscriptionStr>minDateStr) minDateStr=inscriptionStr;
       }
+    }
+    if(minDateStr && dateStr<minDateStr){
+      showToast('⚠️ Date trop ancienne (min : '+minDateStr+')');
+      return;
     }
     runDate=d.toISOString();
   } else {
@@ -12135,19 +12145,22 @@ async function syncStravaActivities(silent){
   var tokenOk=await refreshStravaToken();
   if(!tokenOk&&!window.__stravaToken){if(!silent)showToast('⚠️ Token expiré, reconnecte Strava');return;}
   if(!silent)showToast('🔄 Import des activités…');
-  // Récupérer les activités depuis le DÉBUT DE LA PÉRIODE COURANTE (et non
-  // depuis l'inscription) — sinon un nouveau user qui connecte Strava
-  // importe ses courses des semaines passées et grimpe le classement de
-  // la période en cours alors qu'il n'a pas vraiment couru sur cette période.
-  // Cohérent avec l'anti-triche du simulateur (saisie manuelle bornée à la
-  // période courante aussi).
-  var afterDate=null;
-  if(_periodData && _periodData.start){
-    afterDate=new Date(_periodData.start);
-  } else {
-    // Fallback : si pas de période chargée, retombe sur la date d'inscription
-    var {data:meData}=await supabaseClient.from('players').select('created_at').eq('id',currentUser.id).single();
-    afterDate=meData&&meData.created_at?new Date(meData.created_at):new Date();
+  // Récupérer les activités depuis MAX(début de période, date d'inscription).
+  // Anti-triche : un nouveau RP ne peut JAMAIS importer des courses faites
+  // avant son inscription, même si la période avait commencé bien avant.
+  // - RP existant (inscrit avant la période) → filtre depuis début de période
+  // - Nouveau RP (inscrit après le début de période) → filtre depuis inscription
+  // Cohérent avec l'anti-triche du simulateur (saisie manuelle bornée pareil).
+  var {data:meData}=await supabaseClient.from('players').select('created_at').eq('id',currentUser.id).single();
+  var inscriptionDate=meData&&meData.created_at?new Date(meData.created_at):null;
+  var periodStartDate=(_periodData&&_periodData.start)?new Date(_periodData.start):null;
+  var afterDate=new Date();
+  if(inscriptionDate && periodStartDate){
+    afterDate=inscriptionDate>periodStartDate?inscriptionDate:periodStartDate;
+  } else if(inscriptionDate){
+    afterDate=inscriptionDate;
+  } else if(periodStartDate){
+    afterDate=periodStartDate;
   }
   var after=Math.floor(afterDate.getTime()/1000);
   try{
