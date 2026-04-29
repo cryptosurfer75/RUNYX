@@ -11770,12 +11770,16 @@ function connectStrava(){
     return;
   }
   // OAuth : rediriger vers Strava
+  // approval_prompt=force : Strava affiche TOUJOURS la page de consentement
+  // (au lieu d'auto-valider via cookie). Évite les bugs multi-comptes :
+  // un user qui change de compte SPEEDIX dans le même navigateur ne va pas
+  // se faire silencieusement reconnecter au Strava cookie en mémoire.
   var authUrl='https://www.strava.com/oauth/authorize'
     +'?client_id='+STRAVA_CLIENT_ID
     +'&redirect_uri='+encodeURIComponent(STRAVA_REDIRECT)
     +'&response_type=code'
     +'&scope=read,activity:read_all'
-    +'&approval_prompt=auto'
+    +'&approval_prompt=force'
     +'&state='+currentUser.id;
   window.location.href=authUrl;
 }
@@ -11945,10 +11949,21 @@ async function syncStravaActivities(silent){
   var tokenOk=await refreshStravaToken();
   if(!tokenOk&&!window.__stravaToken){if(!silent)showToast('⚠️ Token expiré, reconnecte Strava');return;}
   if(!silent)showToast('🔄 Import des activités…');
-  // Récupérer les activités depuis la date d'inscription
-  var {data:meData}=await supabaseClient.from('players').select('created_at').eq('id',currentUser.id).single();
-  var inscriptionDate=meData&&meData.created_at?new Date(meData.created_at):new Date();
-  var after=Math.floor(inscriptionDate.getTime()/1000);
+  // Récupérer les activités depuis le DÉBUT DE LA PÉRIODE COURANTE (et non
+  // depuis l'inscription) — sinon un nouveau user qui connecte Strava
+  // importe ses courses des semaines passées et grimpe le classement de
+  // la période en cours alors qu'il n'a pas vraiment couru sur cette période.
+  // Cohérent avec l'anti-triche du simulateur (saisie manuelle bornée à la
+  // période courante aussi).
+  var afterDate=null;
+  if(_periodData && _periodData.start){
+    afterDate=new Date(_periodData.start);
+  } else {
+    // Fallback : si pas de période chargée, retombe sur la date d'inscription
+    var {data:meData}=await supabaseClient.from('players').select('created_at').eq('id',currentUser.id).single();
+    afterDate=meData&&meData.created_at?new Date(meData.created_at):new Date();
+  }
+  var after=Math.floor(afterDate.getTime()/1000);
   try{
     var resp=await window.fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30&after='+after,{
       headers:{'Authorization':'Bearer '+window.__stravaToken}
@@ -11961,6 +11976,14 @@ async function syncStravaActivities(silent){
     for(var i=0;i<activities.length;i++){
       var a=activities[i];
       if(!['Run','Walk','TrailRun','Hike'].includes(a.type)) continue;
+      // Double check période : refuse les activités antérieures à la période
+      // courante (anti-triche, miroir du blocage simulateur).
+      if(_periodData && _periodData.start && a.start_date){
+        if(new Date(a.start_date) < new Date(_periodData.start)){
+          resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — antérieure au début de la période courante</div>';
+          continue;
+        }
+      }
       var km=a.distance/1000;
       var timeMin=a.moving_time/60;
       var spd=timeMin>0?(km/(timeMin/60)):0;
@@ -12022,10 +12045,44 @@ async function syncStravaActivities(silent){
       var _accelFlag=gpsRejected;
       // ── FIN ANTI-TRICHE ──────────────────────────
 
-      // Vérifier si déjà importée
+      // Vérifier si déjà importée — 2 niveaux de dédup :
+      // 1. Même strava_activity_id (re-import exact de la même activité)
+      // 2. Même JOUR + distance similaire (±15%) avec un run manuel
+      //    → permet 2 vraies sorties /jour (5 km matin + 12 km soir = OK)
+      //    → bloque le doublon "course manuelle 10 km" + "Strava 10.2 km"
       var runDateFull=a.start_date||'';
-      var {data:existingRun}=await supabaseClient.from('runs').select('id').eq('player_id',currentUser.id).eq('run_date',runDateFull).maybeSingle();
-      if(existingRun) continue;
+      var runDateDay=runDateFull.substring(0,10); // YYYY-MM-DD
+      // 1. Re-import même activité Strava ?
+      if(a.id){
+        var {data:sameStrava}=await supabaseClient.from('runs')
+          .select('id').eq('player_id',currentUser.id).eq('strava_activity_id',a.id).limit(1);
+        if(sameStrava && sameStrava.length>0){
+          resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — déjà importée depuis Strava</div>';
+          continue;
+        }
+      }
+      // 2. Doublon avec une course du même jour (manuelle ou autre Strava) à distance proche ?
+      var {data:sameDayRuns}=await supabaseClient.from('runs')
+        .select('id,distance,name,strava_activity_id')
+        .eq('player_id',currentUser.id)
+        .gte('run_date',runDateDay+'T00:00:00')
+        .lt('run_date',runDateDay+'T23:59:59.999');
+      var isDup=false, dupName='';
+      if(sameDayRuns && sameDayRuns.length>0){
+        for(var sd=0; sd<sameDayRuns.length; sd++){
+          var r=sameDayRuns[sd];
+          // Tolérance ±15% sur la distance pour considérer comme doublon
+          var ratio=km>0?Math.abs(r.distance-km)/km:1;
+          if(ratio<=0.15){
+            isDup=true; dupName=r.name||'course';
+            break;
+          }
+        }
+      }
+      if(isDup){
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — doublon probable avec « '+dupName+' » (même jour, distance similaire)</div>';
+        continue;
+      }
       // Calculer les points : boost basé sur la DATE DE DÉPART de la course
       // (et non sur NOW()) pour gérer correctement les imports décalés.
       var _b=window.__boost||{};
