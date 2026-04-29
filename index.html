@@ -935,6 +935,7 @@ select option{background:#040c1c}
     </div>
   </div>
   <button id="beta-chip" onclick="openModal('beta-modal')" title="SPEEDIX est en Beta — clique pour en savoir plus" style="display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .5rem;border-radius:10px;border:1px solid rgba(74,144,255,.5);background:rgba(74,144,255,.1);color:#4a90ff;font-family:'Bebas Neue',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-right:.5rem;white-space:nowrap">● BETA</button>
+  <button id="faq-chip" onclick="openModal('faq-modal')" title="Aide & questions fréquentes" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;border:1px solid rgba(61,220,132,.5);background:rgba(61,220,132,.1);color:#3ddc84;font-family:'Bebas Neue',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;margin-right:.5rem;white-space:nowrap;padding:0;line-height:1">?</button>
   <!-- Bouton Admin visible UNIQUEMENT sur mobile (les onglets sont cachés en mobile), et uniquement pour les admins — mis à jour dynamiquement par initAdminPanel() -->
   <button id="mobile-admin-btn" onclick="nav('admin')" title="Panel Admin" style="display:none;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:10px;border:1px solid rgba(255,68,68,.5);background:rgba(255,68,68,.1);color:#ff6060;font-family:'Bebas Neue',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-right:.4rem;white-space:nowrap">⚙ ADMIN</button>
   <div class="nav-tabs">
@@ -2161,6 +2162,142 @@ select option{background:#040c1c}
     <button onclick="closeModal('beta-modal')" style="width:100%;padding:.65rem;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;border:none;border-radius:8px;cursor:pointer">COMPRIS, JE PARTICIPE 🏃</button>
   </div>
 </div>
+
+<!-- ==========================================
+     Modal FAQ : aide self-service
+     25 Q&A organisées en 6 catégories.
+     Search instantané + accordéons natifs (<details>).
+     Bouton "Contacter le support" en bas pour escalade.
+=========================================== -->
+<div class="modal" id="faq-modal">
+  <div class="modal-box" style="max-width:600px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <!-- Header sticky -->
+    <div style="padding:1rem 1.2rem .8rem;border-bottom:1px solid rgba(74,144,255,.15);background:rgba(2,4,8,.96);position:sticky;top:0;z-index:5">
+      <button class="modal-close" onclick="closeModal('faq-modal')" style="position:absolute;top:.6rem;right:.7rem">✕</button>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:#3ddc84;margin-bottom:.3rem">❓ AIDE & FAQ</div>
+      <div style="font-size:.7rem;color:rgba(255,255,255,.55);margin-bottom:.7rem">25 réponses aux questions les plus fréquentes</div>
+      <input type="text" id="faq-search" placeholder="🔍 Rechercher une question..." oninput="faqSearch(this.value)" style="width:100%;box-sizing:border-box;padding:.55rem .8rem;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.25);color:#fff;font-family:'Space Mono',monospace;font-size:.78rem;outline:none" onfocus="this.style.borderColor='#3ddc84'" onblur="this.style.borderColor='rgba(74,144,255,.25)'">
+    </div>
+
+    <!-- Body scrollable -->
+    <div id="faq-body" style="overflow-y:auto;padding:.8rem 1.2rem 1.2rem;flex:1">
+
+      <!-- ===== CATÉGORIE 1 : Inscription & Compte ===== -->
+      <div class="faq-cat" data-cat="🔐 Inscription & Compte">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:#f5c842;margin:.6rem 0 .4rem">🔐 INSCRIPTION & COMPTE</div>
+
+        <details class="faq-q"><summary>C'est quoi SPEEDIX League ?</summary><div class="faq-a">Le 1er championnat de running. Cours, marque des points, monte les classements, gagne des territoires sur une carte.<br><br><strong>Compétition · Motivation · Gaming</strong></div></details>
+
+        <details class="faq-q"><summary>C'est gratuit ?</summary><div class="faq-a">Oui, SPEEDIX est <strong>100% gratuit</strong>. Tu peux participer à la compétition individuelle et par équipe, à l'exploration, aux défis de manière gratuite.<br><br>Le pack <strong>Premium</strong> te permet d'avoir plus de fonctions et de visibilité sur le jeu. Il est offert pendant 15 jours en découverte pour tous les nouveaux RP.</div></details>
+
+        <details class="faq-q"><summary>Comment je m'inscris ?</summary><div class="faq-a">Sur <strong>speedixleague.com</strong> ou dans l'app native, clique "S'inscrire" et suis les 4 étapes (identité → ville → e-mail → CGU). Ça prend 2 minutes.</div></details>
+
+        <details class="faq-q"><summary>Je peux créer plusieurs comptes ?</summary><div class="faq-a">Non, <strong>1 personne = 1 compte</strong>. C'est une règle anti-triche. Les comptes multiples détectés sont bannis sans préavis et leur ID effacé du jeu.</div></details>
+
+        <details class="faq-q"><summary>Comment je supprime mon compte ?</summary><div class="faq-a">Écris-nous à <strong>contact@speedixleague.com</strong> avec ton pseudo et l'email d'inscription. Ton compte et tes données seront supprimées sous 7 jours (RGPD).</div></details>
+      </div>
+
+      <!-- ===== CATÉGORIE 2 : Strava ===== -->
+      <div class="faq-cat" data-cat="🏃 Strava">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:#fc4c02;margin:1rem 0 .4rem">🏃 STRAVA</div>
+
+        <details class="faq-q"><summary>Comment je connecte Strava ?</summary><div class="faq-a">Onglet <strong>Player Card</strong> → bouton <strong>"Connecter Strava"</strong> → autorise SPEEDIX sur l'écran officiel Strava → c'est terminé. Tes prochaines courses remonteront automatiquement.</div></details>
+
+        <details class="faq-q"><summary>Pourquoi mes courses passées n'apparaissent pas ?</summary><div class="faq-a">SPEEDIX n'importe que les courses Strava <strong>postérieures au début de la période en cours</strong>. Tu débutes le jeu le jour de ton inscription.<br><br>Tes courses futures remonteront en revanche automatiquement une fois synchronisé, alors dépêche-toi et pars faire ta 1ère course 🏃</div></details>
+
+        <details class="faq-q"><summary>Combien de temps pour qu'une course Strava remonte ?</summary><div class="faq-a">En général <strong>moins d'une minute</strong> après la fin de ta course (dès que Strava la valide). Si tu attends plus de 5 min, ferme et rouvre l'app pour forcer le refresh.</div></details>
+
+        <details class="faq-q"><summary>Je n'ai pas Strava, je peux jouer ?</summary><div class="faq-a">Strava est <strong>obligatoire</strong> pour valider tes kilomètres et garantir l'équité du classement. Crée un compte gratuit sur <strong>strava.com</strong>, connecte une montre (Garmin, Apple Watch, Coros, Polar...) ou utilise l'app Strava sur ton téléphone pour tracker tes runs.</div></details>
+
+        <details class="faq-q"><summary>Strava me demande mon mot de passe ?</summary><div class="faq-a">C'est <strong>l'écran officiel Strava</strong>, pas un écran SPEEDIX. SPEEDIX ne voit JAMAIS ton mot de passe Strava — on reçoit juste une autorisation pour lire tes courses. Tu peux révoquer cette autorisation à tout moment dans les paramètres Strava.</div></details>
+
+        <details class="faq-q"><summary>J'ai déconnecté Strava puis reconnecté, certaines courses sont en double ?</summary><div class="faq-a">SPEEDIX détecte automatiquement les doublons (même jour + distance similaire). Si tu vois quand même un doublon, écris-nous à contact@speedixleague.com avec une capture, on corrigera techniquement.</div></details>
+      </div>
+
+      <!-- ===== CATÉGORIE 3 : Points & Classement ===== -->
+      <div class="faq-cat" data-cat="📊 Points & Classement">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:#4a90ff;margin:1rem 0 .4rem">📊 POINTS & CLASSEMENT</div>
+
+        <details class="faq-q"><summary>Comment je gagne des points ?</summary><div class="faq-a">Chaque sortie te rapporte des points selon la <strong>distance, la vitesse et le dénivelé</strong>. La formule est secrète 🤫<br><br>Un <strong>simulateur</strong> dans la page <strong>Races</strong> te permet de voir ce que peut te rapporter une course.</div></details>
+
+        <details class="faq-q"><summary>Pourquoi je ne vois pas mes points tout de suite ?</summary><div class="faq-a">Les points sont calculés <strong>après la synchronisation Strava</strong> (en général moins d'une minute après ta course). Si tu attends, ferme et rouvre l'app pour forcer le refresh.<br><br>Si toutefois ta course n'arrive pas après <strong>24h</strong>, contacte le support par mail à <strong>contact@speedixleague.com</strong>.</div></details>
+
+        <details class="faq-q"><summary>C'est quoi un grade ?</summary><div class="faq-a">Ton niveau dans la ligue. À mesure que tu accumules des points, de l'ancienneté, des locations et acquisitions, tu montes de grade.<br><br>Voir la page <strong>Règles</strong> dans l'application pour plus d'informations.</div></details>
+
+        <details class="faq-q"><summary>C'est quoi une "land" ?</summary><div class="faq-a">Une <strong>parcelle de terrain</strong> sous forme d'hexagone que tu explores en allant courir. Tu peux la <strong>louer</strong> ou <strong>l'acheter</strong>.<br><br>Voir la page <strong>Règles</strong> dans l'application pour plus de détails.</div></details>
+
+        <details class="faq-q"><summary>C'est quoi une "période" ?</summary><div class="faq-a">Une <strong>saison de classement</strong> d'une durée d'<strong>1 mois</strong>. À la fin de chaque période, les meilleurs RP du classement sont récompensés. En fonction de tes points, tu peux changer de league.<br><br>Une nouvelle période démarre ensuite avec un classement remis à zéro.</div></details>
+      </div>
+
+      <!-- ===== CATÉGORIE 4 : Teams ===== -->
+      <div class="faq-cat" data-cat="👥 Teams">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:#9b6dff;margin:1rem 0 .4rem">👥 TEAMS</div>
+
+        <details class="faq-q"><summary>Comment je crée ou rejoins une team ?</summary><div class="faq-a">Va dans l'onglet <strong>Teams</strong>. Tu peux créer ta propre team, rejoindre une team privée via son code d'invitation, soit une team ouverte.<br><br>• <strong>Propre team</strong> = tu en deviens capitaine, c'est toi qui gères.<br>• <strong>Team privée</strong> = fais une demande à un capitaine pour intégrer sa team (plusieurs demandes possibles).<br>• <strong>Team ouverte</strong> = pas de règles, l'entrée se fait par ordre chronologique.</div></details>
+
+        <details class="faq-q"><summary>C'est quoi un "défi collaboratif" ?</summary><div class="faq-a">Un défi collaboratif est un <strong>challenge proposé dès que tu as un voisin sur la map</strong>. Si l'objectif est atteint, les récompenses sont partagées entre participants.</div></details>
+      </div>
+
+      <!-- ===== CATÉGORIE 5 : RPC & Récompenses ===== -->
+      <div class="faq-cat" data-cat="💰 RPC & Récompenses">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:#3ddc84;margin:1rem 0 .4rem">💰 RPC & RÉCOMPENSES</div>
+
+        <details class="faq-q"><summary>C'est quoi RPC ?</summary><div class="faq-a">RPC est la <strong>monnaie virtuelle</strong> de SPEEDIX League. Tu en gagnes en courant, dans les classements et en complétant des challenges.<br><br>Cette monnaie te sert à <strong>louer tes lands</strong> et à les <strong>upgrader</strong>.</div></details>
+
+        <details class="faq-q"><summary>Comment je récupère mes RPC ?</summary><div class="faq-a">Tes RPC sont <strong>automatiquement crédités</strong> dans ton wallet (icône 💰 en haut à droite) à chaque évènement : fin de course, fin de période, challenge ou défi validés. Tu n'as rien à faire.<br><br>Clique sur ton wallet pour connaître le détail.</div></details>
+
+        <details class="faq-q"><summary>Je peux retirer mes RPC en argent ?</summary><div class="faq-a">Non, cette monnaie reste <strong>virtuelle</strong> et ne peut pas être échangée en argent réel.</div></details>
+
+        <details class="faq-q"><summary>C'est quoi NYX (le 💎 à côté du wallet) ?</summary><div class="faq-a">NYX est une <strong>monnaie premium secondaire</strong> du jeu. Tu en gagnes en <strong>parrainant</strong>, en réalisant des <strong>défis et challenges</strong>.<br><br>Cette monnaie te sert à acheter des <strong>boosts</strong>, des <strong>licences</strong> et des <strong>Lands</strong>.</div></details>
+      </div>
+
+      <!-- ===== CATÉGORIE 6 : Installation & Bug ===== -->
+      <div class="faq-cat" data-cat="📱 Installation & Support">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:2px;color:#f5c842;margin:1rem 0 .4rem">📱 INSTALLATION & SUPPORT</div>
+
+        <details class="faq-q"><summary>Comment installer l'app sur iPhone ?</summary><div class="faq-a">1) Installe <strong>TestFlight</strong> depuis l'App Store (gratuit, c'est l'app officielle Apple pour les bêta).<br>2) Clique ensuite sur ce lien depuis ton iPhone : <strong><a href="https://testflight.apple.com/join/qbd8ADjY" style="color:#3ddc84">testflight.apple.com/join/qbd8ADjY</a></strong><br>3) Accepte l'invitation, installe SPEEDIX, c'est terminé.</div></details>
+
+        <details class="faq-q"><summary>Comment installer l'app sur Android ?</summary><div class="faq-a">Va sur <strong>speedixleague.com</strong> depuis ton téléphone Android. Sur l'écran d'inscription, un bouton vert <strong>"📱 TÉLÉCHARGER L'APP ANDROID"</strong> apparaît automatiquement. Clique, télécharge, autorise et installe.</div></details>
+
+        <details class="faq-q"><summary>Android me dit "sources inconnues" / "fichier dangereux" ?</summary><div class="faq-a">C'est <strong>normal</strong> pour les apps en BETA distribuées hors Play Store. SPEEDIX n'est pas dangereux — l'APK est <strong>signé numériquement</strong> par notre certificat officiel. Va dans <em>Paramètres → Sécurité → Sources inconnues</em> et autorise l'installation.</div></details>
+
+        <details class="faq-q"><summary>Je n'arrive pas à installer / l'app plante ?</summary><div class="faq-a">Essaye d'abord de fermer complètement l'app et de la rouvrir. Si ça persiste, écris-nous via le chat en bas à droite (sur le site web) ou par mail à <strong>contact@speedixleague.com</strong>. Précise : ton appareil, les étapes que tu suivais, une capture d'écran si possible.</div></details>
+
+        <details class="faq-q"><summary>J'ai trouvé un bug, où je le signale ?</summary><div class="faq-a">Deux options :<br>• <strong>Chat</strong> en bas à droite (visible uniquement sur le site web)<br>• <strong>Mail</strong> à contact@speedixleague.com<br>Décris le bug, l'étape où il survient, et joins une capture si tu peux. Tes retours sont précieux pendant cette phase BETA.</div></details>
+      </div>
+
+      <!-- Message si recherche sans résultat -->
+      <div id="faq-no-result" style="display:none;text-align:center;padding:2rem 1rem;color:rgba(255,255,255,.4);font-family:'Space Mono',monospace;font-size:.75rem">
+        Aucun résultat. Essaye d'autres mots-clés ou contacte-nous directement.
+      </div>
+
+    </div>
+
+    <!-- Footer sticky : escalade vers chat / mail -->
+    <div style="padding:.7rem 1.2rem;border-top:1px solid rgba(74,144,255,.15);background:rgba(2,4,8,.96);position:sticky;bottom:0">
+      <div style="font-size:.66rem;color:rgba(255,255,255,.55);text-align:center;margin-bottom:.5rem">Tu n'as pas trouvé ta réponse ?</div>
+      <div style="display:flex;gap:.5rem">
+        <button onclick="faqOpenChat()" style="flex:1;padding:.55rem;background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.5);color:#3ddc84;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:2px;border-radius:8px;cursor:pointer">💬 CHAT</button>
+        <a href="mailto:contact@speedixleague.com?subject=Question%20SPEEDIX%20League" style="flex:1;padding:.55rem;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.5);color:#4a90ff;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:2px;border-radius:8px;cursor:pointer;text-decoration:none;text-align:center;box-sizing:border-box">✉ EMAIL</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Styles propres au FAQ : accordéons et hover -->
+<style>
+  .faq-q{margin-bottom:.35rem;border:1px solid rgba(74,144,255,.15);border-radius:8px;background:rgba(4,12,28,.5);overflow:hidden;transition:border-color .15s}
+  .faq-q[open]{border-color:rgba(61,220,132,.4);background:rgba(4,12,28,.75)}
+  .faq-q summary{cursor:pointer;padding:.6rem .8rem;font-family:'Space Mono',monospace;font-size:.76rem;color:#fff;list-style:none;display:flex;align-items:center;gap:.5rem;line-height:1.4;user-select:none}
+  .faq-q summary::-webkit-details-marker{display:none}
+  .faq-q summary::before{content:'+';color:#3ddc84;font-weight:700;font-size:.95rem;transition:transform .15s;flex-shrink:0;width:14px;text-align:center}
+  .faq-q[open] summary::before{content:'−'}
+  .faq-q summary:hover{background:rgba(61,220,132,.05)}
+  .faq-a{padding:.2rem .9rem .75rem 2.2rem;font-size:.74rem;color:rgba(255,255,255,.78);line-height:1.65;font-family:'Space Mono',monospace}
+  .faq-a strong{color:#fff}
+  .faq-a a{color:#3ddc84}
+</style>
 
 <!-- Modal d'intro Live Tracking (affichée une seule fois à la 1ère utilisation du GPS) -->
 <div class="modal" id="live-intro-modal">
@@ -10782,6 +10919,52 @@ function getParisYesterdayStr(){
 }
 
 // ══════════════════════════════════════════════════════════════════════
+//  FAQ — Recherche live + escalade chat
+//  Le modal FAQ liste 25 Q&A organisées en 6 catégories. Cette fonction
+//  filtre les questions à mesure que l'utilisateur tape dans la barre
+//  de recherche, en masquant les sections vides et affichant un message
+//  "aucun résultat" si la query ne matche rien.
+// ══════════════════════════════════════════════════════════════════════
+function faqSearch(query){
+  var q=(query||'').trim().toLowerCase();
+  var cats=document.querySelectorAll('#faq-body .faq-cat');
+  var totalVisible=0;
+  cats.forEach(function(cat){
+    var qs=cat.querySelectorAll('.faq-q');
+    var visibleInCat=0;
+    qs.forEach(function(qEl){
+      var txt=qEl.textContent.toLowerCase();
+      var match=!q || txt.indexOf(q)!==-1;
+      qEl.style.display=match?'':'none';
+      if(match){
+        visibleInCat++;
+        // Auto-ouvre les résultats quand on cherche
+        if(q && q.length>=2) qEl.setAttribute('open','');
+        else qEl.removeAttribute('open');
+      }
+    });
+    cat.style.display=visibleInCat>0?'':'none';
+    totalVisible+=visibleInCat;
+  });
+  document.getElementById('faq-no-result').style.display=totalVisible===0?'block':'none';
+}
+
+// Ouvre le widget Tawk.to si présent, sinon fallback mailto.
+// Le widget Tawk.to est masqué dans les apps Capacitor (web only),
+// donc sur iOS/Android natif on bascule directement sur le mail.
+function faqOpenChat(){
+  closeModal('faq-modal');
+  try{
+    if(window.Tawk_API && typeof window.Tawk_API.maximize==='function'){
+      window.Tawk_API.maximize();
+      return;
+    }
+  }catch(e){}
+  // Fallback : pas de Tawk.to dispo (app native ou bloqué) → mailto
+  window.location.href='mailto:contact@speedixleague.com?subject=Question%20SPEEDIX%20League';
+}
+
+// ══════════════════════════════════════════════════════════════════════
 //  WALLET — Soldes RPC / NYX persistés
 // ══════════════════════════════════════════════════════════════════════
 
@@ -16224,6 +16407,50 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+</script>
+
+<!-- ==========================================================
+     TAWK.TO LIVE CHAT — visible UNIQUEMENT sur le site web.
+     Masqué dans les apps natives Capacitor (iOS / Android) :
+     les RP sur l'app utilisent le bouton "✉ EMAIL" du modal FAQ
+     qui ouvre directement leur app mail vers contact@speedixleague.com.
+
+     ⚠️ TODO VAL : remplacer TAWK_PROPERTY_ID et TAWK_WIDGET_ID par
+     les vraies valeurs récupérées sur https://dashboard.tawk.to
+     (Admin → Channels → Chat Widget → Direct Chat Link → URL est
+     du type embed.tawk.to/PROPERTY_ID/WIDGET_ID).
+
+     Tant que ces valeurs sont leurs valeurs placeholder, le script
+     ne se charge pas (sécurité — évite un 404 visible en console).
+========================================================== -->
+<script>
+(function(){
+  try{
+    var isCapacitor = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    if(isCapacitor) return; // App native → pas de chat web
+
+    var TAWK_PROPERTY_ID = '69f2111341473c1c31d8484b';
+    var TAWK_WIDGET_ID   = '1jncp5dbs';
+
+    // Garde-fou : tant que les placeholders n'ont pas été remplacés,
+    // on n'injecte pas le script (évite un 404 dans la console des RP).
+    if(TAWK_PROPERTY_ID === 'TAWK_PROPERTY_ID' || TAWK_WIDGET_ID === 'TAWK_WIDGET_ID'){
+      console.info('[Tawk.to] non configuré — remplacer TAWK_PROPERTY_ID / TAWK_WIDGET_ID dans index.html');
+      return;
+    }
+
+    window.Tawk_API = window.Tawk_API || {};
+    window.Tawk_LoadStart = new Date();
+    var s1 = document.createElement('script');
+    s1.async = true;
+    s1.src = 'https://embed.tawk.to/' + TAWK_PROPERTY_ID + '/' + TAWK_WIDGET_ID;
+    s1.charset = 'UTF-8';
+    s1.setAttribute('crossorigin', '*');
+    document.head.appendChild(s1);
+  }catch(e){
+    console.warn('[Tawk.to] init failed', e);
+  }
+})();
 </script>
 </body>
 </html>
