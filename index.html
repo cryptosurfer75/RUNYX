@@ -3301,6 +3301,17 @@ const supabaseClient = window.supabase.createClient(
 var hcur=1;
 var currentUser=null;
 
+// ─── Helpers Tawk.to live chat ─────────────────────────────────────
+// Le chat n'est visible QUE pour les visiteurs non-connectés (besoin d'aide
+// avant inscription). Une fois loggué, le RP a la FAQ "?" en navbar — pas
+// besoin du widget overlay qui prend de la place sur mobile.
+function _chatHide(){
+  try{ if(window.Tawk_API && typeof window.Tawk_API.hideWidget==='function') window.Tawk_API.hideWidget(); }catch(e){}
+}
+function _chatShow(){
+  try{ if(window.Tawk_API && typeof window.Tawk_API.showWidget==='function') window.Tawk_API.showWidget(); }catch(e){}
+}
+
 // Détection Android pour afficher le bouton de téléchargement APK uniquement
 // sur les appareils qui peuvent l'installer. iPhone/Mac/Windows : caché.
 // Inclut une garde anti-Capacitor (l'app native ne propose pas de DL d'APK
@@ -3499,6 +3510,8 @@ async function onLoginSuccess(user, isNew){
   // en mémoire AVANT de setter le nouveau currentUser, pour éviter toute fuite.
   if(typeof _clearUserScopedState==='function') _clearUserScopedState();
   currentUser=user;
+  // Masquer le chat overlay : le RP loggué a la FAQ "?" en navbar.
+  _chatHide();
   // Nettoyer PLAYERS : supprimer les doublons avec le même id Supabase ou même username
   var userUuid=user.id;
   // loadPlayersFromSupabase() a déjà chargé ce joueur avec un id fictif → le retirer
@@ -4222,6 +4235,8 @@ async function disconnectApp(){
   await supabaseClient.auth.signOut();
   currentUser=null;
   _clearUserScopedState();
+  // Réafficher le chat : on est revenu en page d'accueil pré-login.
+  _chatShow();
   for(var i=1;i<=5;i++){var el=document.getElementById('hs'+i);if(el)el.style.display=i===1?'':'none';}
   hcur=1;
   var m=document.getElementById('rtw-menu');if(m)m.style.display='none';
@@ -16459,6 +16474,20 @@ if ('serviceWorker' in navigator) {
 
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
+
+    // Au chargement du widget, vérifier si on a déjà une session Supabase
+    // active (RP qui revient après s'être loggué) → masquer immédiatement.
+    // Sinon (visiteur non-connecté), laisser visible.
+    window.Tawk_API.onLoad = function(){
+      try{
+        if(typeof currentUser !== 'undefined' && currentUser){
+          if(window.Tawk_API && typeof window.Tawk_API.hideWidget === 'function'){
+            window.Tawk_API.hideWidget();
+          }
+        }
+      }catch(e){ console.warn('[Tawk.to] onLoad hide check failed', e); }
+    };
+
     var s1 = document.createElement('script');
     s1.async = true;
     s1.src = 'https://embed.tawk.to/' + TAWK_PROPERTY_ID + '/' + TAWK_WIDGET_ID;
