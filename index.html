@@ -797,15 +797,25 @@ select option{background:#040c1c}
          user-agent dans le script en bas du fichier). Masqué sur iPhone/Mac et
          dans l'app Capacitor (où on est déjà). -->
     <div id="apk-android-block" style="display:none;margin-bottom:10px">
-      <!-- ⚠️ À CHAQUE NOUVELLE VERSION : 1) Crée une nouvelle Release GitHub
-           avec tag vX.X et upload speedix-vX.X.apk en release asset
-           2) Mets à jour le href ci-dessous (changer v1.0 en vX.X partout) -->
-      <a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="width:100%;display:block;padding:11px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:4px;color:#3ddc84;cursor:pointer;transition:all .18s;text-decoration:none;text-align:center;box-sizing:border-box"
-      onmouseover="this.style.background='rgba(61,220,132,.18)';this.style.borderColor='rgba(61,220,132,.8)'"
-      onmouseout="this.style.background='rgba(61,220,132,.08)';this.style.borderColor='rgba(61,220,132,.5)'">
-        📱 TÉLÉCHARGER L'APP ANDROID
-      </a>
-      <div style="text-align:center;font-size:.6rem;color:rgba(255,255,255,.4);margin-top:6px;font-family:'Space Mono',monospace;letter-spacing:.5px">Meilleure expérience GPS native</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:2.5px;color:#8aaccc;text-align:center;margin-bottom:8px">🤖 ANDROID — 2 OPTIONS</div>
+      <div style="display:flex;gap:8px">
+        <!-- ⚠️ À CHAQUE NOUVELLE VERSION : crée une nouvelle Release GitHub
+             avec tag vX.X et upload speedix-vX.X.apk → mets à jour le href -->
+        <a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);color:#3ddc84;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
+        onmouseover="this.style.background='rgba(61,220,132,.18)';this.style.borderColor='rgba(61,220,132,.8)'"
+        onmouseout="this.style.background='rgba(61,220,132,.08)';this.style.borderColor='rgba(61,220,132,.5)'">
+          <span style="font-size:1.3rem;line-height:1">📱</span>
+          <span style="font-size:.85rem;letter-spacing:2px">APK</span>
+          <span style="font-size:.52rem;color:rgba(61,220,132,.7);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">App native · GPS</span>
+        </a>
+        <button type="button" onclick="showPwaInstall()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(74,144,255,.08);color:#4a90ff;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
+        onmouseover="this.style.background='rgba(74,144,255,.18)';this.style.borderColor='rgba(74,144,255,.8)'"
+        onmouseout="this.style.background='rgba(74,144,255,.08)';this.style.borderColor='rgba(74,144,255,.5)'">
+          <span style="font-size:1.3rem;line-height:1">🌐</span>
+          <span style="font-size:.85rem;letter-spacing:2px">WEB</span>
+          <span style="font-size:.52rem;color:rgba(74,144,255,.7);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">Sans install</span>
+        </button>
+      </div>
     </div>
     <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 1 / 4 — Identité</div>
@@ -3347,7 +3357,31 @@ function _chatShow(){
   } catch(e){}
 })();
 
-
+/* ============================================================
+   PWA install hint — affiché quand l'utilisateur Android clique
+   sur le bouton "WEB" (chemin alternatif à l'APK qui peut planter
+   sur certains modèles MIUI). Mini modal natif et auto-dismiss.
+============================================================ */
+function showPwaInstall(){
+  // Évite les doublons si on clique plusieurs fois
+  if(document.getElementById('pwa-install-modal')) return;
+  var ov=document.createElement('div');
+  ov.id='pwa-install-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(2,4,8,.85);backdrop-filter:blur(6px);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div style="max-width:340px;width:100%;background:linear-gradient(180deg,#0a1628,#020408);border:1.5px solid rgba(74,144,255,.4);border-radius:14px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);font-family:Rajdhani,sans-serif">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.1rem;letter-spacing:3px;color:#4a90ff;text-align:center;margin-bottom:12px">🌐 VERSION WEB</div>'
+    +'<div style="color:#fff;font-size:.85rem;line-height:1.55;margin-bottom:14px">T\'es déjà sur la version web 🚀<br>Pour avoir l\'icône SPEEDIX comme une app, installe-la en 3 secs :</div>'
+    +'<div style="background:rgba(74,144,255,.08);border:1px solid rgba(74,144,255,.25);border-radius:10px;padding:12px;margin-bottom:14px;font-size:.78rem;color:#cfe1ff;line-height:1.7">'
+      +'<div><strong style="color:#4a90ff">1.</strong> Menu Chrome <strong style="font-size:1.1rem">⋮</strong> (haut droite)</div>'
+      +'<div><strong style="color:#4a90ff">2.</strong> "<strong>Ajouter à l\'écran d\'accueil</strong>"</div>'
+      +'<div><strong style="color:#4a90ff">3.</strong> Confirme</div>'
+    +'</div>'
+    +'<div style="font-size:.66rem;color:#8aaccc;text-align:center;margin-bottom:14px;font-family:Space Mono,monospace;letter-spacing:.3px">Tu auras une icône SPEEDIX qui ouvre le jeu en plein écran, comme une vraie app. Le tracking se fait via Strava (recommandé).</div>'
+    +'<button onclick="document.getElementById(\'pwa-install-modal\').remove()" style="width:100%;padding:11px;border-radius:9px;border:none;background:linear-gradient(180deg,#5aa6ff,#2c6dcc);color:#fff;font-family:Bebas Neue,sans-serif;font-size:.95rem;letter-spacing:3px;cursor:pointer">OK, COMPRIS</button>'
+  +'</div>';
+  document.body.appendChild(ov);
+}
 
 /* ============================================================
    AUTH — Supabase Authentication
@@ -3370,9 +3404,20 @@ function showLoginScreen(){
   var _isCap=!!(window.Capacitor && typeof window.Capacitor.isNativePlatform==='function' && window.Capacitor.isNativePlatform());
   var _apkBlock=(_isAndroid && !_isCap)
     ? '<div style="margin-bottom:10px">'
-      // ⚠️ À mettre à jour avec le numéro de version de l'APK courant
-      +'<a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="width:100%;display:block;padding:11px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:4px;color:#3ddc84;cursor:pointer;transition:all .18s;text-decoration:none;text-align:center;box-sizing:border-box">📱 TÉLÉCHARGER L\'APP ANDROID</a>'
-      +'<div style="text-align:center;font-size:.6rem;color:rgba(255,255,255,.4);margin-top:6px;font-family:Space Mono,monospace;letter-spacing:.5px">Meilleure expérience GPS native</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:.7rem;letter-spacing:2.5px;color:#8aaccc;text-align:center;margin-bottom:8px">🤖 ANDROID — 2 OPTIONS</div>'
+      +'<div style="display:flex;gap:8px">'
+        // ⚠️ À mettre à jour avec le numéro de version de l'APK courant
+        +'<a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);color:#3ddc84;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
+          +'<span style="font-size:1.3rem;line-height:1">📱</span>'
+          +'<span style="font-size:.85rem;letter-spacing:2px">APK</span>'
+          +'<span style="font-size:.52rem;color:rgba(61,220,132,.7);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">App native · GPS</span>'
+        +'</a>'
+        +'<button type="button" onclick="showPwaInstall()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(74,144,255,.08);color:#4a90ff;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
+          +'<span style="font-size:1.3rem;line-height:1">🌐</span>'
+          +'<span style="font-size:.85rem;letter-spacing:2px">WEB</span>'
+          +'<span style="font-size:.52rem;color:rgba(74,144,255,.7);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">Sans install</span>'
+        +'</button>'
+      +'</div>'
       +'</div>'
     : '';
   var hs1=document.getElementById('hs1');
