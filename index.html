@@ -3314,20 +3314,20 @@ const supabaseClient = window.supabase.createClient(
 var hcur=1;
 var currentUser=null;
 
-// ─── Helpers bouton flottant Communauté FB ─────────────────────────
-// Le bouton n'est visible QUE pour les visiteurs non-connectés (CTA pour
-// rejoindre le groupe Facebook avant inscription). Une fois loggué, le RP
-// a la FAQ "?" en navbar — pas besoin du bouton overlay sur mobile.
+// ─── Helpers stack social (FB + futurs Insta/TikTok/etc) ──────────
+// Le stack n'est visible QUE pour les visiteurs non-connectés (CTAs pour
+// rejoindre les communautés avant inscription). Une fois loggué, le RP
+// a la FAQ "?" en navbar — pas besoin de l'overlay sur mobile.
 function _chatHide(){
   try{
-    var btn=document.getElementById('fb-community-btn');
-    if(btn) btn.style.display='none';
+    var stack=document.getElementById('social-stack');
+    if(stack) stack.style.display='none';
   }catch(e){}
 }
 function _chatShow(){
   try{
-    var btn=document.getElementById('fb-community-btn');
-    if(btn) btn.style.display='inline-flex';
+    var stack=document.getElementById('social-stack');
+    if(stack) stack.style.display='flex';
   }catch(e){}
 }
 
@@ -16590,35 +16590,42 @@ if ('serviceWorker' in navigator) {
      Une fois le RP loggué, _chatHide() le masque (même comportement
      que l'ancien widget chat).
 ========================================================== -->
-<a id="fb-community-btn"
-   href="https://www.facebook.com/groups/906611848921910"
-   target="_blank"
-   rel="noopener noreferrer"
-   aria-label="Rejoindre la communauté SPEEDIX sur Facebook"
-   style="position:fixed;bottom:20px;right:20px;z-index:9999;display:inline-flex;align-items:center;gap:.55rem;padding:.7rem 1.05rem;background:#1877F2;color:#fff;border-radius:999px;text-decoration:none;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.6px;box-shadow:0 6px 18px rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.9);transition:transform .18s ease, box-shadow .18s ease">
-  <span style="font-size:1.05rem;line-height:1">👥</span>
-  <span>COMMUNAUTÉ SPEEDIX</span>
-</a>
+<!-- Conteneur "social stack" — prévu pour ajouter Insta/TikTok/etc plus tard.
+     Petits boutons ronds empilés verticalement, discrets, ne masquent pas les CTAs. -->
+<div id="social-stack" style="position:fixed;bottom:14px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+  <a id="fb-community-btn"
+     href="https://www.facebook.com/groups/906611848921910"
+     target="_blank"
+     rel="noopener noreferrer"
+     aria-label="Communauté SPEEDIX sur Facebook"
+     title="Communauté Facebook"
+     style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;background:#1877F2;color:#fff;border-radius:50%;text-decoration:none;box-shadow:0 3px 10px rgba(0,0,0,.35);border:1.5px solid rgba(255,255,255,.85);transition:transform .15s ease, box-shadow .15s ease;opacity:.9">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+  </a>
+</div>
 <script>
 (function(){
   try{
     var btn=document.getElementById('fb-community-btn');
     if(!btn) return;
-    // Hover : léger lift
+    // Hover : léger lift + opacité pleine
     btn.addEventListener('mouseenter',function(){
-      btn.style.transform='translateY(-2px)';
-      btn.style.boxShadow='0 10px 22px rgba(0,0,0,.55)';
+      btn.style.transform='scale(1.08)';
+      btn.style.opacity='1';
+      btn.style.boxShadow='0 5px 14px rgba(24,119,242,.5)';
     });
     btn.addEventListener('mouseleave',function(){
       btn.style.transform='';
-      btn.style.boxShadow='0 6px 18px rgba(0,0,0,.45)';
+      btn.style.opacity='.9';
+      btn.style.boxShadow='0 3px 10px rgba(0,0,0,.35)';
     });
-    // Au démarrage : si la session Supabase est déjà active (RP qui revient),
-    // masquer immédiatement. Sinon (visiteur), laisser visible.
+    // Au démarrage : si session Supabase active (RP qui revient), masquer
+    // tout le stack social immédiatement.
     setTimeout(function(){
       try{
         if(typeof currentUser !== 'undefined' && currentUser){
-          btn.style.display='none';
+          var stack=document.getElementById('social-stack');
+          if(stack) stack.style.display='none';
         }
       }catch(e){}
     }, 1500);
