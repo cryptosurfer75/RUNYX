@@ -3510,6 +3510,13 @@ async function doRegister(){
   if(username.length<3){showHgoError('Username trop court (min 3 caractères)');return;}
   if(username.length>12){showHgoError('Username trop long (max 12 caractères)');return;}
   if(!/^[a-zA-Z0-9_-]+$/.test(username)){showHgoError('Username invalide — lettres, chiffres, tirets et underscores uniquement');return;}
+  // Anti-shouting : on autorise les majuscules (LucasRunner) mais on bloque les usernames
+  // qui ont >60% de lettres en majuscule (ex: LUCASRUN). Préserve la lisibilité du classement.
+  var _letters=username.replace(/[^a-zA-Z]/g,'');
+  if(_letters.length>=3){
+    var _upRatio=_letters.replace(/[^A-Z]/g,'').length/_letters.length;
+    if(_upRatio>0.6){showHgoError('Trop de majuscules — utilise un mix plus naturel (ex: LucasRunner)');return;}
+  }
   // Vérifier doublon (insensible à la casse)
   var {data:existing}=await supabaseClient.from('players').select('id').ilike('username',username).maybeSingle();
   if(existing){showHgoError('Ce username est déjà pris — choisis-en un autre');return;}
