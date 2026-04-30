@@ -12321,10 +12321,15 @@ async function syncStravaActivities(silent){
     if(!Array.isArray(activities)){if(!silent)showToast('⚠️ Erreur Strava : '+(activities.message||'?'));return;}
     // Filtrer les nouvelles activités (pas encore importées)
     var newActivities=[];
-    var resultsHtml='';
+    // En-tête récap : combien Strava nous a renvoyé + depuis quelle date
+    var afterIso=afterDate.toISOString().substring(0,16).replace('T',' ');
+    var resultsHtml='<div style="padding:.4rem .3rem;font-size:.7rem;color:var(--muted2);background:rgba(32,208,224,.06);border-bottom:1px solid rgba(32,208,224,.2)">📡 Strava → '+activities.length+' activité(s) reçue(s) depuis le '+afterIso+' UTC</div>';
     for(var i=0;i<activities.length;i++){
       var a=activities[i];
-      if(!['Run','Walk','TrailRun','Hike'].includes(a.type)) continue;
+      if(!['Run','Walk','TrailRun','Hike'].includes(a.type)){
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — type non supporté ('+a.type+')</div>';
+        continue;
+      }
       // Double check période : refuse les activités antérieures à la période
       // courante (anti-triche, miroir du blocage simulateur).
       if(_periodData && _periodData.start && a.start_date){
@@ -12522,11 +12527,18 @@ async function syncStravaActivities(silent){
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
       body:JSON.stringify({last_sync_at:new Date().toISOString()})
     });
+    // Toujours afficher le panneau résultats (même 0 import) → permet de
+    // diagnostiquer pourquoi une activité n'a pas été prise.
+    var resultsDiv=document.getElementById('sync-results');
+    var listDiv=document.getElementById('sync-results-list');
+    if(resultsDiv) resultsDiv.style.display='block';
+    if(listDiv){
+      var headerLabel=newActivities.length>0
+        ? 'Courses importées · Rejets en gris'
+        : 'Aucune course importée — détail des activités Strava ci-dessous';
+      listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">'+headerLabel+'</div>'+resultsHtml;
+    }
     if(newActivities.length>0){
-      var resultsDiv=document.getElementById('sync-results');
-      var listDiv=document.getElementById('sync-results-list');
-      if(resultsDiv) resultsDiv.style.display='block';
-      if(listDiv) listDiv.innerHTML='<div style="font-size:.65rem;color:var(--muted2);margin-bottom:.4rem">Courses importées · Passages Lands enregistrés automatiquement</div>'+resultsHtml;
       showToast('✓ '+newActivities.length+' activité'+(newActivities.length>1?'s':'')+' importée'+(newActivities.length>1?'s':''));
       // V2 (2026-04-28) : on NE PURGE PLUS pending_exploration sur sync — au
       // contraire, _mergePendingExploration ajoute les nouveaux hexes au pending
