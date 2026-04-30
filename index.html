@@ -3303,15 +3303,21 @@ const supabaseClient = window.supabase.createClient(
 var hcur=1;
 var currentUser=null;
 
-// ─── Helpers Tawk.to live chat ─────────────────────────────────────
-// Le chat n'est visible QUE pour les visiteurs non-connectés (besoin d'aide
-// avant inscription). Une fois loggué, le RP a la FAQ "?" en navbar — pas
-// besoin du widget overlay qui prend de la place sur mobile.
+// ─── Helpers bouton flottant Communauté FB ─────────────────────────
+// Le bouton n'est visible QUE pour les visiteurs non-connectés (CTA pour
+// rejoindre le groupe Facebook avant inscription). Une fois loggué, le RP
+// a la FAQ "?" en navbar — pas besoin du bouton overlay sur mobile.
 function _chatHide(){
-  try{ if(window.Tawk_API && typeof window.Tawk_API.hideWidget==='function') window.Tawk_API.hideWidget(); }catch(e){}
+  try{
+    var btn=document.getElementById('fb-community-btn');
+    if(btn) btn.style.display='none';
+  }catch(e){}
 }
 function _chatShow(){
-  try{ if(window.Tawk_API && typeof window.Tawk_API.showWidget==='function') window.Tawk_API.showWidget(); }catch(e){}
+  try{
+    var btn=document.getElementById('fb-community-btn');
+    if(btn) btn.style.display='inline-flex';
+  }catch(e){}
 }
 
 // Détection Android pour afficher le bouton de téléchargement APK uniquement
@@ -10981,18 +10987,10 @@ function faqSearch(query){
   document.getElementById('faq-no-result').style.display=totalVisible===0?'block':'none';
 }
 
-// Ouvre le widget Tawk.to si présent, sinon fallback mailto.
-// Le widget Tawk.to est masqué dans les apps Capacitor (web only),
-// donc sur iOS/Android natif on bascule directement sur le mail.
+// Ouvre l'app mail du RP vers contact@speedixleague.com.
+// (L'ancien chat Tawk.to a été retiré — gestion en solo trop lourde.)
 function faqOpenChat(){
   closeModal('faq-modal');
-  try{
-    if(window.Tawk_API && typeof window.Tawk_API.maximize==='function'){
-      window.Tawk_API.maximize();
-      return;
-    }
-  }catch(e){}
-  // Fallback : pas de Tawk.to dispo (app native ou bloqué) → mailto
   window.location.href='mailto:contact@speedixleague.com?subject=Question%20SPEEDIX%20League';
 }
 
@@ -16445,60 +16443,44 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <!-- ==========================================================
-     TAWK.TO LIVE CHAT — visible UNIQUEMENT sur le site web.
-     Masqué dans les apps natives Capacitor (iOS / Android) :
-     les RP sur l'app utilisent le bouton "✉ EMAIL" du modal FAQ
-     qui ouvre directement leur app mail vers contact@speedixleague.com.
-
-     ⚠️ TODO VAL : remplacer TAWK_PROPERTY_ID et TAWK_WIDGET_ID par
-     les vraies valeurs récupérées sur https://dashboard.tawk.to
-     (Admin → Channels → Chat Widget → Direct Chat Link → URL est
-     du type embed.tawk.to/PROPERTY_ID/WIDGET_ID).
-
-     Tant que ces valeurs sont leurs valeurs placeholder, le script
-     ne se charge pas (sécurité — évite un 404 visible en console).
+     BOUTON FLOTTANT COMMUNAUTÉ FB — visible avant connexion uniquement.
+     Remplace l'ancien chat Tawk.to (trop chronophage en solo).
+     Une fois le RP loggué, _chatHide() le masque (même comportement
+     que l'ancien widget chat).
 ========================================================== -->
+<a id="fb-community-btn"
+   href="https://www.facebook.com/groups/906611848921910"
+   target="_blank"
+   rel="noopener noreferrer"
+   aria-label="Rejoindre la communauté SPEEDIX sur Facebook"
+   style="position:fixed;bottom:20px;right:20px;z-index:9999;display:inline-flex;align-items:center;gap:.55rem;padding:.7rem 1.05rem;background:#1877F2;color:#fff;border-radius:999px;text-decoration:none;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.6px;box-shadow:0 6px 18px rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.9);transition:transform .18s ease, box-shadow .18s ease">
+  <span style="font-size:1.05rem;line-height:1">👥</span>
+  <span>COMMUNAUTÉ SPEEDIX</span>
+</a>
 <script>
 (function(){
   try{
-    var isCapacitor = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-    if(isCapacitor) return; // App native → pas de chat web
-
-    var TAWK_PROPERTY_ID = '69f2111341473c1c31d8484b';
-    var TAWK_WIDGET_ID   = '1jncp5dbs';
-
-    // Garde-fou : tant que les placeholders n'ont pas été remplacés,
-    // on n'injecte pas le script (évite un 404 dans la console des RP).
-    if(TAWK_PROPERTY_ID === 'TAWK_PROPERTY_ID' || TAWK_WIDGET_ID === 'TAWK_WIDGET_ID'){
-      console.info('[Tawk.to] non configuré — remplacer TAWK_PROPERTY_ID / TAWK_WIDGET_ID dans index.html');
-      return;
-    }
-
-    window.Tawk_API = window.Tawk_API || {};
-    window.Tawk_LoadStart = new Date();
-
-    // Au chargement du widget, vérifier si on a déjà une session Supabase
-    // active (RP qui revient après s'être loggué) → masquer immédiatement.
-    // Sinon (visiteur non-connecté), laisser visible.
-    window.Tawk_API.onLoad = function(){
+    var btn=document.getElementById('fb-community-btn');
+    if(!btn) return;
+    // Hover : léger lift
+    btn.addEventListener('mouseenter',function(){
+      btn.style.transform='translateY(-2px)';
+      btn.style.boxShadow='0 10px 22px rgba(0,0,0,.55)';
+    });
+    btn.addEventListener('mouseleave',function(){
+      btn.style.transform='';
+      btn.style.boxShadow='0 6px 18px rgba(0,0,0,.45)';
+    });
+    // Au démarrage : si la session Supabase est déjà active (RP qui revient),
+    // masquer immédiatement. Sinon (visiteur), laisser visible.
+    setTimeout(function(){
       try{
         if(typeof currentUser !== 'undefined' && currentUser){
-          if(window.Tawk_API && typeof window.Tawk_API.hideWidget === 'function'){
-            window.Tawk_API.hideWidget();
-          }
+          btn.style.display='none';
         }
-      }catch(e){ console.warn('[Tawk.to] onLoad hide check failed', e); }
-    };
-
-    var s1 = document.createElement('script');
-    s1.async = true;
-    s1.src = 'https://embed.tawk.to/' + TAWK_PROPERTY_ID + '/' + TAWK_WIDGET_ID;
-    s1.charset = 'UTF-8';
-    s1.setAttribute('crossorigin', '*');
-    document.head.appendChild(s1);
-  }catch(e){
-    console.warn('[Tawk.to] init failed', e);
-  }
+      }catch(e){}
+    }, 1500);
+  }catch(e){ console.warn('[FB community btn] init failed', e); }
 })();
 </script>
 </body>
