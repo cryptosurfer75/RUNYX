@@ -7870,9 +7870,59 @@ async function _removeFromPendingExploration(hexId){
   } catch(e){ console.warn('[pending] remove fail',e); }
 }
 
+// Auto-recovery : si une course Strava arrive par webhook serveur (sync auto sans
+// intervention RP), le code JS qui calcule les hexes n'est jamais exécuté et
+// pending_exploration reste vide → le RP ne voit pas son tracé. Ce helper rejoue
+// le calcul côté client à partir des polylines déjà stockées en DB.
+// Filtres : on ne traite que les runs depuis le dernier "Terminer l'exploration"
+// (sinon on ré-affiche des hexes que le RP a explicitement clos).
+async function _recoverMissingExploration(){
+  if(!currentUser) return false;
+  if(typeof h3==='undefined' || typeof decodePolyline!=='function') return false;
+  // Cutoff = max(date du dernier "Terminer", début de période, J-30 fallback)
+  var hideAt=localStorage.getItem('expl-hide-at-'+currentUser.id);
+  var periodStart=(_periodData && _periodData.start)?_periodData.start:null;
+  var cutoff=hideAt||periodStart||new Date(Date.now()-30*86400000).toISOString();
+  var {data:runs}=await supabaseClient.from('runs')
+    .select('polyline,run_date')
+    .eq('player_id',currentUser.id)
+    .gt('run_date',cutoff)
+    .not('polyline','is',null)
+    .order('run_date',{ascending:true});
+  if(!runs||!runs.length) return false;
+  var hexSet=new Set();
+  var lastLat=null,lastLng=null;
+  runs.forEach(function(r){
+    if(!r.polyline) return;
+    try{
+      var pts=decodePolyline(r.polyline);
+      if(pts.length>0){
+        // Garder le dernier point comme centre de carte (course la plus récente)
+        lastLat=pts[Math.floor(pts.length/2)][0];
+        lastLng=pts[Math.floor(pts.length/2)][1];
+        pts.forEach(function(pt){
+          try{ hexSet.add(h3.latLngToCell(pt[0],pt[1],H3_RESOLUTION)); }catch(e){}
+        });
+      }
+    }catch(e){}
+  });
+  if(hexSet.size===0) return false;
+  // Écrire dans pending_exploration via le helper standard
+  await _mergePendingExploration(Array.from(hexSet),lastLat,lastLng);
+  return true;
+}
+
 async function loadPendingExploration(){
   if(!currentUser) return;
   var {data:player}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
+  // Si vide → tenter une recovery (cas import webhook sans clic Sync user)
+  if(!player||!player.pending_exploration){
+    var recovered=await _recoverMissingExploration();
+    if(recovered){
+      var {data:p2}=await supabaseClient.from('players').select('pending_exploration').eq('id',currentUser.id).single();
+      player=p2;
+    }
+  }
   if(!player||!player.pending_exploration) return;
   // V2 : on NE PURGE PLUS au load — le pending reste jusqu'à "Terminer
   // l'exploration" ou jusqu'à avoir loué tous les hexes.
