@@ -1851,8 +1851,9 @@ select option{background:#040c1c}
     <!-- Filtre Tous / Amis (Premium only) -->
     <div id="feed-premium-bar" style="display:none">
       <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:8px;overflow:hidden;border:1px solid rgba(74,144,255,.2)">
-        <button id="feed-tab-all" onclick="switchFeedTab('all')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:rgba(245,200,66,.15);color:var(--gold)">Tous les RP</button>
+        <button id="feed-tab-me" onclick="switchFeedTab('me')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:transparent;color:var(--muted2)">Moi</button>
         <button id="feed-tab-friends" onclick="switchFeedTab('friends')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:transparent;color:var(--muted2)">Mes amis</button>
+        <button id="feed-tab-all" onclick="switchFeedTab('all')" style="flex:1;padding:.45rem;font-size:.75rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .15s;background:rgba(245,200,66,.15);color:var(--gold)">Tous les RP</button>
       </div>
       <!-- Recherche RP -->
       <div style="margin-bottom:.75rem">
@@ -9030,8 +9031,10 @@ function switchFeedTab(mode){
   _feedMode=mode;
   var tabAll=document.getElementById('feed-tab-all');
   var tabFriends=document.getElementById('feed-tab-friends');
-  if(tabAll){tabAll.style.background=mode==='all'?'rgba(245,200,66,.15)':'transparent';tabAll.style.color=mode==='all'?'var(--gold)':'var(--muted2)';}
+  var tabMe=document.getElementById('feed-tab-me');
+  if(tabMe){tabMe.style.background=mode==='me'?'rgba(245,200,66,.15)':'transparent';tabMe.style.color=mode==='me'?'var(--gold)':'var(--muted2)';}
   if(tabFriends){tabFriends.style.background=mode==='friends'?'rgba(245,200,66,.15)':'transparent';tabFriends.style.color=mode==='friends'?'var(--gold)':'var(--muted2)';}
+  if(tabAll){tabAll.style.background=mode==='all'?'rgba(245,200,66,.15)':'transparent';tabAll.style.color=mode==='all'?'var(--gold)':'var(--muted2)';}
   renderSocialFeed();
 }
 
@@ -9094,14 +9097,21 @@ async function renderSocialFeed(){
     .eq('period',0)
     .order('run_date',{ascending:false})
     .limit(50);
-  // Filtrer par amis si mode friends
-  if(_feedMode==='friends'&&runs){
+  // Filtrer selon le mode : me = uniquement mes courses · friends = mes amis (+ moi) · all = tout le monde
+  if(_feedMode==='me'&&runs){
+    runs=runs.filter(function(r){return r.player_id===currentUser.id;});
+  } else if(_feedMode==='friends'&&runs){
     runs=runs.filter(function(r){return r.player_id===currentUser.id||_myFollowing.indexOf(r.player_id)>=0;});
   }
   if(!runs||!runs.length){
-    var emptyMsg=_feedMode==='friends'
-      ?'Aucune activité de tes amis.<br>Suis des RP depuis le fil "Tous les RP" !'
-      :'Aucune activité pour le moment.<br>Synchronise Strava pour poster ta première course !';
+    var emptyMsg;
+    if(_feedMode==='me'){
+      emptyMsg='Tu n\'as pas encore de course publiée sur cette période.<br>Synchronise Strava pour la voir apparaître ici !';
+    } else if(_feedMode==='friends'){
+      emptyMsg='Aucune activité de tes amis.<br>Suis des RP depuis le fil "Tous les RP" !';
+    } else {
+      emptyMsg='Aucune activité pour le moment.<br>Synchronise Strava pour poster ta première course !';
+    }
     feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">'+emptyMsg+'</div>';
     return;
   }
@@ -9418,22 +9428,25 @@ async function shareRunCard(runId){
 
   // Créer le canvas en haute résolution (3×) pour un rendu net sur écrans Retina
   // et une qualité d'image supérieure une fois partagée / téléchargée.
+  // Hauteur 500 (vs 400 avant) pour intégrer la bande tracé GPS hero entre le
+  // branding du haut et les stats du bas.
   var SCALE=3;
+  var W=600, H=500;
   var cv=document.createElement('canvas');
-  cv.width=600*SCALE;cv.height=400*SCALE;
+  cv.width=W*SCALE;cv.height=H*SCALE;
   var cx=cv.getContext('2d');
   cx.scale(SCALE,SCALE);
   cx.imageSmoothingEnabled=true;
   cx.imageSmoothingQuality='high';
 
   // Fond gradient sombre
-  var bg=cx.createLinearGradient(0,0,600,400);
+  var bg=cx.createLinearGradient(0,0,W,H);
   bg.addColorStop(0,'#080e1e');bg.addColorStop(1,'#020408');
-  cx.fillStyle=bg;cx.fillRect(0,0,600,400);
+  cx.fillStyle=bg;cx.fillRect(0,0,W,H);
 
   // Bordure dorée
   cx.strokeStyle='#f5c842';cx.lineWidth=2;
-  cx.strokeRect(8,8,584,384);
+  cx.strokeRect(8,8,W-16,H-16);
 
   // Logo SPEEDIX LEAGUE en haut
   cx.font='900 28px sans-serif';cx.textAlign='center';cx.letterSpacing='4px';
@@ -9445,6 +9458,9 @@ async function shareRunCard(runId){
   cx.fillText('SPEEDIX ',startX,35);
   cx.fillStyle='#ffffff';
   cx.fillText('LEAGUE',startX+rlW,35);
+  // ⚠️ Reset letterSpacing : sinon il persiste pour tous les textes suivants
+  // (bug observé : les valeurs de stats étaient étirées hors de leur cadre).
+  cx.letterSpacing='0px';
   // Slogan sous le titre
   cx.textAlign='center';
   cx.font='400 11px sans-serif';cx.fillStyle='#4a90ff';
@@ -9454,10 +9470,10 @@ async function shareRunCard(runId){
   cx.strokeStyle='rgba(245,200,66,.3)';cx.lineWidth=1;
   cx.beginPath();cx.moveTo(80,68);cx.lineTo(520,68);cx.stroke();
 
-  // Avatar (cercle)
+  // ── Avatar + nom + ID + date ─────────────────────────────────────────
   var gc=GRADE_COLORS[player.grade]||'#8090b0';
   cx.save();
-  cx.beginPath();cx.arc(90,130,32,0,Math.PI*2);cx.clip();
+  cx.beginPath();cx.arc(60,110,26,0,Math.PI*2);cx.clip();
   if(player.avatar){
     try{
       var img=new Image();
@@ -9466,32 +9482,29 @@ async function shareRunCard(runId){
         img.onload=resolve;img.onerror=resolve;
         img.src=player.avatar;
       });
-      cx.drawImage(img,58,98,64,64);
+      cx.drawImage(img,34,84,52,52);
     }catch(e){
-      cx.fillStyle=gc+'44';cx.fillRect(58,98,64,64);
+      cx.fillStyle=gc+'44';cx.fillRect(34,84,52,52);
     }
   } else {
-    cx.fillStyle=gc+'44';cx.fillRect(58,98,64,64);
+    cx.fillStyle=gc+'44';cx.fillRect(34,84,52,52);
     cx.restore();cx.save();
-    cx.font='700 24px sans-serif';cx.fillStyle=gc;cx.textAlign='center';
-    cx.fillText(player.username.charAt(0).toUpperCase(),90,138);
+    cx.font='700 22px sans-serif';cx.fillStyle=gc;cx.textAlign='center';
+    cx.fillText(player.username.charAt(0).toUpperCase(),60,118);
   }
   cx.restore();
-
   // Bordure avatar
   cx.strokeStyle=gc;cx.lineWidth=2.5;
-  cx.beginPath();cx.arc(90,130,32,0,Math.PI*2);cx.stroke();
+  cx.beginPath();cx.arc(60,110,26,0,Math.PI*2);cx.stroke();
 
-  // Nom + drapeau + ID
+  // Nom + drapeau + ID + date (à droite de l'avatar)
   cx.textAlign='left';
-  cx.font='700 22px sans-serif';cx.fillStyle='#ffffff';
-  cx.fillText(player.username,138,122);
-  cx.font='400 13px monospace';cx.fillStyle='#8aaccc';
-  cx.fillText('#SL-'+(player.rtw_id||'?????')+'  '+player.nat,138,142);
-  cx.font='400 12px sans-serif';cx.fillStyle='#5a6080';
-  cx.fillText(dateStr,138,160);
+  cx.font='700 20px sans-serif';cx.fillStyle='#ffffff';
+  cx.fillText(player.username,100,105);
+  cx.font='400 12px monospace';cx.fillStyle='#8aaccc';
+  cx.fillText('#SL-'+(player.rtw_id||'?????')+'  '+player.nat+'  ·  '+dateStr,100,123);
 
-  // Stats — 4 blocs
+  // ── Stats — 4 blocs (au-dessus du tracé maintenant) ──────────────────
   var stats=[
     {label:'DISTANCE',value:km+' km',color:'#20d0e0'},
     {label:'TEMPS',value:timeStr,color:'#2ddb80'},
@@ -9502,40 +9515,87 @@ async function shareRunCard(runId){
   stats.forEach(function(s,i){
     var bx=sx+i*138;
     cx.fillStyle='rgba(30,37,53,.6)';
-    cx.beginPath();cx.roundRect(bx,195,125,70,8);cx.fill();
+    cx.beginPath();cx.roundRect(bx,155,125,70,8);cx.fill();
     cx.strokeStyle='rgba(74,144,255,.2)';cx.lineWidth=1;
-    cx.beginPath();cx.roundRect(bx,195,125,70,8);cx.stroke();
+    cx.beginPath();cx.roundRect(bx,155,125,70,8);cx.stroke();
     cx.font='600 9px sans-serif';cx.fillStyle='#5a6080';cx.textAlign='center';
-    cx.fillText(s.label,bx+62,213);
-    // Auto-fit : réduit la police si la valeur déborde du cadre (max 115 px)
+    cx.fillText(s.label,bx+62,173);
     var maxW=115,fs=20;
     cx.font='700 '+fs+'px monospace';
     while(cx.measureText(s.value).width>maxW&&fs>11){
       fs-=1;cx.font='700 '+fs+'px monospace';
     }
     cx.fillStyle=s.color;
-    cx.fillText(s.value,bx+62,245);
+    cx.fillText(s.value,bx+62,205);
   });
 
-  // (Description retirée du partage — reste visible dans le détail de course en privé)
+  // ── BANDE TRACÉ GPS — sous les stats (demande Val) ───────────────────
+  // Position : y=245 → y=395 (150px de haut, 560px de large centré).
+  // Si pas de polyline (course saisie sans GPS) → placeholder discret.
+  var TX=20, TY=245, TW=560, TH=150;
+  cx.fillStyle='rgba(74,144,255,.05)';
+  cx.beginPath();cx.roundRect(TX,TY,TW,TH,10);cx.fill();
+  cx.strokeStyle='rgba(74,144,255,.18)';cx.lineWidth=1;
+  cx.beginPath();cx.roundRect(TX,TY,TW,TH,10);cx.stroke();
+  if(run.polyline && typeof decodePolyline==='function'){
+    var pts2=decodePolyline(run.polyline);
+    if(pts2.length>=2){
+      var minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+      pts2.forEach(function(p){
+        if(p[0]<minLat)minLat=p[0];if(p[0]>maxLat)maxLat=p[0];
+        if(p[1]<minLng)minLng=p[1];if(p[1]>maxLng)maxLng=p[1];
+      });
+      var pad=16;
+      var ww=TW-pad*2, hh=TH-pad*2;
+      var dLat=maxLat-minLat||0.001;
+      var dLng=maxLng-minLng||0.001;
+      var trScale=Math.min(ww/dLng, hh/dLat);
+      var ox=pad+(ww-dLng*trScale)/2;
+      var oy=pad+(hh-dLat*trScale)/2;
+      // Tracé : glow extérieur doré semi-transparent + ligne solide blanche au centre
+      cx.beginPath();
+      pts2.forEach(function(p,i){
+        var x=TX+ox+(p[1]-minLng)*trScale;
+        var y=TY+TH-(oy+(p[0]-minLat)*trScale);
+        if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y);
+      });
+      cx.strokeStyle='rgba(245,200,66,.45)';
+      cx.lineWidth=8;cx.lineCap='round';cx.lineJoin='round';
+      cx.stroke();
+      cx.strokeStyle='#ffffff';
+      cx.lineWidth=2.8;
+      cx.stroke();
+      // Marqueur départ (vert) + halo sombre
+      var spx=TX+ox+(pts2[0][1]-minLng)*trScale;
+      var spy=TY+TH-(oy+(pts2[0][0]-minLat)*trScale);
+      cx.fillStyle='#0a1020';cx.beginPath();cx.arc(spx,spy,6,0,Math.PI*2);cx.fill();
+      cx.fillStyle='#2ddb80';cx.beginPath();cx.arc(spx,spy,4.5,0,Math.PI*2);cx.fill();
+      // Marqueur arrivée (rouge) + halo sombre
+      var lp=pts2[pts2.length-1];
+      var epx=TX+ox+(lp[1]-minLng)*trScale;
+      var epy=TY+TH-(oy+(lp[0]-minLat)*trScale);
+      cx.fillStyle='#0a1020';cx.beginPath();cx.arc(epx,epy,6,0,Math.PI*2);cx.fill();
+      cx.fillStyle='#ff4444';cx.beginPath();cx.arc(epx,epy,4.5,0,Math.PI*2);cx.fill();
+    } else {
+      cx.font='400 12px sans-serif';cx.fillStyle='#5a6080';cx.textAlign='center';
+      cx.fillText('— Tracé GPS indisponible —',300,TY+TH/2+4);
+    }
+  } else {
+    cx.font='400 12px sans-serif';cx.fillStyle='#5a6080';cx.textAlign='center';
+    cx.fillText('— Course sans tracé GPS —',300,TY+TH/2+4);
+  }
 
-  // Powered by Strava (compliance API Agreement) — texte seul, coin bas-droit
-  cx.textAlign='right';
-  cx.font='700 7px sans-serif';cx.fillStyle='#fc4c02';
-  cx.fillText('POWERED BY STRAVA',580,388);
-
-  // 1. Site web (premier juste sous les stats)
+  // ── CTA bas : site + code parrainage ─────────────────────────────────
   cx.textAlign='center';
   cx.font='700 20px sans-serif';cx.fillStyle='#ffffff';
-  cx.fillText('speedixleague.com',300,300);
-
-  // 2. Réseaux sociaux
-  cx.font='400 11px sans-serif';cx.fillStyle='#5a6080';
-  cx.fillText('📘 Facebook  ·  📸 Instagram  ·  🐦 Twitter  ·  💬 WhatsApp',300,328);
-
-  // 3. Code parrainage
+  cx.fillText('speedixleague.com',300,425);
   cx.font='700 14px monospace';cx.fillStyle='#f5c842';
-  cx.fillText('Rejoins-moi : code SL-'+(player.rtw_id||'?????'),300,360);
+  cx.fillText('Rejoins-moi : code SL-'+(player.rtw_id||'?????'),300,452);
+
+  // ── Powered by Strava (compliance) — coin bas-droit ──────────────────
+  cx.textAlign='right';
+  cx.font='700 7px sans-serif';cx.fillStyle='#fc4c02';
+  cx.fillText('POWERED BY STRAVA',580,488);
 
   // Partager ou télécharger
   cv.toBlob(async function(blob){
@@ -12540,7 +12600,12 @@ async function syncStravaActivities(silent){
           continue;
         }
       }
-      // 2. Doublon avec une course du même jour (manuelle ou autre Strava) à distance proche ?
+      // 2. Doublon contre une course MANUELLE (legacy) du même jour à distance proche ?
+      //    On ne déduplique PLUS contre une autre course Strava du même jour : 2 vraies
+      //    sorties dans la journée doivent toutes les deux passer même si elles ont des
+      //    distances similaires (5 km matin + 5,5 km soir = OK). La saisie manuelle
+      //    n'existe plus dans le jeu, mais la règle reste pour les anciennes courses
+      //    manuelles encore présentes en DB chez certains RPs historiques.
       var {data:sameDayRuns}=await supabaseClient.from('runs')
         .select('id,distance,name,strava_activity_id')
         .eq('player_id',currentUser.id)
@@ -12550,7 +12615,10 @@ async function syncStravaActivities(silent){
       if(sameDayRuns && sameDayRuns.length>0){
         for(var sd=0; sd<sameDayRuns.length; sd++){
           var r=sameDayRuns[sd];
-          // Tolérance ±15% sur la distance pour considérer comme doublon
+          // Skip si c'est une course Strava (rule #1 a déjà géré le doublon par id).
+          // On ne déduplique que contre les courses sans strava_activity_id (= manuelles).
+          if(r.strava_activity_id) continue;
+          // Tolérance ±15% sur la distance pour considérer comme doublon manuelle
           var ratio=km>0?Math.abs(r.distance-km)/km:1;
           if(ratio<=0.15){
             isDup=true; dupName=r.name||'course';
