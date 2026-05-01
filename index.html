@@ -404,6 +404,15 @@ body::before{
 #lands-map.lz-16 .hex-initial-text{font-size:13px}
 #lands-map.lz-17 .hex-initial-text{font-size:15px}
 #lands-map.lz-18p .hex-initial-text{font-size:18px}
+/* Opacité globale du calque SVG (hexagones + totems) atténuée en vue large.
+   Idée : visuel apaisé tant qu'on n'est pas focus sur une zone précise.
+   À partir du zoom 15 (apparition des lettres) → pleine luminosité.
+   ⚠️ Pas de transition CSS sur le SVG : ça interfère avec l'animation de
+   zoom de Leaflet (le SVG semble figé pendant que les tiles glissent). */
+#lands-map.lz-tiny .leaflet-overlay-pane svg{opacity:.45}
+#lands-map.lz-12 .leaflet-overlay-pane svg{opacity:.5}
+#lands-map.lz-13 .leaflet-overlay-pane svg{opacity:.58}
+#lands-map.lz-14 .leaflet-overlay-pane svg{opacity:.68}
 .leaflet-container{background:var(--bg2)!important;font-family:'Rajdhani',sans-serif!important}
 .speedix-totem{background:none!important;border:none!important}
 .speedix-star{background:none!important;border:none!important}
