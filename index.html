@@ -400,7 +400,7 @@ body::before{
 #lands-map.lz-12 .hex-initial-text{display:none}
 #lands-map.lz-13 .hex-initial-text{display:none}
 #lands-map.lz-14 .hex-initial-text{display:none}
-#lands-map.lz-15 .hex-initial-text{display:none}
+#lands-map.lz-15 .hex-initial-text{font-size:11px}
 #lands-map.lz-16 .hex-initial-text{font-size:13px}
 #lands-map.lz-17 .hex-initial-text{font-size:15px}
 #lands-map.lz-18p .hex-initial-text{font-size:18px}
@@ -6700,14 +6700,14 @@ async function loadLandsOnMap(){
       var a=_hex2hsl(hexA),b=_hex2hsl(hexB);
       if(!a||!b) return false;
       // Si saturations OU luminosités très différentes → pas proches visuellement
-      if(Math.abs(a.s-b.s)>0.4) return false;
+      if(Math.abs(a.s-b.s)>0.45) return false;
       if(Math.abs(a.l-b.l)>0.3) return false;
-      // Distance hue circulaire — seuil 18° (avant 25°) pour éviter de saturer
-      // la palette et tomber sur du fallback HSL où plusieurs RPs se collent
-      // sur la même couleur disponible.
+      // Distance hue circulaire — seuil 35° : 3 violets à 30° d'écart sont
+      // visuellement identiques pour l'œil humain. Famille de teintes ≈ 30-40°.
+      // Avec 35°, on garantit ~10 régions de teintes distinctes max sur la map.
       var hd=Math.abs(a.h-b.h);
       if(hd>180) hd=360-hd;
-      return hd<18;
+      return hd<35;
     }
     // Convertit HSL (h:0-360, s/l:0-1) en hex pour stockage uniforme dans
     // usedColors (les checks downstream attendent du hex).
