@@ -7344,11 +7344,21 @@ async function releaseLand(landId){
   // supprimés (FK NO ACTION les bloquerait sinon, et plus aucun rendement
   // possible sur une land libérée). Le ban (2 périodes) reste actif via
   // land_bans (qui n'a pas de FK sur lands).
-  await supabaseClient.from('land_passages').delete().eq('land_id',landId);
-  await window.fetch(supabaseUrl+'/rest/v1/lands?id=eq.'+encodeURIComponent(landId),{
-    method:'DELETE',
-    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
-  });
+  // Bug fix 2026-05-01 : on passait par window.fetch + anon key qui pouvait
+  // être bloqué silencieusement par les RLS policies (DELETE retourne 200 mais
+  // 0 ligne affectée). On utilise maintenant supabaseClient qui injecte le JWT
+  // session du RP, et on vérifie le retour pour remonter une vraie erreur si
+  // la suppression a échoué.
+  var passDel=await supabaseClient.from('land_passages').delete().eq('land_id',landId);
+  if(passDel.error){
+    showToast('⚠️ Erreur suppression passages : '+passDel.error.message);
+    return;
+  }
+  var landDel=await supabaseClient.from('lands').delete().eq('id',landId);
+  if(landDel.error){
+    showToast('⚠️ Erreur libération land : '+landDel.error.message);
+    return;
+  }
   // Ajouter un ban de 2 périodes pour ce RP sur cette land
   var banUntil=(_periodData.period||1)+2;
   await supabaseClient.from('land_bans').insert({
