@@ -379,6 +379,25 @@ body::before{
 .borb-used{border-color:rgba(30,37,53,.5);color:rgba(90,96,128,.4);background:transparent}
 @keyframes glow-g{0%,100%{box-shadow:0 0 0 rgba(45,219,128,0)}50%{box-shadow:0 0 10px rgba(45,219,128,.5)}}
 .hex-tt{background:rgba(6,8,16,.92)!important;border:1px solid var(--border2)!important;color:var(--text)!important;font-size:.72rem!important;border-radius:6px!important}
+/* ── Initiale du propriétaire au centre des hexes des autres RP ──
+   Adapté au zoom via classe sur le conteneur de la map. Couleur subtile
+   (pas un white bright qui "claque" comme une enseigne) + outline noir fin
+   pour rester lisible sur n'importe quelle couleur de hex sous-jacente. */
+.hex-initial{pointer-events:none;background:none!important;border:none!important}
+.hex-initial-text{
+  color:rgba(255,255,255,.6);
+  font-family:'Bebas Neue',sans-serif;
+  font-weight:600;
+  text-align:center;
+  line-height:1;
+  letter-spacing:.5px;
+  text-shadow:0 0 2px rgba(0,0,0,.95),0 0 1px rgba(0,0,0,.95);
+}
+/* Caché quand on dézoom : hexagones trop petits, lettre déborderait */
+#lands-map.lz-tiny .hex-initial-text{display:none}
+#lands-map.lz-small .hex-initial-text{font-size:12px}
+#lands-map.lz-normal .hex-initial-text{font-size:14px}
+#lands-map.lz-large .hex-initial-text{font-size:17px}
 .leaflet-container{background:var(--bg2)!important;font-family:'Rajdhani',sans-serif!important}
 .speedix-totem{background:none!important;border:none!important}
 .speedix-star{background:none!important;border:none!important}
@@ -6522,6 +6541,19 @@ function initLandsMap(){
     className:'map-tiles-brighter'
   }).addTo(_landsMap);
   _landsHexLayer=L.layerGroup().addTo(_landsMap);
+  // Adapter taille des initiales aux niveaux de zoom via classe CSS sur le
+  // conteneur — évite de re-render tous les hexagones à chaque mouvement.
+  function _updateZoomClass(){
+    var z=_landsMap.getZoom();
+    var c=container.classList;
+    c.remove('lz-tiny','lz-small','lz-normal','lz-large');
+    if(z<13) c.add('lz-tiny');
+    else if(z<15) c.add('lz-small');
+    else if(z<17) c.add('lz-normal');
+    else c.add('lz-large');
+  }
+  _landsMap.on('zoomend',_updateZoomClass);
+  _updateZoomClass();
   // Charger les lands existantes
   loadLandsOnMap();
 }
@@ -6615,12 +6647,127 @@ async function loadLandsOnMap(){
     if(pid&&pid!==myId&&rpIds.indexOf(pid)<0) rpIds.push(pid);
   });
   var rpColorMap={};
-  // Charger les couleurs custom des autres RP
+  // Réassignation des couleurs des autres RPs pour éviter les collisions
+  // visuelles avec MA couleur (et entre eux). Stratégie 2 passes :
+  //  Pass 1 : si la couleur perso préférée du RP n'entre pas en conflit avec
+  //           une couleur déjà prise (la mienne ou un autre RP) → on lui garde
+  //  Pass 2 : pour les RPs dont la préférée était déjà prise → on pioche la
+  //           1ère couleur libre dans la palette de fallback (15 couleurs)
+  // Garantit qu'aucune teinte sur la carte ne se confond avec la mienne.
+  var rpUsernameMap={};
   if(rpIds.length){
-    var {data:rpColors}=await supabaseClient.from('players').select('id,map_color').in('id',rpIds);
-    var customColors={};
-    (rpColors||[]).forEach(function(p){if(p.map_color) customColors[p.id]=p.map_color;});
-    rpIds.forEach(function(pid,i){rpColorMap[pid]=customColors[pid]||_rpColorPalette[i%_rpColorPalette.length];});
+    var {data:rpColors}=await supabaseClient.from('players').select('id,map_color,username').in('id',rpIds);
+    var preferredColors={};
+    (rpColors||[]).forEach(function(p){
+      if(p.map_color) preferredColors[p.id]=p.map_color;
+      if(p.username) rpUsernameMap[p.id]=p.username;
+    });
+
+    // ── Helpers HSL pour détecter les couleurs visuellement proches ──
+    // Deux couleurs sont "trop proches" si elles ont un Δhue < 25° avec des
+    // saturations et luminosités similaires. Évite les 3 oranges côte-à-côte
+    // type Amiens screenshot où les hex distincts sont visuellement confondus.
+    function _hex2hsl(hex){
+      if(!hex||hex.charAt(0)!=='#'||hex.length!==7) return null;
+      var r=parseInt(hex.substr(1,2),16)/255;
+      var g=parseInt(hex.substr(3,2),16)/255;
+      var b=parseInt(hex.substr(5,2),16)/255;
+      var mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+      var h,s,l=(mx+mn)/2;
+      if(mx===mn){h=0;s=0;}
+      else{
+        var d=mx-mn;
+        s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+        if(mx===r) h=(g-b)/d+(g<b?6:0);
+        else if(mx===g) h=(b-r)/d+2;
+        else h=(r-g)/d+4;
+        h*=60;
+      }
+      return {h:h,s:s,l:l};
+    }
+    function _colorsClose(hexA,hexB){
+      var a=_hex2hsl(hexA),b=_hex2hsl(hexB);
+      if(!a||!b) return false;
+      // Si saturations OU luminosités très différentes → pas proches visuellement
+      if(Math.abs(a.s-b.s)>0.4) return false;
+      if(Math.abs(a.l-b.l)>0.3) return false;
+      // Distance hue circulaire — seuil 18° (avant 25°) pour éviter de saturer
+      // la palette et tomber sur du fallback HSL où plusieurs RPs se collent
+      // sur la même couleur disponible.
+      var hd=Math.abs(a.h-b.h);
+      if(hd>180) hd=360-hd;
+      return hd<18;
+    }
+    // Convertit HSL (h:0-360, s/l:0-1) en hex pour stockage uniforme dans
+    // usedColors (les checks downstream attendent du hex).
+    function _hsl2hex(h,s,l){
+      var c=(1-Math.abs(2*l-1))*s;
+      var x=c*(1-Math.abs(((h/60)%2)-1));
+      var m=l-c/2;
+      var r=0,g=0,b=0;
+      if(h<60){r=c;g=x;b=0;}
+      else if(h<120){r=x;g=c;b=0;}
+      else if(h<180){r=0;g=c;b=x;}
+      else if(h<240){r=0;g=x;b=c;}
+      else if(h<300){r=x;g=0;b=c;}
+      else{r=c;g=0;b=x;}
+      function toHex(v){var z=Math.round((v+m)*255).toString(16);return z.length===1?'0'+z:z;}
+      return '#'+toHex(r)+toHex(g)+toHex(b);
+    }
+
+    var usedColors=[]; // array (pas Set) pour pouvoir checker proximité HSL
+    function _isTaken(candidate){
+      for(var i=0;i<usedColors.length;i++){
+        if(usedColors[i].toLowerCase()===candidate.toLowerCase()) return true;
+        if(_colorsClose(candidate,usedColors[i])) return true;
+      }
+      return false;
+    }
+    if(_myMapColor) usedColors.push(_myMapColor);
+
+    // Pass 1 : couleur préférée du RP si pas en conflit (exact OU proximité visuelle)
+    rpIds.forEach(function(pid){
+      var pref=preferredColors[pid];
+      if(pref && !_isTaken(pref)){
+        rpColorMap[pid]=pref;
+        usedColors.push(pref);
+      }
+    });
+
+    // Pass 2 : palette pour ceux dont la préférée a été rejetée
+    var paletteIdx=0;
+    rpIds.forEach(function(pid){
+      if(rpColorMap[pid]) return;
+      // Avancer dans la palette jusqu'à une couleur non-prise (exact + proche)
+      while(paletteIdx<_rpColorPalette.length && _isTaken(_rpColorPalette[paletteIdx])){
+        paletteIdx++;
+      }
+      if(paletteIdx<_rpColorPalette.length){
+        rpColorMap[pid]=_rpColorPalette[paletteIdx];
+        usedColors.push(_rpColorPalette[paletteIdx]);
+        paletteIdx++;
+      } else {
+        // Palette épuisée → on génère une couleur HSL avec hue le plus éloigné
+        // des couleurs déjà prises. CRUCIAL : on convertit en hex et on l'ajoute
+        // à usedColors pour que le RP suivant en fallback ne tombe PAS sur le
+        // même hue (bug observé : 4 RPs en vert identique).
+        var bestHue=0,bestMinDist=-1;
+        for(var hh=0;hh<360;hh+=10){
+          var minDist=180;
+          for(var k=0;k<usedColors.length;k++){
+            var ucHsl=_hex2hsl(usedColors[k]);
+            if(!ucHsl) continue;
+            var hd2=Math.abs(hh-ucHsl.h);
+            if(hd2>180) hd2=360-hd2;
+            if(hd2<minDist) minDist=hd2;
+          }
+          if(minDist>bestMinDist){bestMinDist=minDist;bestHue=hh;}
+        }
+        var generated=_hsl2hex(bestHue,0.70,0.55);
+        rpColorMap[pid]=generated;
+        usedColors.push(generated);
+      }
+    });
   }
   window._rpColorMap=rpColorMap;
 
@@ -6688,6 +6835,56 @@ async function loadLandsOnMap(){
     window._myPassageLandIds=[];
   }
 
+  // Pré-calcul des lands "totem" (la pastille blanche au centre du plus gros
+  // groupe connecté de chaque RP). La lettre y est masquée car la pastille
+  // recouvre tout. Logique miroir de addTotems() pour rester cohérent.
+  var _totemLandIds=new Set();
+  try{
+    var _landsByOwner={};
+    lands.forEach(function(l){
+      var pid=l.owner_id||l.tenant_id;
+      if(!pid||l.status==='free') return;
+      if(!_landsByOwner[pid]) _landsByOwner[pid]=[];
+      _landsByOwner[pid].push(l.id);
+    });
+    Object.keys(_landsByOwner).forEach(function(pid){
+      var landIds=_landsByOwner[pid];
+      var landSet=new Set(landIds);
+      var visited=new Set();
+      var groups=[];
+      landSet.forEach(function(lid){
+        if(visited.has(lid)) return;
+        var grp=[],queue=[lid];
+        while(queue.length){
+          var cur=queue.shift();
+          if(visited.has(cur)) continue;
+          visited.add(cur);
+          if(!landSet.has(cur)) continue;
+          grp.push(cur);
+          try{
+            h3.gridDisk(cur,1).forEach(function(n){if(n!==cur&&landSet.has(n)&&!visited.has(n)) queue.push(n);});
+          }catch(e){}
+        }
+        if(grp.length) groups.push(grp);
+      });
+      groups.sort(function(a,b){return b.length-a.length;});
+      var biggest=groups[0]||[];
+      if(!biggest.length) return;
+      var sLat=0,sLng=0,coords=[];
+      biggest.forEach(function(lid){
+        try{var ll=h3.cellToLatLng(lid);sLat+=ll[0];sLng+=ll[1];coords.push({lat:ll[0],lng:ll[1],id:lid});}catch(e){}
+      });
+      if(!coords.length) return;
+      var aLat=sLat/biggest.length,aLng=sLng/biggest.length;
+      var best=coords[0],bestDist=Infinity;
+      coords.forEach(function(c){
+        var d=Math.pow(c.lat-aLat,2)+Math.pow(c.lng-aLng,2);
+        if(d<bestDist){bestDist=d;best=c;}
+      });
+      if(best&&best.id) _totemLandIds.add(best.id);
+    });
+  }catch(e){}
+
   lands.forEach(function(land){
     try{
       var boundary=h3.cellToBoundary(land.id);
@@ -6717,6 +6914,29 @@ async function loadLandsOnMap(){
       var statusTxt=isNewExplored?'<span style="color:#ffffff">LIBRE — Cliquer pour louer</span>':isMineOwned?'Ma propriété':isMineRented?'Ma location':land.status==='owned'?'Propriété':land.status==='rented'?'Loué':'Libre';
       poly.bindTooltip('<strong>'+land.id.substring(0,8)+'…</strong>'+starsTxt+'<br>'+statusTxt,{className:'hex-tt'});
       poly.on('click',function(){showLandDetail(land.id);});
+      // Initiale du propriétaire/locataire au centre — uniquement pour les lands
+      // des AUTRES RPs (pas les miennes ni les libres). Aide à distinguer plusieurs
+      // RPs dont les couleurs assignées sont visuellement proches. interactive:false
+      // pour que le clic traverse jusqu'au polygone parent.
+      // Skip l'initiale si :
+      //  - 1+ étoile(s) : étoile au centre se confond avec la lettre
+      //  - land est le totem du RP : la pastille blanche du totem cache la lettre
+      if(!isMineOwned && !isMineRented && !isNewExplored && !isMyPassage && land.status!=='free' && otherPid && (land.stars||0)<1 && !_totemLandIds.has(land.id)){
+        var ownerNm=rpUsernameMap[otherPid];
+        if(ownerNm){
+          var initial=ownerNm.charAt(0).toUpperCase();
+          var ctr=h3.cellToLatLng(land.id);
+          L.marker([ctr[0],ctr[1]],{
+            icon:L.divIcon({
+              className:'hex-initial',
+              html:'<div class="hex-initial-text">'+initial+'</div>',
+              iconSize:[18,18],
+              iconAnchor:[9,9]
+            }),
+            interactive:false
+          }).addTo(_landsHexLayer);
+        }
+      }
       // Afficher les étoiles (polygones 5 branches qui scalent avec la carte)
       if(land.stars>0&&land.status!=='free'){
         var center=h3.cellToLatLng(land.id);
@@ -7928,6 +8148,31 @@ async function _removeFromPendingExploration(hexId){
 async function _recoverMissingExploration(){
   if(!currentUser) return false;
   if(typeof h3==='undefined' || typeof decodePolyline!=='function') return false;
+  // Respect du choix du RP : si flag expl-hide=1 (cliqué Terminer) ET aucun
+  // nouveau run depuis → on ne fait PAS de recovery, sinon le modal de
+  // félicitations re-pop à chaque connexion.
+  // Le flag se "consume" implicitement quand un nouveau run arrive après
+  // expl-hide-at : on accepte alors la recovery (nouvelle session valide).
+  var hideFlag=localStorage.getItem('expl-hide-'+currentUser.id);
+  if(hideFlag==='1'){
+    var hideAtCheck=localStorage.getItem('expl-hide-at-'+currentUser.id);
+    if(hideAtCheck){
+      var {data:lastRun}=await supabaseClient.from('runs')
+        .select('run_date').eq('player_id',currentUser.id)
+        .order('run_date',{ascending:false}).limit(1).maybeSingle();
+      // Aucun nouveau run depuis le Terminer → on respecte le silence
+      if(!lastRun||!lastRun.run_date||lastRun.run_date<=hideAtCheck) return false;
+      // Sinon : nouveau run arrivé → on consume le flag et on continue la recovery
+      try{
+        localStorage.removeItem('expl-hide-'+currentUser.id);
+        localStorage.removeItem('expl-hide-at-'+currentUser.id);
+        localStorage.removeItem('expl-done-'+currentUser.id);
+      }catch(e){}
+    } else {
+      // Hide=1 sans hideAt → on respecte par sécurité
+      return false;
+    }
+  }
   // Cutoff = max(date du dernier "Terminer", début de période, J-30 fallback)
   var hideAt=localStorage.getItem('expl-hide-at-'+currentUser.id);
   var periodStart=(_periodData && _periodData.start)?_periodData.start:null;
@@ -16572,17 +16817,22 @@ async function triggerBadgeCheck(){
     });
     var data=await resp.json();
     if(data&&data.ok&&data.new_badges&&data.new_badges.length){
-      // Afficher un « BOUM » par badge (l'un après l'autre).
-      // Délai de 4s entre chaque pour laisser le temps de lire avant l'enchaînement.
-      // Le user peut aussi click "Bravo !" pour passer plus vite.
-      for(var i=0;i<data.new_badges.length;i++){
-        (function(b,delay){
-          setTimeout(function(){showBadgeUnlockModal(b);}, delay);
-        })(data.new_badges[i], i*4000);
+      // Filet de sécurité : si l'Edge Function check-badges retourne TOUS les
+      // badges du RP au lieu des seuls nouveaux (bug serveur observé), on
+      // dédupe côté client via le localStorage des badges déjà affichés.
+      // Évite de re-jouer le BOUM à chaque connexion pour des badges déjà vus.
+      var _shownAlready=_getShownBadges();
+      var _actuallyNew=data.new_badges.filter(function(b){return !_shownAlready.has(b.id);});
+      if(_actuallyNew.length){
+        for(var i=0;i<_actuallyNew.length;i++){
+          (function(b,delay){
+            setTimeout(function(){showBadgeUnlockModal(b);}, delay);
+          })(_actuallyNew[i], i*4000);
+        }
+        // Rafraîchir le wallet + la grille des défis si visible
+        if(typeof walletLoad==='function') await walletLoad();
+        if(typeof renderChallenges==='function') renderChallenges();
       }
-      // Rafraîchir le wallet + la grille des défis si visible
-      if(typeof walletLoad==='function') await walletLoad();
-      if(typeof renderChallenges==='function') renderChallenges();
     }
     // Filet de sécurité : on tente toujours la recovery après le check
     // principal (cas où l'Edge Function a inséré le badge mais ne l'a pas
