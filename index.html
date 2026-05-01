@@ -9387,13 +9387,19 @@ function uploadRunPhoto(input,runId){
     var img=new Image();
     img.onload=async function(){
       var cv=document.createElement('canvas');
-      var maxW=400,maxH=250;
+      // Bump 2026-05-01 : passé de 400×250 q0.6 → 1200×900 q0.8 pour les écrans
+      // haute résolution (Retina/AMOLED). Le rendu plein largeur dans le feed
+      // demande au moins 800-1000px nets pour ne pas être flou.
+      var maxW=1200,maxH=900;
       var w=img.width,h=img.height;
       if(w>maxW){h=h*(maxW/w);w=maxW;}
       if(h>maxH){w=w*(maxH/h);h=maxH;}
       cv.width=w;cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      var b64=cv.toDataURL('image/jpeg',0.6);
+      var ctx=cv.getContext('2d');
+      ctx.imageSmoothingEnabled=true;
+      ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img,0,0,w,h);
+      var b64=cv.toDataURL('image/jpeg',0.8);
       // Charger les photos existantes
       var getResp=await window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId)+'&select=photo',{
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
@@ -16441,6 +16447,60 @@ async function showBadgeDetail(badgeId){
 // BADGES — Trigger la vérification côté serveur + modal « BOUM »
 // ============================================================
 var _badgeCheckInFlight=false;
+// Helpers pour tracker localement les badges dont le popup a déjà été affiché.
+// Évite que le popup re-joue à chaque connexion (Val a précisé : 1 fois suffit).
+// Stockage par RP (clé inclut son uuid).
+function _getShownBadges(){
+  if(!currentUser) return new Set();
+  try{
+    var raw=localStorage.getItem('shown-badges-'+currentUser.id);
+    var arr=raw?JSON.parse(raw):[];
+    return new Set(Array.isArray(arr)?arr:[]);
+  }catch(e){ return new Set(); }
+}
+function _markBadgeShown(badgeId){
+  if(!currentUser||!badgeId) return;
+  try{
+    var s=_getShownBadges();
+    s.add(badgeId);
+    localStorage.setItem('shown-badges-'+currentUser.id,JSON.stringify(Array.from(s)));
+  }catch(e){}
+}
+
+// Filet de sécurité : si l'Edge Function check-badges a crédité un badge sans
+// déclencher le popup (race condition, modal collision, retour incomplet…),
+// on rattrape en scannant les badges earned récents non-affichés en local.
+// Limite : 7 jours pour éviter de spammer les anciens badges si le RP nettoie
+// son cache navigateur.
+async function _recoverMissedBadgePopups(){
+  if(!currentUser) return;
+  try{
+    var weekAgo=new Date(Date.now()-7*86400000).toISOString();
+    var {data:pb}=await supabaseClient
+      .from('player_badges')
+      .select('badge_id,earned_at')
+      .eq('player_id',currentUser.id)
+      .gte('earned_at',weekAgo)
+      .order('earned_at',{ascending:true});
+    if(!pb||!pb.length) return;
+    var shown=_getShownBadges();
+    var missed=pb.filter(function(p){return !shown.has(p.badge_id);});
+    if(!missed.length) return;
+    var ids=missed.map(function(p){return p.badge_id;});
+    var {data:badges}=await supabaseClient
+      .from('badges')
+      .select('id,name,tagline,icon,color,reward_rpc,reward_nyx')
+      .in('id',ids);
+    if(!badges||!badges.length) return;
+    // Re-jouer chaque popup avec 4s de délai entre chacun (cohérent avec triggerBadgeCheck)
+    for(var i=0;i<badges.length;i++){
+      (function(b,delay){
+        setTimeout(function(){showBadgeUnlockModal(b);},delay);
+      })(badges[i],i*4000);
+    }
+  }catch(e){console.warn('[badges] recovery failed:',e);}
+}
+
 async function triggerBadgeCheck(){
   if(!currentUser||_badgeCheckInFlight) return;
   _badgeCheckInFlight=true;
@@ -16466,6 +16526,10 @@ async function triggerBadgeCheck(){
       if(typeof walletLoad==='function') await walletLoad();
       if(typeof renderChallenges==='function') renderChallenges();
     }
+    // Filet de sécurité : on tente toujours la recovery après le check
+    // principal (cas où l'Edge Function a inséré le badge mais ne l'a pas
+    // retourné dans new_badges). Le tracking localStorage évite les doublons.
+    setTimeout(function(){_recoverMissedBadgePopups();},2000);
   }catch(e){console.warn('[badges] check failed:',e);}
   finally{_badgeCheckInFlight=false;}
 }
@@ -16495,6 +16559,8 @@ function showBadgeUnlockModal(b){
     +'</div>'
     +'<style>@keyframes badgePop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}</style>';
   openModal('land-modal');
+  // Marquer ce badge comme déjà affiché pour ce RP → la recovery ne le re-jouera plus
+  if(b&&b.id) _markBadgeShown(b.id);
 }
 
 function showPalmares(rank, type){
