@@ -776,7 +776,7 @@ select option{background:#040c1c}
     ontouchstart="this.style.transform='translateY(4px)';this.style.boxShadow='0 1px 0 #072010'"
     ontouchend="this.style.transform='';this.style.boxShadow='0 5px 0 #072010,0 8px 22px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.25)'">
       <div style="position:absolute;top:0;bottom:0;width:50%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent);transform:skewX(-15deg);animation:shine 3s 1s ease-in-out infinite;pointer-events:none"></div>
-      ▶ &nbsp;REJOINDRE LA BETA
+      ▶ &nbsp;CRÉER MON COMPTE
     </button>
     <!-- Séparateur -->
     <div style="display:flex;align-items:center;gap:8px;margin:14px 0 10px">
@@ -797,38 +797,45 @@ select option{background:#040c1c}
          user-agent dans le script en bas du fichier). Masqué sur iPhone/Mac et
          dans l'app Capacitor (où on est déjà). -->
     <div id="apk-android-block" style="display:none;margin-bottom:10px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:2.5px;color:#8aaccc;text-align:center;margin-bottom:8px">🤖 ANDROID — 2 OPTIONS</div>
-      <div style="display:flex;gap:8px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:2.5px;color:#8aaccc;text-align:center;margin-bottom:8px">📲 INSTALLER — 3 OPTIONS</div>
+      <div style="display:flex;gap:6px">
         <!-- ⚠️ À CHAQUE NOUVELLE VERSION : crée une nouvelle Release GitHub
              avec tag vX.X et upload speedix-vX.X.apk → mets à jour le href -->
-        <a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);color:#3ddc84;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
+        <a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 4px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);color:#3ddc84;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
         onmouseover="this.style.background='rgba(61,220,132,.18)';this.style.borderColor='rgba(61,220,132,.8)'"
         onmouseout="this.style.background='rgba(61,220,132,.08)';this.style.borderColor='rgba(61,220,132,.5)'">
           <span style="font-size:1.3rem;line-height:1">📱</span>
           <span style="font-size:.85rem;letter-spacing:2px">APK</span>
-          <span style="font-size:.52rem;color:rgba(61,220,132,.7);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">App native · GPS</span>
+          <span style="font-size:.52rem;color:rgba(61,220,132,.7);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">Android</span>
         </a>
-        <button type="button" onclick="showPwaInstall()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(74,144,255,.08);color:#4a90ff;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
+        <a href="https://testflight.apple.com/join/qbd8ADjY" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 4px;border-radius:10px;border:1.5px solid rgba(192,192,200,.5);background:rgba(192,192,200,.08);color:#d0d4dc;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
+        onmouseover="this.style.background='rgba(192,192,200,.18)';this.style.borderColor='rgba(192,192,200,.8)'"
+        onmouseout="this.style.background='rgba(192,192,200,.08)';this.style.borderColor='rgba(192,192,200,.5)'">
+          <span style="font-size:1.3rem;line-height:1">🍎</span>
+          <span style="font-size:.85rem;letter-spacing:2px">APPLE</span>
+          <span style="font-size:.52rem;color:rgba(192,192,200,.75);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">iOS · TestFlight</span>
+        </a>
+        <button type="button" onclick="showPwaInstall()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 4px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(74,144,255,.08);color:#4a90ff;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:'Bebas Neue',sans-serif"
         onmouseover="this.style.background='rgba(74,144,255,.18)';this.style.borderColor='rgba(74,144,255,.8)'"
         onmouseout="this.style.background='rgba(74,144,255,.08)';this.style.borderColor='rgba(74,144,255,.5)'">
           <span style="font-size:1.3rem;line-height:1">🌐</span>
           <span style="font-size:.85rem;letter-spacing:2px">WEB</span>
-          <span style="font-size:.52rem;color:rgba(74,144,255,.7);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">Sans install</span>
+          <span style="font-size:.52rem;color:rgba(74,144,255,.7);font-family:'Space Mono',monospace;letter-spacing:.3px;line-height:1.2">Navigateur</span>
         </button>
       </div>
     </div>
-    <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
+    <div style="background:rgba(4,12,28,.96);border:1.5px solid rgba(74,144,255,.5);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 1 / 4 — Identité</div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Username</label>
-      <input id="reg-username" type="text" placeholder="LucasRunner" maxlength="12" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"></div>
+      <input id="reg-username" type="text" placeholder="LucasRunner" maxlength="12" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.5)'"></div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Nationalité</label>
-      <select id="reg-nat" style="width:100%;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-size:.8rem;outline:none">
+      <select id="reg-nat" style="width:100%;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-size:.8rem;outline:none">
         <option value="🇫🇷">🇫🇷 France</option><option value="🇧🇪">🇧🇪 Belgique</option><option value="🇨🇭">🇨🇭 Suisse</option><option value="🇨🇦">🇨🇦 Canada</option><option value="🇬🇧">🇬🇧 Royaume-Uni</option><option value="🇩🇪">🇩🇪 Allemagne</option><option value="🇪🇸">🇪🇸 Espagne</option><option value="🇮🇹">🇮🇹 Italie</option><option value="🇵🇹">🇵🇹 Portugal</option><option value="🇺🇸">🇺🇸 États-Unis</option><option value="🇧🇷">🇧🇷 Brésil</option><option value="🇲🇦">🇲🇦 Maroc</option><option value="🇩🇿">🇩🇿 Algérie</option><option value="🇹🇳">🇹🇳 Tunisie</option><option value="🇳🇱">🇳🇱 Pays-Bas</option><option value="🇦🇹">🇦🇹 Autriche</option><option value="🇵🇱">🇵🇱 Pologne</option><option value="🇷🇴">🇷🇴 Roumanie</option><option value="🇬🇷">🇬🇷 Grèce</option><option value="🇸🇪">🇸🇪 Suède</option><option value="🇳🇴">🇳🇴 Norvège</option><option value="🇩🇰">🇩🇰 Danemark</option><option value="🇫🇮">🇫🇮 Finlande</option><option value="🇮🇪">🇮🇪 Irlande</option><option value="🇨🇿">🇨🇿 Tchéquie</option><option value="🇭🇺">🇭🇺 Hongrie</option><option value="🇭🇷">🇭🇷 Croatie</option><option value="🇷🇸">🇷🇸 Serbie</option><option value="🇧🇬">🇧🇬 Bulgarie</option><option value="🇱🇺">🇱🇺 Luxembourg</option><option value="🇲🇽">🇲🇽 Mexique</option><option value="🇦🇷">🇦🇷 Argentine</option><option value="🇨🇴">🇨🇴 Colombie</option><option value="🇨🇱">🇨🇱 Chili</option><option value="🇵🇪">🇵🇪 Pérou</option><option value="🇯🇵">🇯🇵 Japon</option><option value="🇰🇷">🇰🇷 Corée du Sud</option><option value="🇨🇳">🇨🇳 Chine</option><option value="🇮🇳">🇮🇳 Inde</option><option value="🇹🇷">🇹🇷 Turquie</option><option value="🇷🇺">🇷🇺 Russie</option><option value="🇺🇦">🇺🇦 Ukraine</option><option value="🇮🇱">🇮🇱 Israël</option><option value="🇱🇧">🇱🇧 Liban</option><option value="🇪🇬">🇪🇬 Égypte</option><option value="🇸🇳">🇸🇳 Sénégal</option><option value="🇨🇮">🇨🇮 Côte d'Ivoire</option><option value="🇨🇲">🇨🇲 Cameroun</option><option value="🇬🇭">🇬🇭 Ghana</option><option value="🇳🇬">🇳🇬 Nigeria</option><option value="🇿🇦">🇿🇦 Afrique du Sud</option><option value="🇦🇺">🇦🇺 Australie</option><option value="🇳🇿">🇳🇿 Nouvelle-Zélande</option><option value="🇹🇭">🇹🇭 Thaïlande</option><option value="🇻🇳">🇻🇳 Vietnam</option><option value="🇵🇭">🇵🇭 Philippines</option><option value="🇮🇩">🇮🇩 Indonésie</option><option value="🇸🇦">🇸🇦 Arabie Saoudite</option><option value="🇦🇪">🇦🇪 Émirats Arabes Unis</option><option value="🇶🇦">🇶🇦 Qatar</option>
       </select></div>
     </div>
     <div style="position:sticky;bottom:0;background:linear-gradient(to top,#020408 70%,rgba(2,4,8,0));padding-top:12px;padding-bottom:8px;margin-top:4px;z-index:10">
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <button onclick="hgo(1)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
+        <button onclick="hgo(1)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
         <button onclick="hgo(3)" style="flex:1;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;box-shadow:0 4px 14px rgba(45,138,50,.25)">CONTINUER →</button>
       </div>
       <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot active" data-s="2"></div><div class="sdot" data-s="3"></div><div class="sdot" data-s="4"></div><div class="sdot" data-s="5"></div></div>
@@ -836,16 +843,16 @@ select option{background:#040c1c}
   </div>
 
   <div id="hs3" class="hstep" style="display:none">
-    <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
+    <div style="background:rgba(4,12,28,.96);border:1.5px solid rgba(74,144,255,.5);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 2 / 4 — Compte</div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">E-mail</label>
-      <input id="reg-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Rajdhani',sans-serif;font-weight:500;font-size:.85rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"></div>
+      <input id="reg-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-family:'Rajdhani',sans-serif;font-weight:500;font-size:.85rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.5)'"></div>
       <div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Mot de passe</label>
-      <div style="position:relative"><input id="reg-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 36px 10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.18)'"><span onclick="var p=document.getElementById('reg-pwd');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁':'👁‍🗨'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:.8rem;user-select:none">👁</span></div></div>
+      <div style="position:relative"><input id="reg-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 36px 10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;outline:none" onfocus="this.style.borderColor='#4a90ff'" onblur="this.style.borderColor='rgba(74,144,255,.5)'"><span onclick="var p=document.getElementById('reg-pwd');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁':'👁‍🗨'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:.8rem;user-select:none">👁</span></div></div>
     </div>
     <div style="position:sticky;bottom:0;background:linear-gradient(to top,#020408 70%,rgba(2,4,8,0));padding-top:12px;padding-bottom:8px;margin-top:4px;z-index:10">
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <button onclick="hgo(2)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
+        <button onclick="hgo(2)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
         <button onclick="hgo(4)" style="flex:1;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;box-shadow:0 4px 14px rgba(45,138,50,.25)">CONTINUER →</button>
       </div>
       <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot" data-s="2"></div><div class="sdot active" data-s="3"></div><div class="sdot" data-s="4"></div><div class="sdot" data-s="5"></div></div>
@@ -853,7 +860,7 @@ select option{background:#040c1c}
   </div>
 
   <div id="hs4" class="hstep" style="display:none">
-    <div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
+    <div style="background:rgba(4,12,28,.96);border:1.5px solid rgba(74,144,255,.5);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:9px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:3px;color:#f5c842;text-align:center">ÉTAPE 3 / 4</div>
       <!-- Cases obligatoires : âge + CGU/RGPD (en 1er pour que CONTINUER soit accessible rapidement) -->
       <div style="display:flex;flex-direction:column;gap:7px">
@@ -870,7 +877,7 @@ select option{background:#040c1c}
       <div style="border-top:1px solid rgba(74,144,255,.1);padding-top:8px">
         <label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Code parrainage <span style="color:#2a3550">(optionnel)</span></label>
         <div style="display:flex;gap:6px">
-          <input id="reg-code" type="text" placeholder="SL-XXXXX" maxlength="10" style="flex:1;padding:9px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.18)'">
+          <input id="reg-code" type="text" placeholder="SL-XXXXX" maxlength="10" style="flex:1;padding:9px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.5)'">
           <button onclick="checkCode()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,200,66,.35);background:rgba(245,200,66,.07);color:#f5c842;cursor:pointer;font-size:.7rem;font-weight:700">OK</button>
         </div>
         <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 2 💎 NYX</div>
@@ -879,7 +886,7 @@ select option{background:#040c1c}
     <!-- Barre d'actions sticky : toujours accessible même sur petits écrans -->
     <div style="position:sticky;bottom:0;background:linear-gradient(to top,#020408 70%,rgba(2,4,8,0));padding-top:12px;padding-bottom:8px;margin-top:4px;z-index:10">
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <button onclick="hgo(3)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,255,.18);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
+        <button onclick="hgo(3)" style="flex:0 0 40px;padding:10px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(4,12,28,.7);color:#3a5070;cursor:pointer">←</button>
         <button onclick="hgo(5)" style="flex:1;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;box-shadow:0 4px 14px rgba(45,138,50,.25)">CONTINUER →</button>
       </div>
       <div style="display:flex;justify-content:center;gap:6px"><div class="sdot" data-s="1"></div><div class="sdot" data-s="2"></div><div class="sdot" data-s="3"></div><div class="sdot active" data-s="4"></div><div class="sdot" data-s="5"></div></div>
@@ -1193,50 +1200,50 @@ select option{background:#040c1c}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding-right:.15rem">
 
       <!-- 1 & 2 -->
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">📊</span>
         <div><div id="stat-pts-cum" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">42 180</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Pts cumulés</div></div>
       </div>
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">📍</span>
         <div><div id="stat-km" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:#4a90ff">4 230 km</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Distance totale</div></div>
       </div>
 
       <!-- 3 & 4 -->
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">⛰️</span>
         <div><div id="stat-elv" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--green)">38 600 m</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Dénivelé total</div></div>
       </div>
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">👟</span>
         <div><div id="stat-sorties" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--cyan)">312</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Sorties</div></div>
       </div>
 
       <!-- 5 & 6 -->
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🕐</span>
         <div><div id="stat-heures" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--muted2)">965 h</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Heures activité</div></div>
       </div>
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">📅</span>
         <div><div id="stat-periodes" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--blue)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Périodes actives</div></div>
       </div>
 
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🔑</span>
         <div><div id="stat-lands-loc" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--blue)">14</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Lands Locataire</div></div>
       </div>
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🏠</span>
         <div><div id="stat-lands-prop" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--green)">3</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Lands Propriétaire</div></div>
       </div>
 
       <!-- 9. Badges gagnés | 10. Ranking actuel -->
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🎖️</span>
         <div><div id="stat-badges" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--gold)">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Badges gagnés</div></div>
       </div>
-      <div style="background:rgba(10,20,50,.6);border:1px solid rgba(74,144,255,.18);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.5);border-radius:8px;padding:.55rem .65rem;display:flex;align-items:center;gap:.5rem">
         <span style="font-size:1.1rem">🏆</span>
         <div><div id="stat-best-rank" style="font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:#ffffff">—</div><div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:.08rem">Ranking actuel</div></div>
       </div>
@@ -3351,16 +3358,15 @@ function _chatShow(){
   }catch(e){}
 }
 
-// Détection Android pour afficher le bouton de téléchargement APK uniquement
-// sur les appareils qui peuvent l'installer. iPhone/Mac/Windows : caché.
-// Inclut une garde anti-Capacitor (l'app native ne propose pas de DL d'APK
-// puisqu'elle EST l'APK).
+// Affiche le bloc 3 options (APK / APPLE / WEB) à tous les visiteurs hors app native.
+// Avant 2026-05-01 : restreint à Android uniquement → mais les iOS n'avaient
+// AUCUN chemin d'install visible (TestFlight enterré dans la FAQ).
+// Maintenant : tout le monde voit les 3, chacun pick celui qui matche son device.
+// Garde anti-Capacitor : l'app native (Android wrap) n'affiche rien (elle EST l'app).
 (function(){
   try {
-    var ua=navigator.userAgent||'';
-    var isAndroid=/Android/i.test(ua);
     var isCapacitor=!!(window.Capacitor && typeof window.Capacitor.isNativePlatform==='function' && window.Capacitor.isNativePlatform());
-    if(isAndroid && !isCapacitor){
+    if(!isCapacitor){
       var el=document.getElementById('apk-android-block');
       if(el) el.style.display='block';
     }
@@ -3407,25 +3413,28 @@ function showLoginScreen(){
   // Affiche le slogan en bas de page (espace libéré par les images masquées)
   var _bot=document.getElementById('hero-subtitle-bottom');
   if(_bot) _bot.style.display='block';
-  // Bouton APK Android au-dessus du formulaire login (visible Android only).
-  // Détection inline ici car showLoginScreen écrase le contenu hs1.
-  var _ua=navigator.userAgent||'';
-  var _isAndroid=/Android/i.test(_ua);
+  // Bloc 3 options (APK / APPLE / WEB) au-dessus du formulaire login.
+  // Visible à TOUT le monde hors app native (cohérent avec le bloc statique).
   var _isCap=!!(window.Capacitor && typeof window.Capacitor.isNativePlatform==='function' && window.Capacitor.isNativePlatform());
-  var _apkBlock=(_isAndroid && !_isCap)
+  var _apkBlock=(!_isCap)
     ? '<div style="margin-bottom:10px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:.7rem;letter-spacing:2.5px;color:#8aaccc;text-align:center;margin-bottom:8px">🤖 ANDROID — 2 OPTIONS</div>'
-      +'<div style="display:flex;gap:8px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:.7rem;letter-spacing:2.5px;color:#8aaccc;text-align:center;margin-bottom:8px">📲 INSTALLER — 3 OPTIONS</div>'
+      +'<div style="display:flex;gap:6px">'
         // ⚠️ À mettre à jour avec le numéro de version de l'APK courant
-        +'<a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);color:#3ddc84;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
+        +'<a href="https://github.com/cryptosurfer75/RUNYX/releases/download/v1.0/speedix-v1.0.apk" download="speedix-v1.0.apk" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 4px;border-radius:10px;border:1.5px solid rgba(61,220,132,.5);background:rgba(61,220,132,.08);color:#3ddc84;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
           +'<span style="font-size:1.3rem;line-height:1">📱</span>'
           +'<span style="font-size:.85rem;letter-spacing:2px">APK</span>'
-          +'<span style="font-size:.52rem;color:rgba(61,220,132,.7);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">App native · GPS</span>'
+          +'<span style="font-size:.52rem;color:rgba(61,220,132,.7);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">Android</span>'
         +'</a>'
-        +'<button type="button" onclick="showPwaInstall()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 6px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(74,144,255,.08);color:#4a90ff;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
+        +'<a href="https://testflight.apple.com/join/qbd8ADjY" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 4px;border-radius:10px;border:1.5px solid rgba(192,192,200,.5);background:rgba(192,192,200,.08);color:#d0d4dc;text-decoration:none;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
+          +'<span style="font-size:1.3rem;line-height:1">🍎</span>'
+          +'<span style="font-size:.85rem;letter-spacing:2px">APPLE</span>'
+          +'<span style="font-size:.52rem;color:rgba(192,192,200,.75);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">iOS · TestFlight</span>'
+        +'</a>'
+        +'<button type="button" onclick="showPwaInstall()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px 4px;border-radius:10px;border:1.5px solid rgba(74,144,255,.5);background:rgba(74,144,255,.08);color:#4a90ff;cursor:pointer;transition:all .18s;box-sizing:border-box;font-family:Bebas Neue,sans-serif">'
           +'<span style="font-size:1.3rem;line-height:1">🌐</span>'
           +'<span style="font-size:.85rem;letter-spacing:2px">WEB</span>'
-          +'<span style="font-size:.52rem;color:rgba(74,144,255,.7);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">Sans install</span>'
+          +'<span style="font-size:.52rem;color:rgba(74,144,255,.7);font-family:Space Mono,monospace;letter-spacing:.3px;line-height:1.2">Navigateur</span>'
         +'</button>'
       +'</div>'
       +'</div>'
@@ -3433,12 +3442,12 @@ function showLoginScreen(){
   var hs1=document.getElementById('hs1');
   hs1.innerHTML=
     _apkBlock+
-    '<div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:18px;display:flex;flex-direction:column;gap:10px;margin-bottom:9px">'+
+    '<div style="background:rgba(4,12,28,.96);border:1.5px solid rgba(74,144,255,.5);border-radius:13px;padding:18px;display:flex;flex-direction:column;gap:10px;margin-bottom:9px">'+
       '<div style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:3px;color:#f5c842;text-align:center">CONNEXION</div>'+
       '<div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Email</label>'+
-      '<input id="login-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Rajdhani,sans-serif;font-weight:500;font-size:.85rem;outline:none"></div>'+
+      '<input id="login-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-family:Rajdhani,sans-serif;font-weight:500;font-size:.85rem;outline:none"></div>'+
       '<div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Mot de passe</label>'+
-      '<input id="login-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Space Mono,monospace;font-size:.8rem;outline:none"></div>'+
+      '<input id="login-pwd" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-family:Space Mono,monospace;font-size:.8rem;outline:none"></div>'+
       '<button onclick="showForgotPassword()" style="background:none;border:none;color:#4a90ff;font-size:.72rem;cursor:pointer;font-family:Space Mono,monospace;text-align:right;text-decoration:underline;padding:2px 0;margin-top:-4px">Mot de passe oublié ?</button>'+
       '<div id="login-error" style="font-size:.65rem;color:#ff6060;text-align:center;display:none;font-family:Space Mono,monospace"></div>'+
     '</div>'+
@@ -3468,11 +3477,11 @@ async function doLogin(){
 function showForgotPassword(){
   var hs1=document.getElementById('hs1');
   hs1.innerHTML=
-    '<div style="background:rgba(4,12,28,.96);border:1px solid rgba(74,144,255,.2);border-radius:13px;padding:18px;display:flex;flex-direction:column;gap:10px;margin-bottom:9px">'+
+    '<div style="background:rgba(4,12,28,.96);border:1.5px solid rgba(74,144,255,.5);border-radius:13px;padding:18px;display:flex;flex-direction:column;gap:10px;margin-bottom:9px">'+
       '<div style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:3px;color:#f5c842;text-align:center">MOT DE PASSE OUBLIÉ</div>'+
       '<div style="font-size:.6rem;color:#8aaccc;text-align:center;line-height:1.5;font-family:Space Mono,monospace">Saisis ton email — tu recevras un lien pour réinitialiser ton mot de passe.</div>'+
       '<div><label style="font-size:.56rem;color:#8aaccc;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:3px">Email</label>'+
-      '<input id="reset-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1px solid rgba(74,144,255,.18);color:#fff;font-family:Rajdhani,sans-serif;font-weight:500;font-size:.85rem;outline:none"></div>'+
+      '<input id="reset-email" type="email" placeholder="ton@email.com" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-family:Rajdhani,sans-serif;font-weight:500;font-size:.85rem;outline:none"></div>'+
       '<div id="reset-msg" style="font-size:.65rem;text-align:center;display:none;font-family:Space Mono,monospace"></div>'+
     '</div>'+
     '<button onclick="doResetPassword()" id="reset-btn" style="width:100%;padding:12px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#4a90ff,#1a5abf);color:#fff;font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:3px;cursor:pointer;margin-bottom:6px">ENVOYER LE LIEN →</button>'+
@@ -6871,12 +6880,23 @@ async function showLandDetail(landId){
     statusLine='Statut : <strong style="color:var(--text)">Libre</strong>';
   }
 
-  // Nombre de passages ce mois (du 1er du mois courant à aujourd'hui)
+  // Nombre de passages "comptables" pour le tenant courant : on prend le MAX
+  // entre le 1er du mois et la date de location (rented_at). Comme ça la math
+  // colle avec le rendement crédité — un passage avant la location actuelle ne
+  // doit PAS être compté (le tenant n'a rien touché dessus, voir code de crédit
+  // dans syncStravaActivities qui ne crédite QUE le tenant en place au moment
+  // du passage).
   var nbPassages=0;
   try{
     var _now=new Date();
-    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0,10);
-    var _passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_firstOfMonth+'&select=id',{
+    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1);
+    var _cutoff=_firstOfMonth;
+    if(land.rented_at){
+      var _rentedDate=new Date(land.rented_at);
+      if(_rentedDate>_firstOfMonth) _cutoff=_rentedDate;
+    }
+    var _cutoffStr=_cutoff.toISOString().slice(0,10);
+    var _passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_cutoffStr+'&select=id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json','Prefer':'count=exact'}
     });
     var _passList=await _passResp.json();
@@ -6972,9 +6992,20 @@ async function showLandPassersList(landId){
     return;
   }
   try{
+    // Cohérent avec showLandDetail : on filtre depuis MAX(1er du mois, rented_at)
+    // pour ne montrer que les passages "comptables" pour le tenant courant.
     var _now=new Date();
-    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0,10);
-    var _resp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_firstOfMonth+'&select=player_id',{
+    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1);
+    var _cutoff=_firstOfMonth;
+    try{
+      var {data:landRow}=await supabaseClient.from('lands').select('rented_at').eq('id',landId).maybeSingle();
+      if(landRow && landRow.rented_at){
+        var _rentedDate=new Date(landRow.rented_at);
+        if(_rentedDate>_firstOfMonth) _cutoff=_rentedDate;
+      }
+    }catch(e){}
+    var _cutoffStr=_cutoff.toISOString().slice(0,10);
+    var _resp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_cutoffStr+'&select=player_id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
     });
     var _list=await _resp.json();
@@ -14052,7 +14083,7 @@ function _showCrossSummary(crossings){
       ? '<img src="'+c.crossed_avatar+'" style="width:42px;height:42px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;flex-shrink:0">'
       : '<div style="width:42px;height:42px;border-radius:50%;border:2px solid var(--gold);background:#0a1020;display:flex;align-items:center;justify-content:center;font-family:Bebas Neue,sans-serif;color:var(--gold);flex-shrink:0">'+((c.crossed_username||'?').charAt(0).toUpperCase())+'</div>';
     var league=c.crossed_league?'<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:var(--gold);font-family:Space Mono,monospace;font-size:.6rem;font-weight:700;margin-left:.5rem">'+c.crossed_league.toUpperCase()+'</span>':'';
-    return '<div style="display:flex;align-items:center;gap:.75rem;padding:.55rem .7rem;background:rgba(74,144,255,.05);border:1px solid rgba(74,144,255,.18);border-radius:8px">'
+    return '<div style="display:flex;align-items:center;gap:.75rem;padding:.55rem .7rem;background:rgba(74,144,255,.05);border:1.5px solid rgba(74,144,255,.5);border-radius:8px">'
       +avatar
       +'<div style="flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;font-weight:700;color:var(--text);font-size:.9rem">'
         +(c.crossed_username||'RP')+league
@@ -14440,7 +14471,13 @@ async function renderTeams(){
         var bonusLabel=t._bonusPct>0?' · <span style="color:var(--green)">+'+t._bonusPct+'%</span>':'';
         var hasMyTeam=!!window.__myTeamId;
         var requestBtn=(!isOpen&&t.private&&!hasMyTeam&&currentUser)?'<span onclick="event.stopPropagation();requestJoinTeam(\''+t.id+'\',\''+encodeURIComponent(t.name)+'\')" title="Demander à rejoindre" style="font-size:.75rem;margin-left:.3rem;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">📩</span>':'';
-        var typeTag=isOpen?'':(t.private?'<span title="Team privée" style="font-size:.85rem;margin-left:.25rem">🔒</span>'+requestBtn:'');
+        // Inversion 2026-05-01 : 99% des teams privées vont l'être par défaut (créées
+        // par les RPs). Plutôt que de surcharger CHAQUE ligne avec un 🔒, on marque
+        // au contraire les teams OUVERTES avec un 🔓 (cas minoritaire). Gain de place
+        // sur la ligne + visibilité du cas particulier intéressant pour le RP.
+        var typeTag=(isOpen||!t.private)
+          ?'<span title="Team ouverte — tout le monde peut rejoindre" style="font-size:.85rem;margin-left:.25rem">✌️</span>'
+          :requestBtn;
         var subLine=isOpen
           ?nb+' RP'+bonusLabel
           :'📍 '+t.city+' · '+nb+' RP'+bonusLabel;
