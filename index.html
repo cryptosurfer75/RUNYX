@@ -394,13 +394,15 @@ body::before{
   text-shadow:0 0 2px rgba(0,0,0,.7);
 }
 /* Caché quand on dézoom : hexagones trop petits, lettre déborderait */
+/* Lettre cachée en vision large/moyenne — apparaît seulement au zoom fort
+   où le RP est focus sur une rue précise et a besoin d'identifier un hex. */
 #lands-map.lz-tiny .hex-initial-text{display:none}
-#lands-map.lz-12 .hex-initial-text{font-size:7px}
-#lands-map.lz-13 .hex-initial-text{font-size:9px}
-#lands-map.lz-14 .hex-initial-text{font-size:10px}
-#lands-map.lz-15 .hex-initial-text{font-size:12px}
-#lands-map.lz-16 .hex-initial-text{font-size:14px}
-#lands-map.lz-17 .hex-initial-text{font-size:16px}
+#lands-map.lz-12 .hex-initial-text{display:none}
+#lands-map.lz-13 .hex-initial-text{display:none}
+#lands-map.lz-14 .hex-initial-text{display:none}
+#lands-map.lz-15 .hex-initial-text{display:none}
+#lands-map.lz-16 .hex-initial-text{font-size:13px}
+#lands-map.lz-17 .hex-initial-text{font-size:15px}
 #lands-map.lz-18p .hex-initial-text{font-size:18px}
 .leaflet-container{background:var(--bg2)!important;font-family:'Rajdhani',sans-serif!important}
 .speedix-totem{background:none!important;border:none!important}
@@ -11392,6 +11394,13 @@ function nav(page){
       var _wasAlreadyInit=!!_landsMap;
       if(typeof initLandsMap==='function') initLandsMap();
       if(_landsMap) _landsMap.invalidateSize();
+      // Bug observé sur mobile (Xiaomi One UI etc) : la carte se rend décalée
+      // sur la 1ère ouverture car le layout du conteneur n'est pas finalisé au
+      // moment du 1er invalidateSize. On en empile plusieurs à intervalles
+      // croissants pour couvrir tous les cas de timing layout.
+      [200,500,1200].forEach(function(delay){
+        setTimeout(function(){ if(_landsMap) _landsMap.invalidateSize(); }, delay);
+      });
       if(typeof loadLandsOnMap==='function') loadLandsOnMap();
       if(typeof renderMyLands==='function') renderMyLands();
       if(typeof loadAcquisitionRight==='function') loadAcquisitionRight();
@@ -17270,6 +17279,43 @@ if ('serviceWorker' in navigator) {
       }catch(e){}
     }, 1500);
   }catch(e){ console.warn('[FB community btn] init failed', e); }
+})();
+
+// ── Fix layout shift après changement d'orientation ──────────────────
+// Bug observé sur Xiaomi One UI / certains Android : quand l'écran pivote
+// et revient en portrait, la WebView garde les dimensions de l'orientation
+// précédente → la page apparaît décalée à gauche jusqu'à ce qu'on change
+// de page. On force un re-layout explicite après chaque pivot.
+(function(){
+  function _resetLayoutAfterRotation(){
+    setTimeout(function(){
+      try{
+        window.scrollTo(0,0);
+        document.documentElement.scrollLeft=0;
+        document.body.scrollLeft=0;
+        // Dispatch un resize manuel pour forcer les composants à recalculer
+        window.dispatchEvent(new Event('resize'));
+        // Re-invalidate la map Leaflet si initialisée
+        if(typeof _landsMap!=='undefined' && _landsMap){
+          _landsMap.invalidateSize();
+        }
+      }catch(e){console.warn('[orientation] layout reset fail',e);}
+    },250);
+  }
+  window.addEventListener('orientationchange',_resetLayoutAfterRotation);
+  // resize event aussi (Android/iOS modernes utilisent resize plus que orientationchange)
+  var _lastWidth=window.innerWidth;
+  window.addEventListener('resize',function(){
+    var w=window.innerWidth;
+    // On ne déclenche le reset que si la largeur change significativement
+    // (sinon on spam à chaque scroll qui peut trigger resize sur mobile)
+    if(Math.abs(w-_lastWidth)>50){
+      _lastWidth=w;
+      _resetLayoutAfterRotation();
+    } else {
+      _lastWidth=w;
+    }
+  });
 })();
 </script>
 </body>
