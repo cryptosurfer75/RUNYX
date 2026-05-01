@@ -7354,9 +7354,17 @@ async function releaseLand(landId){
     showToast('⚠️ Erreur suppression passages : '+passDel.error.message);
     return;
   }
-  var landDel=await supabaseClient.from('lands').delete().eq('id',landId);
+  // .select() force le retour des lignes supprimées → permet de détecter le cas
+  // RLS qui filtre silencieusement (DELETE retourne 200 mais 0 ligne effectivement
+  // supprimée). Sans ça l'utilisateur voit "Land libérée" mais la land reste.
+  var landDel=await supabaseClient.from('lands').delete().eq('id',landId).select();
   if(landDel.error){
     showToast('⚠️ Erreur libération land : '+landDel.error.message);
+    return;
+  }
+  if(!landDel.data || landDel.data.length===0){
+    showToast('⚠️ Permission refusée — la land n\'a pas pu être supprimée. Voir RLS Supabase (DELETE policy sur lands).');
+    console.warn('[releaseLand] DELETE returned no rows — likely RLS blocking',landDel);
     return;
   }
   // Ajouter un ban de 2 périodes pour ce RP sur cette land
@@ -11349,7 +11357,10 @@ function showToast(msg){
   const t=document.getElementById('toast');
   document.getElementById('toast-msg').textContent=msg;
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+  // Messages d'erreur (⚠️ ou 🚫) restent 7 sec pour laisser le temps de lire,
+  // les autres notifications gardent leur 3 sec habituelles (cas success/info).
+  var isError=typeof msg==='string' && (msg.indexOf('⚠️')===0 || msg.indexOf('🚫')===0);
+  setTimeout(()=>t.classList.remove('show'), isError?7000:3000);
 }
 // ══════════════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════
