@@ -2342,6 +2342,15 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modal liste des RPs qui ont réagi à une course (clic sur le compteur de like/heart/flash dans le feed) -->
+<div class="modal" id="reactions-list-modal">
+  <div class="modal-box" style="max-width:380px">
+    <button class="modal-close" onclick="closeModal('reactions-list-modal')">✕</button>
+    <div id="reactions-list-title" class="modal-title">Réactions</div>
+    <div id="reactions-list-content" style="display:flex;flex-direction:column;gap:.4rem;max-height:60vh;overflow-y:auto;padding:.25rem"></div>
+  </div>
+</div>
+
 <!-- Modal sélection avatar -->
 <div class="modal" id="avatar-picker-modal">
   <div class="modal-box" style="max-width:400px;max-height:85vh;overflow-y:auto">
@@ -9135,6 +9144,9 @@ async function renderSocialFeed(){
     (commPlayers||[]).forEach(function(p){if(!pMap[p.id])pMap[p.id]=p;});
   }
 
+  // Cache global pour showReactionsList (modal liste des RPs qui ont liké)
+  window._feedReactsCache = reactMap;
+  window._feedPlayersCache = pMap;
   feed.innerHTML=runs.map(function(r){
     var p=pMap[r.player_id]||{username:'Joueur',nat:'🏳️',grade:'starter',avatar:null};
     var gc=GRADE_COLORS[p.grade]||'#8090b0';
@@ -9162,21 +9174,51 @@ async function renderSocialFeed(){
     function rBtn(type,emoji,arr){
       var active=arr.indexOf(myId)>=0;
       var count=arr.length;
-      return '<button onclick="toggleReaction(\''+r.id+'\',\''+type+'\')" style="display:flex;align-items:center;gap:.25rem;padding:.25rem .5rem;border-radius:6px;border:1px solid '+(active?'rgba(245,200,66,.4)':'rgba(74,144,255,.15)')+';background:'+(active?'rgba(245,200,66,.08)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.75rem;cursor:pointer;transition:all .15s">'+emoji+(count>0?' <span style="font-family:Space Mono,monospace;font-size:.65rem">'+count+'</span>':'')+'</button>';
+      // Compteur cliquable séparément du bouton : ouvre la liste des RPs qui ont réagi.
+      // event.stopPropagation pour pas re-trigger le toggle du bouton parent.
+      var countSpan = count>0
+        ? ' <span onclick="event.stopPropagation();showReactionsList(\''+r.id+'\',\''+type+'\')" style="font-family:Space Mono,monospace;font-size:.65rem;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;padding:0 .15rem" title="Voir qui a réagi">'+count+'</span>'
+        : '';
+      return '<button onclick="toggleReaction(\''+r.id+'\',\''+type+'\')" style="display:flex;align-items:center;gap:.25rem;padding:.25rem .5rem;border-radius:6px;border:1px solid '+(active?'rgba(245,200,66,.4)':'rgba(74,144,255,.15)')+';background:'+(active?'rgba(245,200,66,.08)':'transparent')+';color:'+(active?'var(--gold)':'var(--muted2)')+';font-size:.75rem;cursor:pointer;transition:all .15s">'+emoji+countSpan+'</button>';
     }
     var isMyRun=r.player_id===currentUser.id;
     var photos=[];
     try{photos=r.photo?JSON.parse(r.photo):[];}catch(e){if(r.photo)photos=[r.photo];}
+    // Grille photo intelligente : 1 photo = full width XL, 2 photos = 2 colonnes,
+    // 3-4 photos = grille 2x2. Hauteur fixée pour rester cohérent visuellement.
     var photoHtml='';
     if(photos.length>0){
-      photoHtml='<div style="display:flex;gap:6px;margin:.4rem 0;flex-wrap:wrap">';
-      photos.forEach(function(ph,pi){
-        photoHtml+='<div style="position:relative;display:inline-block">'
-          +'<img src="'+ph+'" onclick="zoomPhoto(this.src)" style="max-width:140px;max-height:140px;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;object-fit:cover;cursor:pointer" loading="lazy">'
-          +(isMyRun||isAdmin()?'<span onclick="removeRunPhoto(\''+r.id+'\','+pi+')" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.7);color:#ff4444;font-size:.55rem;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</span>':'')
+      var canEdit=isMyRun||isAdmin();
+      var rmBtn=function(pi,sz){
+        if(!canEdit) return '';
+        var s=sz||20;
+        return '<span onclick="removeRunPhoto(\''+r.id+'\','+pi+')" style="position:absolute;top:6px;right:6px;width:'+s+'px;height:'+s+'px;border-radius:50%;background:rgba(0,0,0,.75);color:#ff4444;font-size:.7rem;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.15)" title="Supprimer la photo">✕</span>';
+      };
+      if(photos.length===1){
+        photoHtml='<div style="margin:.5rem 0;position:relative">'
+          +'<img src="'+photos[0]+'" onclick="zoomPhoto(this.src)" style="width:100%;max-height:380px;object-fit:cover;border-radius:10px;border:1px solid rgba(74,144,255,.15);display:block;cursor:pointer" loading="lazy">'
+          +rmBtn(0,22)
           +'</div>';
-      });
-      photoHtml+='</div>';
+      } else if(photos.length===2){
+        photoHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:.5rem 0">';
+        photos.forEach(function(ph,pi){
+          photoHtml+='<div style="position:relative">'
+            +'<img src="'+ph+'" onclick="zoomPhoto(this.src)" style="width:100%;height:200px;object-fit:cover;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;cursor:pointer" loading="lazy">'
+            +rmBtn(pi)
+            +'</div>';
+        });
+        photoHtml+='</div>';
+      } else {
+        // 3 ou 4 photos → grille 2x2 (les cellules vides sont gérées naturellement)
+        photoHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:.5rem 0">';
+        photos.forEach(function(ph,pi){
+          photoHtml+='<div style="position:relative">'
+            +'<img src="'+ph+'" onclick="zoomPhoto(this.src)" style="width:100%;height:170px;object-fit:cover;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;cursor:pointer" loading="lazy">'
+            +rmBtn(pi)
+            +'</div>';
+        });
+        photoHtml+='</div>';
+      }
     }
     var canAddPhoto=isMyRun&&photos.length<4;
     var uploadBtn=canAddPhoto?'<button onclick="document.getElementById(\'photo-'+r.id+'\').click()" style="font-size:.6rem;padding:.15rem .4rem;border-radius:4px;border:1px solid rgba(144,96,240,.3);background:rgba(144,96,240,.08);color:#9060f0;cursor:pointer;font-weight:600">📷 Photo'+(photos.length>0?' ('+(4-photos.length)+')':'')+'</button><input type="file" id="photo-'+r.id+'" accept="image/*" style="display:none" onchange="uploadRunPhoto(this,\''+r.id+'\')">':'';
@@ -9204,7 +9246,7 @@ async function renderSocialFeed(){
       return '<div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-top:1px solid rgba(30,37,53,.5)"><span style="font-weight:700;font-size:.7rem;color:var(--text);flex-shrink:0">'+cp.username+'</span><span style="font-size:.7rem;color:var(--muted2);flex:1">'+c.content+'</span>'+delBtn+'</div>';
     }).join('');
 
-    return '<div class="block" style="border-color:rgba(74,144,255,.15)">'
+    return '<div class="block" style="border-color:rgba(74,144,255,.32);box-shadow:0 2px 10px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.02)">'
       +'<div style="padding:.75rem .85rem">'
       // Header: avatar + nom + date
       +'<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">'
@@ -11117,6 +11159,34 @@ document.addEventListener('click',function(e){
 });
 function openModal(id){document.getElementById(id).classList.add('open')}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+// Affiche la liste des RPs qui ont réagi à une course donnée. Données lues depuis
+// le cache module-scope rempli par renderFeed (évite de re-fetch Supabase à chaque clic).
+function showReactionsList(runId, type){
+  var reacts = window._feedReactsCache && window._feedReactsCache[runId];
+  if(!reacts) return;
+  var ids = reacts[type] || [];
+  if(!ids.length) return;
+  var pMap = window._feedPlayersCache || {};
+  var labels = {like:'👍 J\'aime', heart:'❤️ Cœur', flash:'⚡ Flash'};
+  var titleEl = document.getElementById('reactions-list-title');
+  var listEl = document.getElementById('reactions-list-content');
+  if(titleEl) titleEl.textContent = (labels[type] || type) + ' · ' + ids.length;
+  if(listEl){
+    listEl.innerHTML = ids.map(function(uid){
+      var p = pMap[uid] || {username:'(inconnu)', avatar:null, nat:'🏳️'};
+      var avHtml = p.avatar
+        ? '<img src="'+p.avatar+'" style="width:34px;height:34px;object-fit:cover;border-radius:8px;border:1px solid rgba(74,144,255,.3);flex-shrink:0">'
+        : '<div style="width:34px;height:34px;border-radius:8px;background:rgba(74,144,255,.1);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#8aaccc;flex-shrink:0">'+(p.username||'?').charAt(0).toUpperCase()+'</div>';
+      return '<div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .55rem;border-radius:8px;background:rgba(74,144,255,.04);border:1px solid rgba(74,144,255,.08)">'
+        + avHtml
+        + '<div style="font-size:.85rem;color:var(--text);font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.username+'</div>'
+        + '<div style="font-size:.95rem;flex-shrink:0">'+(p.nat||'')+'</div>'
+        + '</div>';
+    }).join('');
+  }
+  openModal('reactions-list-modal');
+}
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 function showToast(msg){
   const t=document.getElementById('toast');
@@ -16648,6 +16718,15 @@ if ('serviceWorker' in navigator) {
 <!-- Conteneur "social stack" — prévu pour ajouter Insta/TikTok/etc plus tard.
      Petits boutons ronds empilés verticalement, discrets, ne masquent pas les CTAs. -->
 <div id="social-stack" style="position:fixed;bottom:14px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+  <a id="ig-official-btn"
+     href="https://www.instagram.com/speedixleague/"
+     target="_blank"
+     rel="noopener noreferrer"
+     aria-label="SPEEDIX League sur Instagram"
+     title="Instagram officiel"
+     style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;background:linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);color:#fff;border-radius:50%;text-decoration:none;box-shadow:0 3px 10px rgba(0,0,0,.35);border:1.5px solid rgba(255,255,255,.85);transition:transform .15s ease, box-shadow .15s ease;opacity:.9">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+  </a>
   <a id="fb-community-btn"
      href="https://www.facebook.com/groups/906611848921910"
      target="_blank"
@@ -16661,18 +16740,23 @@ if ('serviceWorker' in navigator) {
 <script>
 (function(){
   try{
-    var btn=document.getElementById('fb-community-btn');
-    if(!btn) return;
-    // Hover : léger lift + opacité pleine
-    btn.addEventListener('mouseenter',function(){
-      btn.style.transform='scale(1.08)';
-      btn.style.opacity='1';
-      btn.style.boxShadow='0 5px 14px rgba(24,119,242,.5)';
-    });
-    btn.addEventListener('mouseleave',function(){
-      btn.style.transform='';
-      btn.style.opacity='.9';
-      btn.style.boxShadow='0 3px 10px rgba(0,0,0,.35)';
+    // Hover commun à tous les boutons sociaux du stack — léger lift + opacité pleine.
+    // Couleur de glow par bouton via data-glow (sinon fallback générique).
+    var stackBtns=document.querySelectorAll('#social-stack > a');
+    if(!stackBtns.length) return;
+    var glowMap={'fb-community-btn':'rgba(24,119,242,.5)','ig-official-btn':'rgba(220,39,67,.5)'};
+    stackBtns.forEach(function(btn){
+      var glow=glowMap[btn.id]||'rgba(255,255,255,.4)';
+      btn.addEventListener('mouseenter',function(){
+        btn.style.transform='scale(1.08)';
+        btn.style.opacity='1';
+        btn.style.boxShadow='0 5px 14px '+glow;
+      });
+      btn.addEventListener('mouseleave',function(){
+        btn.style.transform='';
+        btn.style.opacity='.9';
+        btn.style.boxShadow='0 3px 10px rgba(0,0,0,.35)';
+      });
     });
     // Au démarrage : si session Supabase active (RP qui revient), masquer
     // tout le stack social immédiatement.
