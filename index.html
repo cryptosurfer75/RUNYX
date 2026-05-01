@@ -395,9 +395,13 @@ body::before{
 }
 /* Caché quand on dézoom : hexagones trop petits, lettre déborderait */
 #lands-map.lz-tiny .hex-initial-text{display:none}
-#lands-map.lz-small .hex-initial-text{font-size:12px}
-#lands-map.lz-normal .hex-initial-text{font-size:14px}
-#lands-map.lz-large .hex-initial-text{font-size:17px}
+#lands-map.lz-12 .hex-initial-text{font-size:9px}
+#lands-map.lz-13 .hex-initial-text{font-size:11px}
+#lands-map.lz-14 .hex-initial-text{font-size:12px}
+#lands-map.lz-15 .hex-initial-text{font-size:13px}
+#lands-map.lz-16 .hex-initial-text{font-size:14px}
+#lands-map.lz-17 .hex-initial-text{font-size:16px}
+#lands-map.lz-18p .hex-initial-text{font-size:18px}
 .leaflet-container{background:var(--bg2)!important;font-family:'Rajdhani',sans-serif!important}
 .speedix-totem{background:none!important;border:none!important}
 .speedix-star{background:none!important;border:none!important}
@@ -6546,11 +6550,16 @@ function initLandsMap(){
   function _updateZoomClass(){
     var z=_landsMap.getZoom();
     var c=container.classList;
-    c.remove('lz-tiny','lz-small','lz-normal','lz-large');
-    if(z<13) c.add('lz-tiny');
-    else if(z<15) c.add('lz-small');
-    else if(z<17) c.add('lz-normal');
-    else c.add('lz-large');
+    // 7 paliers fins pour adoucir les transitions de taille de l'initiale au zoom
+    c.remove('lz-12','lz-13','lz-14','lz-15','lz-16','lz-17','lz-18p','lz-tiny');
+    if(z<12) c.add('lz-tiny');
+    else if(z<13) c.add('lz-12');
+    else if(z<14) c.add('lz-13');
+    else if(z<15) c.add('lz-14');
+    else if(z<16) c.add('lz-15');
+    else if(z<17) c.add('lz-16');
+    else if(z<18) c.add('lz-17');
+    else c.add('lz-18p');
   }
   _landsMap.on('zoomend',_updateZoomClass);
   _updateZoomClass();
