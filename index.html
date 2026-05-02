@@ -10611,8 +10611,10 @@ async function loadAdminStats(){
     var stYest=(p7||[]).filter(function(p){return p.strava_access_token && inYest(p.created_at);}).length;
     var st7=(p7||[]).filter(function(p){return p.strava_access_token;}).length;
 
-    var runsToday=(r7||[]).filter(function(r){return r.run_date===startTodayDate;}).length;
-    var runsYest=(r7||[]).filter(function(r){return r.run_date===startYestDate;}).length;
+    // Bug fix : runs.run_date est un TIMESTAMP ("2026-05-02 09:42:35+00"), pas
+    // une date seule. Comparer avec startsWith sur la portion YYYY-MM-DD.
+    var runsToday=(r7||[]).filter(function(r){return r.run_date && r.run_date.indexOf(startTodayDate)===0;}).length;
+    var runsYest=(r7||[]).filter(function(r){return r.run_date && r.run_date.indexOf(startYestDate)===0;}).length;
     var runs7=(r7||[]).length;
 
     var stravaPct=totalPlayers?Math.round((totalStrava||0)/totalPlayers*100):0;
@@ -10647,7 +10649,9 @@ async function loadAdminStats(){
 
     var subSpark=dailyCounts(p7,function(p){return p.created_at;},false);
     var stSpark=dailyCounts(p7,function(p){return p.strava_access_token?p.created_at:null;},false);
-    var runSpark=dailyCounts(r7,function(r){return r.run_date;},true);
+    // isDateString=false → comparaison range timestamp (cohérent avec le fait
+    // que run_date est un timestamp et non une date)
+    var runSpark=dailyCounts(r7,function(r){return r.run_date;},false);
 
     var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:\'Space Mono\',monospace;font-size:.74rem">'+
       '<thead><tr style="border-bottom:1px solid rgba(128,144,176,.25);color:var(--muted2);font-size:.65rem;letter-spacing:.5px">'+
@@ -10667,7 +10671,7 @@ async function loadAdminStats(){
         '<td style="text-align:right;color:var(--green);font-weight:700">'+stToday+'</td>'+
         '<td style="text-align:right">'+stYest+'</td>'+
         '<td style="text-align:right">'+st7+'</td>'+
-        '<td style="text-align:right;color:#fc4c02;font-weight:700">'+(totalStrava||0)+' <span style="color:var(--muted2);font-weight:400;font-size:.65rem">('+stravaPct+'%)</span></td></tr>'+
+        '<td style="text-align:right;color:#fc4c02;font-weight:700">'+(totalStrava||0)+'</td></tr>'+
       '<tr><td colspan="5" style="padding:0 .25rem">'+sparkBar(stSpark,'#fc4c02')+'</td></tr>'+
       '<tr><td style="padding:.4rem .25rem;color:#4a90ff">🏃 Courses importées</td>'+
         '<td style="text-align:right;color:var(--green);font-weight:700">'+runsToday+'</td>'+
@@ -10679,7 +10683,7 @@ async function loadAdminStats(){
         '<td style="text-align:right;color:var(--muted2)">—</td>'+
         '<td style="text-align:right;color:var(--muted2)">—</td>'+
         '<td style="text-align:right;color:var(--muted2)">—</td>'+
-        '<td style="text-align:right;color:var(--gold);font-weight:700">'+(totalPremium||0)+' <span style="color:var(--muted2);font-weight:400;font-size:.65rem">('+premiumPct+'%)</span></td></tr>'+
+        '<td style="text-align:right;color:var(--gold);font-weight:700">'+(totalPremium||0)+'</td></tr>'+
       '</tbody></table></div>'+
       '<div style="margin-top:.5rem;font-size:.6rem;color:var(--muted2);text-align:right">Mis à jour : '+now.toLocaleTimeString('fr-FR')+'</div>';
 
