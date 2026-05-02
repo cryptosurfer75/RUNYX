@@ -1997,7 +1997,7 @@ select option{background:#040c1c}
       <div class="block-header"><div class="block-title">⭐ Étoiles <span class="hl">Land</span></div></div>
       <div class="block-body-sm">
         <div class="eco-row"><span>★ Étoile ×1</span><span class="eco-price">8 000 RPC</span></div>
-        <div class="eco-row"><span>★★ Étoile ×2</span><span class="eco-price">20 000 RPC</span></div>
+        <div class="eco-row"><span>★★ Étoile ×2</span><span class="eco-price">15 000 RPC</span></div>
         <div class="eco-row"><span>★★★ Étoile ×3</span><span class="eco-price">40 000 RPC</span></div>
         <div style="margin-top:.6rem;border-top:1px solid var(--border);padding-top:.5rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted2);margin-bottom:.4rem">Passage</div>
         <div class="eco-row"><span>Sans étoile</span><span class="eco-price">3 RPC</span></div>
@@ -2040,7 +2040,7 @@ select option{background:#040c1c}
       <div class="block-body">
         <div style="font-size:1.4rem;font-weight:700;margin-bottom:.1rem">5,99€ <span style="font-size:.8rem;color:var(--muted2)">/ mois</span></div>
         <div style="font-size:.78rem;color:var(--muted2);margin-bottom:.5rem">ou <strong style="color:var(--gold)">60€ / an</strong> — économisez 12€</div>
-        <div style="font-size:.75rem;color:var(--muted2)">Inclus : 20 NYX + 20 000 RPC + 5 Boosts offerts / mois</div>
+        <div style="font-size:.75rem;color:var(--muted2)">Inclus : 20 NYX + 15 000 RPC + 5 Boosts offerts / mois</div>
       </div>
     </div>
   </div>
@@ -2614,8 +2614,13 @@ function askConfirm(message, opts){
         <strong style="color:#9050d0">4. Récompenses</strong><br>
         <span style="font-size:.78rem;color:var(--muted2)">RPC + NYX <strong>partagés équitablement</strong> en cas de succès, ou bien une <strong>land gratuite chacun pendant 6 mois</strong> qui agrandit votre frontière commune.</span>
       </div>
+      <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(255,128,32,.06);border:1px solid rgba(255,128,32,.25);margin-bottom:.5rem">
+        <strong style="color:#ff8020">5. Règle anti-cumul : 1 course = 1 défi</strong><br>
+        <span style="font-size:.78rem;color:var(--muted2);display:block;margin-top:.25rem">Si tu as plusieurs défis en cours, chaque course que tu fais ne peut valider <strong>qu'un seul défi à la fois</strong>. Ta course est attribuée au défi <strong>accepté en premier</strong> (ordre chronologique).</span>
+        <span style="font-size:.78rem;color:var(--muted2);display:block;margin-top:.3rem"><em>Ex : si tu as accepté un défi "10 km en 48h", puis un défi "8 km/sem", et que tu cours 12 km → seul le défi 1 est validé.</em></span>
+      </div>
       <div style="padding:.5rem .65rem;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid var(--border2)">
-        <strong style="color:var(--text)">5. Résultat du défi</strong><br>
+        <strong style="color:var(--text)">6. Résultat du défi</strong><br>
         <span style="font-size:.78rem;color:var(--muted2);display:block;margin-top:.25rem"><strong style="color:var(--green)">✅ Validé :</strong> distribution des récompenses.</span>
         <span style="font-size:.78rem;color:var(--muted2);display:block;margin-top:.2rem"><strong style="color:var(--red)">❌ Échec :</strong> aucune conséquence. Speedix vous proposera un autre défi quelques jours plus tard. C'est 100% positif !</span>
       </div>
@@ -3239,7 +3244,7 @@ function askConfirm(message, opts){
         SPEEDIX League propose un abonnement Premium optionnel à 5,99€/mois ou 60€/an. Le jeu de base est gratuit.<br><br>
 
         <strong style="color:var(--text)">2. Abonnement Premium</strong><br>
-        L'abonnement Premium donne accès à : la consultation de tous les classements et Player Cards, le chat de team, le feed des amis, la recherche de RP, 5 boosts offerts par mois, 20 NYX et 20 000 RPC offerts par mois, la création de team privée offerte.<br><br>
+        L'abonnement Premium donne accès à : la consultation de tous les classements et Player Cards, le chat de team, le feed des amis, la recherche de RP, 5 boosts offerts par mois, 20 NYX et 15 000 RPC offerts par mois, la création de team privée offerte.<br><br>
 
         <strong style="color:var(--text)">3. Essai gratuit</strong><br>
         Un essai gratuit de 15 jours est proposé une seule fois par utilisateur. L'essai donne accès aux fonctionnalités de visualisation Premium mais pas aux récompenses mensuelles. L'essai ne se transforme pas automatiquement en abonnement payant.<br><br>
@@ -4442,16 +4447,16 @@ const LEAGUES=[
 const COLLAB_CHALLENGE_CATALOG = [
   { code:'CC01', title:'Cours 10 km chacun en 48h',
     description:'Réalisez 10 km chacun dans les 48h après acceptation du défi.',
-    duration_hours:48, criteria:{type:'km_each',value:10}, reward_rpc:3000, reward_nyx:0, reward_type:'rpc' },
+    duration_hours:48, criteria:{type:'km_each',value:10}, reward_rpc:2000, reward_nyx:0, reward_type:'rpc' },
   { code:'CC02', title:'Cours 20 km avec ton voisin en 72h',
     description:'Réalisez 20 km au total (50/50) dans les 72h après acceptation du défi.',
-    duration_hours:72, criteria:{type:'km_total',value:20}, reward_rpc:4000, reward_nyx:0, reward_type:'rpc' },
+    duration_hours:72, criteria:{type:'km_total',value:20}, reward_rpc:3000, reward_nyx:0, reward_type:'rpc' },
   { code:'CC03', title:'4 sorties de 5 km chacun cette semaine',
     description:'Validez chacun 4 sorties de 5 km (8 au total) dans les 7 jours après acceptation du défi.',
-    duration_hours:24*7, criteria:{type:'runs_each',value:4,min_distance:5}, reward_rpc:6000, reward_nyx:0, reward_type:'rpc' },
-  { code:'CC04', title:'Explorez 100 Lands ensemble ce week-end',
-    description:'Explorez à deux 100 nouvelles Lands ce week-end (50/50).',
-    duration_hours:24*3, criteria:{type:'explore_total',value:100}, reward_rpc:0, reward_nyx:0, reward_type:'land_6m',
+    duration_hours:24*7, criteria:{type:'runs_each',value:4,min_distance:5}, reward_rpc:5000, reward_nyx:0, reward_type:'rpc' },
+  { code:'CC04', title:'Aventure à deux : 400 Lands ce week-end',
+    description:'Avec ton voisin, partez explorer 400 nouvelles Lands ce week-end. La répartition entre vous est libre — seul compte l\'objectif commun.',
+    duration_hours:24*3, criteria:{type:'explore_total',value:400}, reward_rpc:0, reward_nyx:0, reward_type:'land_6m',
     proposal_constraint:'friday_morning_only' },
   { code:'CC05', title:'1000 m de D+ à deux cette semaine',
     description:'Cumulez 500 m de D+ chacun dans les 7 jours après acceptation du défi.',
@@ -4461,10 +4466,10 @@ const COLLAB_CHALLENGE_CATALOG = [
     duration_hours:24*7, criteria:{type:'long_run_each',value:15}, reward_rpc:3000, reward_nyx:0, reward_type:'rpc' },
   { code:'CC07', title:'5 jours de course consécutifs chacun',
     description:'Validez chacun 5 jours de course consécutifs dans les 7 jours après acceptation du défi.',
-    duration_hours:24*7, criteria:{type:'streak_each',value:5}, reward_rpc:6000, reward_nyx:0, reward_type:'rpc' },
+    duration_hours:24*7, criteria:{type:'streak_each',value:5}, reward_rpc:4000, reward_nyx:0, reward_type:'rpc' },
   { code:'CC08', title:'50 km à deux en 10 jours',
     description:'Cumulez 50 km à deux en 10 jours (25 chacun) après acceptation du défi.',
-    duration_hours:24*10, criteria:{type:'km_each',value:25}, reward_rpc:6000, reward_nyx:20, reward_type:'rpc' },
+    duration_hours:24*10, criteria:{type:'km_each',value:25}, reward_rpc:5000, reward_nyx:20, reward_type:'rpc' },
   { code:'CC09', title:'Sortie de 8 km chacun cette semaine',
     description:'Faites chacun une sortie d\'au moins 8 km dans les 7 jours après acceptation du défi.',
     duration_hours:24*7, criteria:{type:'long_run_each',value:8}, reward_rpc:3000, reward_nyx:10, reward_type:'rpc' },
@@ -4473,10 +4478,10 @@ const COLLAB_CHALLENGE_CATALOG = [
     duration_hours:24*30, criteria:{type:'km_each',value:100}, reward_rpc:0, reward_nyx:0, reward_type:'land_6m' },
   { code:'CC11', title:'Sortie de 21 km (semi) chacun',
     description:'Faites chacun une sortie d\'au moins 21 km dans les 15 jours après acceptation du défi.',
-    duration_hours:24*15, criteria:{type:'long_run_each',value:21}, reward_rpc:10000, reward_nyx:40, reward_type:'rpc' },
+    duration_hours:24*15, criteria:{type:'long_run_each',value:21}, reward_rpc:8000, reward_nyx:40, reward_type:'rpc' },
   { code:'CC12', title:'Parrainez 2 amis chacun cette semaine',
     description:'Parrainez chacun 2 amis (avec une 1ère course validée) dans les 7 jours après acceptation du défi.',
-    duration_hours:24*7, criteria:{type:'referrals_each',value:2}, reward_rpc:6000, reward_nyx:0, reward_type:'rpc' }
+    duration_hours:24*7, criteria:{type:'referrals_each',value:2}, reward_rpc:4000, reward_nyx:0, reward_type:'rpc' }
 ];
 
 // Grade → avatar border/glow color
@@ -4779,9 +4784,10 @@ const FP_DATA=[
   {f:'Accès Feed des amis',free:false,prem:true},
   {f:'Création Team privée offerte',   free:false,prem:true},
   {f:'Trésors cachés & bonus spéciaux',free:false,prem:true},
+  {f:'Challenges illimités',           free:false, prem:true},
   {f:'5 Boosts offerts / mois',       free:false,prem:true},
   {f:'20 NYX offerts / mois',         free:false,prem:true},
-  {f:'20 000 RPC offerts / mois',     free:false,prem:true},
+  {f:'15 000 RPC offerts / mois',     free:false,prem:true},
 ];
 
 /* ============================================================
@@ -4890,7 +4896,7 @@ async function saveManualRun(){
   const timeMin=km/spd*60; // déduit km + vitesse
   // Confirmation explicite (action irréversible)
   const ok=await askConfirm(
-    'Tu vas enregistrer une course de <strong style="color:var(--gold)">'+km+' km</strong> pour <strong style="color:var(--gold)">'+pts.toLocaleString('fr')+' points</strong> (+ '+(pts*8).toLocaleString('fr')+' RPC).<br><br>Cette action est <strong>irréversible</strong>.',
+    'Tu vas enregistrer une course de <strong style="color:var(--gold)">'+km+' km</strong> pour <strong style="color:var(--gold)">'+pts.toLocaleString('fr')+' points</strong> (+ '+(pts*6).toLocaleString('fr')+' RPC).<br><br>Cette action est <strong>irréversible</strong>.',
     {title:'Enregistrer cette course',emoji:'📝',okLabel:'Enregistrer'}
   );
   if(!ok) return;
@@ -4913,11 +4919,11 @@ async function saveManualRun(){
       })
     });
     if(!runResp.ok){throw new Error('Échec sauvegarde ('+runResp.status+')');}
-    // 2. Crédit RPC (8 RPC par point — même règle qu'une course réelle)
+    // 2. Crédit RPC (6 RPC par point — même règle qu'une course réelle)
     if(typeof walletCredit==='function'){
-      await walletCredit(pts*8, 0, 'Course '+name+' · '+pts+' pts');
+      await walletCredit(pts*6, 0, 'Course '+name+' · '+pts+' pts');
     }
-    showToast('✓ Course enregistrée : +'+pts.toLocaleString('fr')+' pts · +'+(pts*8).toLocaleString('fr')+' RPC');
+    showToast('✓ Course enregistrée : +'+pts.toLocaleString('fr')+' pts · +'+(pts*6).toLocaleString('fr')+' RPC');
     // Reset les champs
     document.getElementById('c-km').value=0;
     document.getElementById('c-spd').value=0;
@@ -8942,7 +8948,7 @@ async function _processEndOfPeriodInner(){
     var patchData2={boost_stock:boostQty,boost_active_until:null};
     // Récompenses mensuelles Full Premium
     if(_bpPrem){
-      patchData2.rpc_balance=(_bp.rpc_balance||0)+20000;
+      patchData2.rpc_balance=(_bp.rpc_balance||0)+15000;
       patchData2.nyx_balance=(_bp.nyx_balance||0)+20;
     }
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(_bp.id),{
@@ -8954,7 +8960,7 @@ async function _processEndOfPeriodInner(){
     if(_bpPrem){
       await supabaseClient.from('wallet_tx').insert({
         player_id:_bp.id,
-        rpc_delta:20000,
+        rpc_delta:15000,
         nyx_delta:20,
         reason:'Bonus mensuel Premium P'+_periodData.period
       });
@@ -10462,8 +10468,8 @@ async function adminAddRun(){
     player_id:playerId, points:pts, distance:km, time:timeMin, elevation:Math.round(elv), period:0
   });
   if(error){msg.style.color='var(--red)';msg.textContent='Erreur : '+error.message;return;}
-  // Créditer les RPC de course (8 RPC par point gagné)
-  await walletCreditOther(playerId, pts * 8, 0, 'Course admin · ' + pts + ' pts');
+  // Créditer les RPC de course (6 RPC par point gagné)
+  await walletCreditOther(playerId, pts * 6, 0, 'Course admin · ' + pts + ' pts');
   // Trouver le nom du joueur
   var sel=document.getElementById('admin-player');
   var playerName=sel.options[sel.selectedIndex].text;
@@ -11319,7 +11325,7 @@ function showTrialOffer(){
     +'<div style="font-size:.85rem;color:var(--text);line-height:1.7;margin-bottom:.3rem">Profite de <strong style="color:var(--gold)">15 jours d\'essai gratuit</strong></div>'
     +'<div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:1rem">'
     +'Accès à tous les classements · Toutes les Player Cards<br>'
-    +'5 Boosts + 20 NYX + 20 000 RPC offerts / mois<br>'
+    +'5 Boosts + 20 NYX + 15 000 RPC offerts / mois<br>'
     +'Création de Team privée offerte · Pas de publicités'
     +'</div>'
     +'<div style="display:flex;flex-direction:column;gap:.5rem;max-width:250px;margin:0 auto">'
@@ -11723,11 +11729,16 @@ async function showWalletBreakdown(){
   var bodyEl=document.getElementById('wallet-detail-body');
   if(bodyEl) bodyEl.innerHTML='<div style="text-align:center;color:var(--muted2);font-size:.8rem;padding:1rem">Chargement…</div>';
   try {
-    // 1. RPC course = somme des points de tous les runs × 8 (source de vérité,
-    //    runs.points est toujours rempli même si wallet_tx a des trous legacy)
+    // 1. RPC course = somme des points de tous les runs × 6 (source de vérité,
+    //    runs.points est toujours rempli même si wallet_tx a des trous legacy).
+    //    Note 2026-05-02 : ratio passé de 8→6 pour rééquilibrage économique.
+    //    Les runs antérieurs au 2 mai 2026 ont été crédités au taux 8, donc
+    //    cette estimation peut légèrement sous-estimer leur valeur réelle pour
+    //    les RPs avec historique pré-2 mai. Acceptable car wallet_tx reste la
+    //    source de vérité réelle pour les RPs qui veulent le détail.
     var {data:allRuns}=await supabaseClient.from('runs')
       .select('points').eq('player_id',currentUser.id).limit(50000);
-    var courseRpc=(allRuns||[]).reduce(function(s,r){return s+(r.points||0)*8;},0);
+    var courseRpc=(allRuns||[]).reduce(function(s,r){return s+(r.points||0)*6;},0);
     // 2. RPC lands = somme rpc_earned des passages sur mes lands (owned ou rented)
     //    Inclut passages par moi + par les autres qui passent sur mes lands.
     var {data:myLands}=await supabaseClient.from('lands')
@@ -13021,8 +13032,8 @@ async function syncStravaActivities(silent){
         headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({player_id:currentUser.id,points:pts,distance:Math.round(km*100)/100,time:Math.round(timeMin*10)/10,elevation:Math.round(elv),run_date:runDateFull,period:0,name:a.name||null,avg_hr:a.average_heartrate?Math.round(a.average_heartrate):null,max_hr:a.max_heartrate?Math.round(a.max_heartrate):null,calories:a.kilojoules?Math.round(a.kilojoules*0.239):a.calories||null,avg_cadence:a.average_cadence||null,flagged:_accelFlag,strava_activity_id:a.id||null,polyline:polyline||null})
       });
-      // Créditer les RPC de course (8 RPC par point gagné)
-      await walletCredit(pts * 8, 0, 'Course ' + (a.name || 'Strava') + ' · ' + pts + ' pts');
+      // Créditer les RPC de course (6 RPC par point gagné)
+      await walletCredit(pts * 6, 0, 'Course ' + (a.name || 'Strava') + ' · ' + pts + ' pts');
       // Décoder GPS en hexagones
       var hexes=[];
       if(polyline&&typeof h3!=='undefined'){
@@ -13663,9 +13674,9 @@ async function saveCapturedRun(captured, runName){
   var runRows=await runResp.json();
   var runId=(runRows&&runRows[0])?runRows[0].id:null;
 
-  // 2. Crédit RPC (8 RPC par point gagné — même règle que l'import Strava)
+  // 2. Crédit RPC (6 RPC par point gagné — même règle que l'import Strava)
   if(typeof walletCredit==='function'){
-    await walletCredit(pts*8, 0, 'Course '+(runName||'PWA')+' · '+pts+' pts');
+    await walletCredit(pts*6, 0, 'Course '+(runName||'PWA')+' · '+pts+' pts');
   }
 
   // 3. Hexes H3 + passages
@@ -13763,7 +13774,7 @@ async function saveCapturedRun(captured, runName){
     if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);
   }catch(e){console.warn('grade recalc after run fail',e);}
 
-  return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*8};
+  return {runId:runId, points:pts, km:km, elv:elv, timeMin:timeMin, nbLands:nbLands, rpcEarned:pts*6};
 }
 
 // Sauvegarde la préférence "Partager ma position en course" dans Supabase
@@ -14328,7 +14339,7 @@ async function stopLiveRun(){
     var summary=await saveCapturedRun(captured,'Course du '+new Date().toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}));
     var nbCross=crossings.length;
     var crossLbl=nbCross>0?(' · 🤝 '+nbCross+' RP'):'';
-    showToast('🏁 '+summary.points+' pts · '+summary.nbLands+' Lands · +'+(summary.points*8).toLocaleString('fr')+' RPC'+crossLbl);
+    showToast('🏁 '+summary.points+' pts · '+summary.nbLands+' Lands · +'+(summary.points*6).toLocaleString('fr')+' RPC'+crossLbl);
     // Insert des croisements (1 ligne par paire, ON CONFLICT géré par UNIQUE)
     if(crossings.length && summary.runId){
       try{
@@ -15951,9 +15962,10 @@ function switchChallengesTab(tab){
 async function _recomputeCollabProgressForPlayer(playerId){
   if(!playerId) return;
   try {
-    // Charger les défis in_progress où le joueur participe
+    // Charger les défis in_progress où le joueur participe (avec accepted_at
+    // pour ordre FIFO de l'attribution des runs).
     var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
-      .select('id,challenge_id,progress,completed_individually')
+      .select('id,challenge_id,progress,completed_individually,accepted_at')
       .eq('player_id',playerId);
     if(!myParts || !myParts.length) return;
     var chalIds=myParts.map(function(p){return p.challenge_id;});
@@ -15962,6 +15974,17 @@ async function _recomputeCollabProgressForPlayer(playerId){
       .in('id',chalIds).eq('status','in_progress');
     if(!chals || !chals.length) return;
     var chalById={}; chals.forEach(function(c){chalById[c.id]=c;});
+
+    // Tri FIFO + règle "1 course = 1 défi PAR TYPE DE CRITÈRE".
+    // Un même run peut valider 1 défi km + 1 défi D+ + 1 défi long_run, etc.
+    // (objectifs orthogonaux). Mais il ne peut PAS valider 2 défis km simultanés.
+    // Le défi accepté en premier consomme le run dans son type de critère.
+    myParts.sort(function(a,b){
+      var da=a.accepted_at?new Date(a.accepted_at).getTime():0;
+      var db=b.accepted_at?new Date(b.accepted_at).getTime():0;
+      return da-db;
+    });
+    var _consumedByType={}; // {'km_each':Set<runId>, 'dplus_each':Set<runId>, ...}
 
     for(var i=0;i<myParts.length;i++){
       var part=myParts[i];
@@ -15980,11 +16003,21 @@ async function _recomputeCollabProgressForPlayer(playerId){
       // Cas qui se basent sur les runs du joueur
       if(['km_each','km_total','runs_each','dplus_each','long_run_each','long_run_same_day','streak_each'].indexOf(crit.type)>=0){
         var {data:runs}=await supabaseClient.from('runs')
-          .select('distance,time,elevation,run_date')
+          .select('id,distance,time,elevation,run_date')
           .eq('player_id',playerId)
           .gte('run_date',startedAt)
           .lte('run_date',deadline);
         runs=runs||[];
+        // Anti double-validation PAR TYPE DE CRITÈRE : on retire les runs
+        // déjà attribués à un défi plus ancien du MÊME type. Un défi km et
+        // un défi D+ peuvent partager les mêmes runs (objectifs différents).
+        var _typeKey=crit.type;
+        if(!_consumedByType[_typeKey]) _consumedByType[_typeKey]=new Set();
+        var _consumedSet=_consumedByType[_typeKey];
+        runs=runs.filter(function(r){return !_consumedSet.has(r.id);});
+        // Marquer ces runs comme "utilisés" par ce défi pour les itérations
+        // suivantes du même type (FIFO).
+        runs.forEach(function(r){if(r.id) _consumedSet.add(r.id);});
 
         if(crit.type==='km_each'){
           var totalKm=runs.reduce(function(s,r){return s+(r.distance||0);},0);
@@ -16380,6 +16413,26 @@ if(!window._collabCountdownInterval){
 async function acceptCollabChallenge(participantId){
   if(!currentUser) return;
   try {
+    // CAP : un RP ne peut pas avoir plus de N défis collaboratifs engagés
+    // simultanément (acceptés + status proposed/in_progress). Empêche la
+    // dispersion et garde les défis significatifs.
+    //   Free    = 2 défis max
+    //   Premium = 3 défis max
+    var _maxActive=(typeof isPremium==='function' && isPremium())?3:2;
+    var {data:myActive}=await supabaseClient.from('collab_challenge_participants')
+      .select('challenge_id,collab_challenges(status)')
+      .eq('player_id',currentUser.id)
+      .not('accepted_at','is',null)
+      .eq('declined',false);
+    var activeCount=(myActive||[]).filter(function(p){
+      var st=p.collab_challenges&&p.collab_challenges.status;
+      return st==='proposed'||st==='in_progress';
+    }).length;
+    if(activeCount>=_maxActive){
+      var _premiumHint=(_maxActive===2)?' (Premium = 3 max)':'';
+      showToast('⚠️ Maximum '+_maxActive+' défis collaboratifs en cours'+_premiumHint+'. Termine-en un avant d\'en accepter un nouveau.');
+      return;
+    }
     var nowIso=new Date().toISOString();
     // 1. Patch ma ligne participant
     var {data:upd, error:errU}=await supabaseClient.from('collab_challenge_participants')
@@ -16644,6 +16697,31 @@ async function checkCollabPendingBanner(){
 // Le cache localStorage évite un round-trip à chaque render.
 async function participateEvent(badgeId,badgeName){
   if(!currentUser) return;
+  // CAP : RP Free limité à 2 challenges/events par mois calendaire (du nouvel
+  // event). Premium = illimité. On compte les participations actives dont
+  // event_date tombe dans le même mois calendaire que le nouvel event.
+  if(typeof isPremium==='function' && !isPremium()){
+    try {
+      var {data:newBadge}=await supabaseClient.from('badges')
+        .select('event_date').eq('id',badgeId).maybeSingle();
+      if(newBadge && newBadge.event_date){
+        var nd=new Date(newBadge.event_date);
+        var newKey=nd.getFullYear()+'-'+nd.getMonth();
+        var {data:myParts}=await supabaseClient.from('player_event_participations')
+          .select('badge_id, badges(event_date)').eq('player_id',currentUser.id);
+        var sameMonthCount=(myParts||[]).filter(function(p){
+          var ed=p.badges && p.badges.event_date;
+          if(!ed) return false;
+          var d=new Date(ed);
+          return (d.getFullYear()+'-'+d.getMonth())===newKey;
+        }).length;
+        if(sameMonthCount>=2){
+          showToast('⚠️ Maximum 2 challenges/mois en Free. Passe Premium pour en accepter plus.');
+          return;
+        }
+      }
+    } catch(e){ console.warn('[event cap] check fail',e); }
+  }
   var key='participated-'+badgeId+'-'+currentUser.id;
   localStorage.setItem(key,'1');
   try {
