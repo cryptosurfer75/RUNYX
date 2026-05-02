@@ -9976,28 +9976,48 @@ async function shareRunCard(runId){
   // Partager ou télécharger
   cv.toBlob(async function(blob){
     var file=new File([blob],'speedix-'+player.username+'-'+km+'km.png',{type:'image/png'});
-    // Essayer l'API Web Share (mobile)
     var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if(isMobile&&navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    var shareText=km+' km · '+pts+' pts · Rejoins-moi avec le code SL-'+(player.rtw_id||'?????')+' sur speedixleague.com';
+    var shareTitle='SPEEDIX League — '+player.username;
+
+    // Niveau 1 : Web Share API AVEC le fichier image (idéal — feuille de partage native + image)
+    if(isMobile && navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
       try{
-        await navigator.share({
-          title:'SPEEDIX League — '+player.username,
-          text:km+' km · '+pts+' pts · Rejoins-moi avec le code SL-'+(player.rtw_id||'?????')+' sur speedixleague.com',
-          files:[file]
-        });
+        await navigator.share({title:shareTitle, text:shareText, files:[file]});
         showToast('📸 Partagé !');
+        return;
       }catch(e){
-        if(e.name!=='AbortError') showToast('Partage annulé');
+        if(e.name==='AbortError'){return;} // user a annulé, on ne fait rien
+        // sinon on continue vers fallback
       }
-    } else {
-      // Fallback desktop : téléchargement
-      var link=document.createElement('a');
-      link.download=file.name;
-      link.href=URL.createObjectURL(blob);
-      link.click();
-      URL.revokeObjectURL(link.href);
-      showToast('📸 Image téléchargée — partage-la !');
     }
+
+    // Niveau 2 : Web Share API SANS fichier (fallback mobile : ouvre quand même
+    // le sélecteur natif WhatsApp/SMS/Insta avec le texte+URL, et on télécharge
+    // l'image en parallèle dans la galerie pour que le RP puisse l'attacher)
+    if(isMobile && navigator.share){
+      // Téléchargement de l'image en parallèle
+      var dlLink=document.createElement('a');
+      dlLink.download=file.name;
+      dlLink.href=URL.createObjectURL(blob);
+      dlLink.click();
+      try{
+        await navigator.share({title:shareTitle, text:shareText, url:'https://speedixleague.com'});
+        showToast('📸 Image téléchargée + partage ouvert');
+      }catch(e){
+        if(e.name!=='AbortError') showToast('📸 Image téléchargée dans tes Téléchargements');
+      }
+      URL.revokeObjectURL(dlLink.href);
+      return;
+    }
+
+    // Niveau 3 : Desktop ou navigateur sans Web Share API → simple téléchargement
+    var link=document.createElement('a');
+    link.download=file.name;
+    link.href=URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast('📸 Image téléchargée — partage-la manuellement !');
   },'image/png');
 }
 
@@ -15698,7 +15718,7 @@ async function renderChallenges(){
     if(_hasActiveChallenge){
       _challengeLbl.style.color='var(--gold)';
       _challengeLbl.style.textShadow='0 0 10px rgba(245,200,66,.45)';
-      _challengeLbl.innerHTML='Challenges <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2ddb80;margin-left:.25rem;vertical-align:middle;animation:onlinePulse 1.6s infinite"></span>';
+      _challengeLbl.textContent='Challenges';
     } else {
       _challengeLbl.style.color='var(--muted2)';
       _challengeLbl.style.textShadow='none';
@@ -15896,10 +15916,14 @@ async function updateChallengeNavBadge(){
     var seenIds=new Set(_getSeenChallenges());
     var hasUnseen=activeChallenges.some(function(b){return !seenIds.has(b.id);});
     // 5. Applique l'état aux pastilles
+    // Pastilles vertes clignotantes désactivées (Val : trop intrusif, clignotait
+    // tout le temps même sans nouveau challenge). On laisse le code de détection
+    // tourner pour le label "Challenges" (couleur dorée si unseen) mais sans
+    // les pastilles dans la navbar/onglets.
     var nav=document.getElementById('feed-challenge-badge');
-    if(nav) nav.style.display=hasUnseen?'block':'none';
+    if(nav) nav.style.display='none';
     var tab=document.getElementById('challenges-tab-events-badge');
-    if(tab) tab.style.display=hasUnseen?'block':'none';
+    if(tab) tab.style.display='none';
   } catch(e){ console.warn('[updateChallengeNavBadge]',e); }
 }
 
@@ -16529,10 +16553,10 @@ async function countCollabPendingForBadge(){
 }
 
 async function refreshCollabBadge(){
+  // Pastille verte clignotante désactivée (Val : trop intrusive). Le label
+  // "Voisins" reste, juste sans le dot animé qui distrayait à chaque refresh.
   var badge=document.getElementById('challenges-tab-collab-badge');
-  if(!badge) return;
-  var n=await countCollabPendingForBadge();
-  badge.style.display=(n>0?'block':'none');
+  if(badge) badge.style.display='none';
 }
 
 async function _markCollabSeen(){
