@@ -1485,6 +1485,11 @@ select option{background:#040c1c}
           <span id="challenges-tab-collab-badge" style="display:none;position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:#2ddb80;animation:onlinePulse 1.6s infinite"></span>
         </button>
       </div>
+      <!-- Sous-onglets pour Challenges (events) : À venir / Historique -->
+      <div id="challenges-events-subtabs" style="display:none;gap:.3rem;margin-bottom:.7rem">
+        <button id="challenges-subtab-upcoming" onclick="switchEventsSubtab('upcoming')" style="flex:1;padding:.28rem .5rem;border-radius:5px;border:1px solid var(--gold);background:rgba(245,200,66,.12);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:1px;font-weight:700;cursor:pointer">📅 À VENIR</button>
+        <button id="challenges-subtab-history" onclick="switchEventsSubtab('history')" style="flex:1;padding:.28rem .5rem;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:1px;font-weight:700;cursor:pointer">🏆 HISTORIQUE</button>
+      </div>
       <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
       <div id="challenges-extra-wrap" style="display:none;margin-top:.6rem">
         <div id="challenges-extra" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:.6rem"></div>
@@ -3828,6 +3833,10 @@ async function onLoginSuccess(user, isNew){
   if(typeof checkCollabPendingBanner==='function'){
     setTimeout(function(){ checkCollabPendingBanner(); }, 3500);
   }
+  // Notifs popup quand le voisin a accepté ou refusé un défi (1 fois par défi)
+  if(typeof checkCollabPartnerActions==='function'){
+    setTimeout(function(){ checkCollabPartnerActions(); }, 4500);
+  }
   // Notifications de résolution (succès / échec / annulé) — popup au login
   if(typeof checkCollabResolutionNotifications==='function'){
     setTimeout(function(){ checkCollabResolutionNotifications(); }, 4500);
@@ -4467,9 +4476,9 @@ const COLLAB_CHALLENGE_CATALOG = [
   { code:'CC07', title:'5 jours de course consécutifs chacun',
     description:'Validez chacun 5 jours de course consécutifs dans les 7 jours après acceptation du défi.',
     duration_hours:24*7, criteria:{type:'streak_each',value:5}, reward_rpc:4000, reward_nyx:0, reward_type:'rpc' },
-  { code:'CC08', title:'50 km à deux en 10 jours',
-    description:'Cumulez 50 km à deux en 10 jours (25 chacun) après acceptation du défi.',
-    duration_hours:24*10, criteria:{type:'km_each',value:25}, reward_rpc:5000, reward_nyx:20, reward_type:'rpc' },
+  { code:'CC08', title:'60 km à deux en 10 jours',
+    description:'Cumulez 60 km à deux en 10 jours (30 chacun) après acceptation du défi.',
+    duration_hours:24*10, criteria:{type:'km_each',value:30}, reward_rpc:5000, reward_nyx:20, reward_type:'rpc' },
   { code:'CC09', title:'Sortie de 8 km chacun cette semaine',
     description:'Faites chacun une sortie d\'au moins 8 km dans les 7 jours après acceptation du défi.',
     duration_hours:24*7, criteria:{type:'long_run_each',value:8}, reward_rpc:3000, reward_nyx:10, reward_type:'rpc' },
@@ -6433,10 +6442,17 @@ async function renderMyChallenges(){
         ? ''
         : '<div style="position:absolute;top:-4px;left:-4px;right:-4px;background:'+color+';color:#000;font-family:\'Bebas Neue\',sans-serif;font-size:.5rem;letter-spacing:.5px;padding:.08rem 0;text-align:center;font-weight:900;border-radius:3px;line-height:1">📅 '+eventDate.toUpperCase()+'</div>';
       var nameTxt=(b.name||'').replace(/</g,'&lt;');
-      return '<div onclick="event.stopPropagation();showBadgeDetail('+b.id+')" title="'+(b.name||'').replace(/"/g,'&quot;')+(isUnlocked?' (validé)':' (inscrit)')+'" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.2rem;position:relative;padding-top:'+(isUnlocked?'0':'.6rem')+'">'
+      // Mini dossard sous le nom (uniquement pour inscrits non encore validés)
+      var miniBib='';
+      if(!isUnlocked && currentUser){
+        var bibPC=_getBibForBadge(b.id);
+        miniBib='<div style="margin-top:.15rem;padding:.12rem .3rem;border-radius:3px;background:linear-gradient(180deg,#fdfdfd,#dcdcdc);border:1px solid #aaa;box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 -1.5px 0 '+color+';color:#0a0a0a;text-align:center;font-family:Bebas Neue,sans-serif;font-size:.62rem;font-weight:900;letter-spacing:1.5px;line-height:1">#'+bibPC+'</div>';
+      }
+      return '<div onclick="event.stopPropagation();showBadgeDetail('+b.id+')" title="'+(b.name||'').replace(/"/g,'&quot;')+(isUnlocked?' (validé)':' (inscrit — dossard #'+(_getBibForBadge(b.id)||'')+')')+'" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.2rem;position:relative;padding-top:'+(isUnlocked?'0':'.6rem')+'">'
         +badge
         +'<div style="width:100%;aspect-ratio:1;">'+_renderBadgeHex(b,isUnlocked)+'</div>'
         +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:.55rem;letter-spacing:.3px;color:'+(isUnlocked?color:'var(--muted2)')+';text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">'+nameTxt+'</div>'
+        +miniBib
         +'</div>';
     }).join('');
   } catch(e){
@@ -15650,6 +15666,7 @@ function _renderBadgeHex(b,isUnlocked){
 var _CHALLENGES_EXTRA_PAGE=0;
 var _CHALLENGES_PER_PAGE=8;
 var _CHALLENGES_TAB='defis'; // 'defis' (permanents) | 'events' (challenges datés)
+var _EVENTS_SUBTAB='upcoming'; // 'upcoming' (à venir) | 'history' (gagnés)
 
 async function renderChallenges(){
   var grid=document.getElementById('challenges-grid');
@@ -15739,8 +15756,11 @@ async function renderChallenges(){
       if(!isEvent) return false;
       var endDay=b.event_date_end||b.event_date||'';
       var isPast=endDay && endDay<_today;
-      if(isPast && !unlockedMap[b.id]) return false;
-      return true;
+      var isUnlocked=!!unlockedMap[b.id];
+      if(_EVENTS_SUBTAB==='history') return isUnlocked;
+      // upcoming : events à venir uniquement (les passés non gagnés sont masqués,
+      // les passés gagnés vivent dans l'onglet Historique)
+      return !isPast;
     }
     return !isEvent;
   }).sort(function(a,b){
@@ -15804,7 +15824,18 @@ async function renderChallenges(){
         var participatedKey='participated-'+b.id+'-'+currentUser.id;
         var hasParticipated=localStorage.getItem(participatedKey)==='1';
         if(hasParticipated){
-          eventBtn='<div style="margin-top:.35rem;padding:.25rem .5rem;border-radius:5px;background:rgba(45,219,128,.12);border:1px solid rgba(45,219,128,.3);color:#2ddb80;font-size:.52rem;font-weight:700;letter-spacing:.3px">✓ Inscrit</div>';
+          var bibNum=_getBibForBadge(b.id);
+          eventBtn='<div style="margin-top:.4rem;display:flex;flex-direction:column;gap:.25rem">'
+            +'<div style="padding:.18rem .4rem;border-radius:5px;background:rgba(45,219,128,.12);border:1px solid rgba(45,219,128,.3);color:#2ddb80;font-size:.5rem;font-weight:700;letter-spacing:.3px">✓ INSCRIT</div>'
+            +'<div style="position:relative;padding:.3rem .4rem .35rem;border-radius:6px;background:linear-gradient(180deg,#fdfdfd 0%,#e6e6e6 100%);border:1px solid #b8b8b8;box-shadow:0 3px 7px rgba(0,0,0,.45),inset 0 -3px 0 '+color+',inset 0 1px 0 rgba(255,255,255,.8);color:#0a0a0a;text-align:center;font-family:Bebas Neue,sans-serif;line-height:1">'
+              +'<span style="position:absolute;top:3px;left:3px;width:3px;height:3px;border-radius:50%;background:#888;box-shadow:inset 0 0 1px #000"></span>'
+              +'<span style="position:absolute;top:3px;right:3px;width:3px;height:3px;border-radius:50%;background:#888;box-shadow:inset 0 0 1px #000"></span>'
+              +'<span style="position:absolute;bottom:6px;left:3px;width:3px;height:3px;border-radius:50%;background:#888;box-shadow:inset 0 0 1px #000"></span>'
+              +'<span style="position:absolute;bottom:6px;right:3px;width:3px;height:3px;border-radius:50%;background:#888;box-shadow:inset 0 0 1px #000"></span>'
+              +'<div style="font-size:.45rem;letter-spacing:1.8px;color:#777;margin-top:.05rem;font-weight:700">DOSSARD</div>'
+              +'<div style="font-size:1.35rem;font-weight:900;letter-spacing:2.5px;margin-top:0;color:#111;text-shadow:0 1px 0 rgba(255,255,255,.6)">#'+bibNum+'</div>'
+            +'</div>'
+          +'</div>';
           // Croix rouge en haut à droite pour se désinscrire (seulement si inscrit + event non passé + non validé)
           _unregBtn='<span onclick="event.stopPropagation();unregisterEvent('+b.id+',\''+(b.name||'').replace(/'/g,"\\'")+'\')" title="Se désinscrire" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ff4444;color:#fff;font-size:.7rem;font-weight:700;line-height:20px;text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);border:1.5px solid rgba(255,255,255,.15);z-index:5">✕</span>';
         } else {
@@ -15823,13 +15854,25 @@ async function renderChallenges(){
     var cardBorder=isUnlocked?(color+'55'):(isEvent?(color+'44'):'rgba(255,255,255,.06)');
     var cardShadow=isUnlocked?'box-shadow:0 4px 18px '+color+'30;':(isEvent?'box-shadow:0 2px 10px '+color+'18;':'');
     var breatheClass=isUnlocked?' badge-breathe':'';
+    // Dossard "souvenir" sous le badge gagné (events uniquement)
+    var unlockedBibBlock='';
+    if(isUnlocked && isEvent && currentUser){
+      var bibU=_getBibForBadge(b.id);
+      unlockedBibBlock='<div style="margin:.3rem auto 0;display:inline-block;position:relative;padding:.16rem .55rem .18rem;border-radius:4px;background:linear-gradient(180deg,#fdfdfd 0%,#e6e6e6 100%);border:1px solid #b0b0b0;box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 -1.5px 0 '+color+';color:#0a0a0a;text-align:center;font-family:Bebas Neue,sans-serif;font-size:.72rem;font-weight:900;letter-spacing:1.5px;line-height:1">'
+        +'<span style="position:absolute;top:2px;left:2px;width:2px;height:2px;border-radius:50%;background:#888"></span>'
+        +'<span style="position:absolute;top:2px;right:2px;width:2px;height:2px;border-radius:50%;background:#888"></span>'
+        +'<span style="position:absolute;bottom:2px;left:2px;width:2px;height:2px;border-radius:50%;background:#888"></span>'
+        +'<span style="position:absolute;bottom:2px;right:2px;width:2px;height:2px;border-radius:50%;background:#888"></span>'
+        +'#'+bibU
+      +'</div>';
+    }
     return '<div onclick="showBadgeDetail('+b.id+')" class="badge-card'+breatheClass+'" style="cursor:pointer;padding:'+(isEvent?'1.4rem':'0.75rem')+' .45rem .55rem;border-radius:11px;background:linear-gradient(155deg,rgba(20,25,35,.9),rgba(8,12,20,.95));border:1px solid '+cardBorder+';'+cardShadow+'text-align:center;transition:transform .15s ease;position:relative">'
       +_unregBtn
       +eventBanner
       +'<div style="width:94px;height:108px;margin:0 auto .5rem">'+_renderBadgeHex(b,isUnlocked)+'</div>'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:.8rem;letter-spacing:1.3px;color:'+nameColor+';line-height:1.05;margin-bottom:.3rem;min-height:1.8em;display:flex;align-items:center;justify-content:center;padding:0 .1rem">'+(b.name||'—')+'</div>'
       +(isUnlocked
-          ?'<div style="font-size:.56rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'
+          ?'<div style="font-size:.56rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'+unlockedBibBlock
           : (isEvent
               ?'<div style="font-size:.55rem;color:'+color+';font-family:Space Mono,monospace">'+progressTxt+'</div>'+eventBtn
               : (isBinary
@@ -15927,10 +15970,35 @@ async function updateChallengeNavBadge(){
   } catch(e){ console.warn('[updateChallengeNavBadge]',e); }
 }
 
+// Bascule entre les sous-onglets "À venir" et "Historique" du tab Challenges
+function switchEventsSubtab(sub){
+  _EVENTS_SUBTAB=sub;
+  var up=document.getElementById('challenges-subtab-upcoming');
+  var hi=document.getElementById('challenges-subtab-history');
+  function setActive(btn,on){
+    if(!btn) return;
+    if(on){
+      btn.style.borderColor='var(--gold)';
+      btn.style.background='rgba(245,200,66,.12)';
+      btn.style.color='var(--gold)';
+    } else {
+      btn.style.borderColor='var(--border2)';
+      btn.style.background='transparent';
+      btn.style.color='var(--muted2)';
+    }
+  }
+  setActive(up, sub==='upcoming');
+  setActive(hi, sub==='history');
+  if(typeof renderChallenges==='function') renderChallenges();
+}
+
 // Bascule entre l'onglet "Défis" (permanents) et "Challenges" (événements datés)
 function switchChallengesTab(tab){
   _CHALLENGES_TAB=tab;
   _CHALLENGES_EXTRA_PAGE=0;
+  // Sous-onglets À venir/Historique : visibles uniquement sur tab events
+  var subs=document.getElementById('challenges-events-subtabs');
+  if(subs) subs.style.display=(tab==='events')?'flex':'none';
   // Mise à jour visuelle des onglets (3 onglets : defis / events / collab)
   var tabs={
     defis : document.getElementById('challenges-tab-defis'),
@@ -16514,6 +16582,79 @@ async function declineCollabChallenge(participantId){
   }
 }
 
+// ── Notifications popup quand le voisin accepte ou refuse un défi ────────
+// Affiche un popup au login si :
+//   - le voisin a ACCEPTÉ un défi 'proposed' et moi je n'ai pas encore répondu
+//   - le voisin a REFUSÉ un défi (status='expired' suite à decline) et moi pas répondu
+// Les notifs déjà vues sont stockées en localStorage pour ne pas re-popup.
+function _collabPartnerActsKey(){
+  return 'collab_partner_acts_'+(currentUser?currentUser.id:'anon');
+}
+function _getCollabPartnerActsSeen(){
+  try { var raw=localStorage.getItem(_collabPartnerActsKey()); return raw?JSON.parse(raw):{}; }
+  catch(e){ return {}; }
+}
+function _markCollabPartnerActSeen(key){
+  try {
+    var m=_getCollabPartnerActsSeen();
+    m[key]=Date.now();
+    var keys=Object.keys(m);
+    if(keys.length>100){
+      keys.sort(function(a,b){return m[a]-m[b];});
+      keys.slice(0,keys.length-80).forEach(function(k){delete m[k];});
+    }
+    localStorage.setItem(_collabPartnerActsKey(),JSON.stringify(m));
+  } catch(e){}
+}
+
+async function checkCollabPartnerActions(){
+  if(!currentUser) return;
+  try {
+    var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
+      .select('id,challenge_id,accepted_at,declined,collab_challenges!inner(id,status,challenge_code)')
+      .eq('player_id',currentUser.id)
+      .in('collab_challenges.status',['proposed','expired']);
+    if(!myParts || !myParts.length) return;
+    var seen=_getCollabPartnerActsSeen();
+    var queue=[];
+    for(var i=0;i<myParts.length;i++){
+      var mine=myParts[i];
+      var chal=mine.collab_challenges;
+      if(!chal) continue;
+      var {data:others}=await supabaseClient.from('collab_challenge_participants')
+        .select('player_id,accepted_at,declined,players(username)')
+        .eq('challenge_id',chal.id).neq('player_id',currentUser.id).limit(1);
+      var other=others && others[0];
+      if(!other) continue;
+      var otherName=(other.players && other.players.username) || 'Ton voisin';
+      if(chal.status==='proposed' && other.accepted_at && !other.declined && !mine.accepted_at && !mine.declined){
+        var key='accept_'+chal.id;
+        if(!seen[key]) queue.push({type:'accept',key:key,name:otherName});
+      } else if(chal.status==='expired' && other.declined && !mine.accepted_at && !mine.declined){
+        var key2='decline_'+chal.id;
+        if(!seen[key2]) queue.push({type:'decline',key:key2,name:otherName});
+      }
+    }
+    for(var j=0;j<queue.length;j++){
+      var n=queue[j];
+      if(n.type==='accept'){
+        await askConfirm(
+          'RP <strong>'+n.name+'</strong> vient de valider un défi collaboratif avec toi.<br><br>Pour valider de ton côté, va dans la page <strong>Voisins</strong> et accepte le défi.<br><br>Bon courage à vous deux 💪',
+          {emoji:'🤜🤛',title:'Ton voisin attend !',singleAction:true,okLabel:'OK',success:true}
+        );
+      } else {
+        await askConfirm(
+          'Désolé, RP <strong>'+n.name+'</strong> a refusé le défi collaboratif avec toi. Il est sûrement trop occupé ou fatigué.<br><br>Peut-être une prochaine fois 🤞',
+          {emoji:'😔',title:'Défi refusé',singleAction:true,okLabel:'OK'}
+        );
+      }
+      _markCollabPartnerActSeen(n.key);
+    }
+  } catch(e){
+    console.error('checkCollabPartnerActions error:', e);
+  }
+}
+
 // localStorage : IDs des défis collab déjà vus par le RP (pour ne pas re-pulser
 // la pastille à chaque reconnexion tant qu'aucun nouveau défi n'arrive).
 function _collabSeenKey(){
@@ -16723,6 +16864,25 @@ async function checkCollabPendingBanner(){
 
 // Marque le RP comme "inscrit" à un événement. Persistance BDD + cache local.
 // Le cache localStorage évite un round-trip à chaque render.
+// Helper : retourne le dossard du RP pour ce badge (génère + persiste si absent).
+// Format 3 chiffres entre 100 et 998 — joli visuel "dossard de course officiel".
+function _getBibForBadge(badgeId){
+  if(!currentUser) return null;
+  var key='bib-'+badgeId+'-'+currentUser.id;
+  var bib=localStorage.getItem(key);
+  if(!bib){
+    bib=String(Math.floor(Math.random()*899)+100);
+    localStorage.setItem(key,bib);
+    // Persist en background (rattrapage rétroactif si inscription pré-feature)
+    try {
+      supabaseClient.from('player_event_participations')
+        .update({bib_number:bib}).eq('player_id',currentUser.id).eq('badge_id',badgeId)
+        .then(function(){},function(){});
+    } catch(e){}
+  }
+  return bib;
+}
+
 async function participateEvent(badgeId,badgeName){
   if(!currentUser) return;
   // CAP : RP Free limité à 2 challenges/events par mois calendaire (du nouvel
@@ -16752,11 +16912,20 @@ async function participateEvent(badgeId,badgeName){
   }
   var key='participated-'+badgeId+'-'+currentUser.id;
   localStorage.setItem(key,'1');
+  // Dossard : préserver l'existant si déjà inscrit, sinon générer
+  var bibKey='bib-'+badgeId+'-'+currentUser.id;
+  var bib=localStorage.getItem(bibKey);
   try {
+    if(!bib){
+      var {data:existing}=await supabaseClient.from('player_event_participations')
+        .select('bib_number').eq('player_id',currentUser.id).eq('badge_id',badgeId).maybeSingle();
+      bib=(existing && existing.bib_number) || String(Math.floor(Math.random()*899)+100);
+      localStorage.setItem(bibKey,bib);
+    }
     await supabaseClient.from('player_event_participations')
-      .upsert({player_id:currentUser.id, badge_id:badgeId},{onConflict:'player_id,badge_id'});
+      .upsert({player_id:currentUser.id, badge_id:badgeId, bib_number:bib},{onConflict:'player_id,badge_id'});
   } catch(e){ console.warn('participateEvent DB persist fail',e); }
-  showToast('✓ Inscrit à "'+(badgeName||'l\'événement')+'" — on te rappellera le jour J !');
+  showToast('✓ Inscrit à "'+(badgeName||'l\'événement')+'" — Dossard #'+bib+' attribué 🎽');
   if(typeof renderChallenges==='function') renderChallenges();
   if(typeof renderMyChallenges==='function') renderMyChallenges();
 }
@@ -16766,6 +16935,7 @@ async function unregisterEvent(badgeId,badgeName){
   if(!currentUser) return;
   var key='participated-'+badgeId+'-'+currentUser.id;
   localStorage.removeItem(key);
+  localStorage.removeItem('bib-'+badgeId+'-'+currentUser.id);
   try {
     await supabaseClient.from('player_event_participations')
       .delete().eq('player_id',currentUser.id).eq('badge_id',badgeId);
