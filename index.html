@@ -10495,7 +10495,7 @@ async function loadAdminStats(){
     var startYesterday=startYestDate;
 
     // Players des 7 derniers jours (avec strava + premium pour breakdown période)
-    var {data:p7}=await supabaseClient.from('players').select('created_at,strava_access_token,premium').gte('created_at',startWeek);
+    var {data:p7}=await supabaseClient.from('players').select('created_at,strava_access_token,premium').gte('created_at',startWeekDate+'T00:00:00.000Z');
     // Totaux globaux (pas filtrés)
     var [{count:totalPlayers},{count:totalStrava},{count:totalPremium}]=await Promise.all([
       supabaseClient.from('players').select('*',{count:'exact',head:true}),
