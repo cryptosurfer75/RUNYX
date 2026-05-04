@@ -321,10 +321,20 @@ body::before{
 .ln-name{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--muted2)}
 .ln-range{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
 .ln-count{
-  font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;
-  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:10px;
-  padding:.14rem .55rem;color:#f0f3f8;
-  min-width:20px;text-align:center;letter-spacing:.5px;
+  font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;
+  background:rgba(255,255,255,.06);border-radius:10px;
+  padding:.12rem .5rem;color:#c8cfd8;
+  min-width:18px;text-align:center;
+}
+/* Mobile : booste le contraste — sur petits écrans le badge devenait illisible */
+@media(max-width:1024px){
+  .ln-count{
+    background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.22);
+    color:#ffffff;
+    font-size:.78rem;
+    padding:.14rem .58rem;
+  }
 }
 .ln-me{
   width:6px;height:6px;border-radius:50%;
@@ -6680,15 +6690,30 @@ async function loadLandsOnMap(){
   // Sans ce reset, un flag in-memory passé à true (par un autre flow) restait
   // collé pour toute la session et masquait le tracé sans raison apparente.
   window._hidePassages=false;
-  if(myId&&localStorage.getItem('expl-hide-'+myId)==='1'){
+  if(myId){
     try{
-      var hideAt=localStorage.getItem('expl-hide-at-'+myId);
+      // Source de vérité = DB (cross-device). Fallback localStorage pour compat.
+      var hideAt=null;
+      var {data:meExpl}=await supabaseClient.from('players')
+        .select('exploration_dismissed_at').eq('id',myId).maybeSingle();
+      if(meExpl && meExpl.exploration_dismissed_at){
+        hideAt=meExpl.exploration_dismissed_at;
+      } else if(localStorage.getItem('expl-hide-'+myId)==='1'){
+        hideAt=localStorage.getItem('expl-hide-at-'+myId);
+      }
       if(hideAt){
         var {data:latest}=await supabaseClient.from('runs')
           .select('run_date').eq('player_id',myId)
           .order('run_date',{ascending:false}).limit(1).maybeSingle();
         if(latest&&latest.run_date&&latest.run_date>hideAt){
           // Un nouveau run a été importé depuis le dernier Terminer → on ré-ouvre
+          try{
+            await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(myId),{
+              method:'PATCH',
+              headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+              body:JSON.stringify({exploration_dismissed_at:null})
+            });
+          }catch(e){}
           localStorage.removeItem('expl-hide-'+myId);
           localStorage.removeItem('expl-hide-at-'+myId);
           localStorage.removeItem('expl-done-'+myId);
@@ -6696,10 +6721,8 @@ async function loadLandsOnMap(){
         } else {
           window._hidePassages=true;
         }
-      } else {
-        window._hidePassages=true;
       }
-    }catch(e){window._hidePassages=true;}
+    }catch(e){}
   }
 
   // Charger mes passages du JOUR uniquement (pas d'historique cumulé)
@@ -8052,35 +8075,42 @@ async function _removeFromPendingExploration(hexId){
 async function _recoverMissingExploration(){
   if(!currentUser) return false;
   if(typeof h3==='undefined' || typeof decodePolyline!=='function') return false;
-  // Respect du choix du RP : si flag expl-hide=1 (cliqué Terminer) ET aucun
-  // nouveau run depuis → on ne fait PAS de recovery, sinon le modal de
-  // félicitations re-pop à chaque connexion.
-  // Le flag se "consume" implicitement quand un nouveau run arrive après
-  // expl-hide-at : on accepte alors la recovery (nouvelle session valide).
-  var hideFlag=localStorage.getItem('expl-hide-'+currentUser.id);
-  if(hideFlag==='1'){
-    var hideAtCheck=localStorage.getItem('expl-hide-at-'+currentUser.id);
-    if(hideAtCheck){
-      var {data:lastRun}=await supabaseClient.from('runs')
-        .select('run_date').eq('player_id',currentUser.id)
-        .order('run_date',{ascending:false}).limit(1).maybeSingle();
-      // Aucun nouveau run depuis le Terminer → on respecte le silence
-      if(!lastRun||!lastRun.run_date||lastRun.run_date<=hideAtCheck) return false;
-      // Sinon : nouveau run arrivé → on consume le flag et on continue la recovery
-      try{
-        localStorage.removeItem('expl-hide-'+currentUser.id);
-        localStorage.removeItem('expl-hide-at-'+currentUser.id);
-        localStorage.removeItem('expl-done-'+currentUser.id);
-      }catch(e){}
-    } else {
-      // Hide=1 sans hideAt → on respecte par sécurité
-      return false;
-    }
+  // Respect du choix du RP : on lit `exploration_dismissed_at` EN DB (cross-device).
+  // Fallback localStorage pour compat ascendante. Si aucun nouveau run depuis
+  // le dernier "Terminer" → on ne fait PAS de recovery (sinon la modal
+  // re-popp à chaque connexion sur un autre device).
+  var dismissedAt=null;
+  try{
+    var {data:meRow}=await supabaseClient.from('players')
+      .select('exploration_dismissed_at').eq('id',currentUser.id).maybeSingle();
+    if(meRow && meRow.exploration_dismissed_at) dismissedAt=meRow.exploration_dismissed_at;
+  }catch(e){}
+  if(!dismissedAt){
+    var hideFlag=localStorage.getItem('expl-hide-'+currentUser.id);
+    if(hideFlag==='1') dismissedAt=localStorage.getItem('expl-hide-at-'+currentUser.id);
+  }
+  if(dismissedAt){
+    var {data:lastRun}=await supabaseClient.from('runs')
+      .select('run_date').eq('player_id',currentUser.id)
+      .order('run_date',{ascending:false}).limit(1).maybeSingle();
+    if(!lastRun||!lastRun.run_date||lastRun.run_date<=dismissedAt) return false;
+    // Nouveau run arrivé après le Terminer → on consume le flag DB + local
+    try{
+      await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+        method:'PATCH',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+        body:JSON.stringify({exploration_dismissed_at:null})
+      });
+    }catch(e){}
+    try{
+      localStorage.removeItem('expl-hide-'+currentUser.id);
+      localStorage.removeItem('expl-hide-at-'+currentUser.id);
+      localStorage.removeItem('expl-done-'+currentUser.id);
+    }catch(e){}
   }
   // Cutoff = max(date du dernier "Terminer", début de période, J-30 fallback)
-  var hideAt=localStorage.getItem('expl-hide-at-'+currentUser.id);
   var periodStart=(_periodData && _periodData.start)?_periodData.start:null;
-  var cutoff=hideAt||periodStart||new Date(Date.now()-30*86400000).toISOString();
+  var cutoff=dismissedAt||periodStart||new Date(Date.now()-30*86400000).toISOString();
   var {data:runs}=await supabaseClient.from('runs')
     .select('polyline,run_date')
     .eq('player_id',currentUser.id)
@@ -8163,27 +8193,26 @@ async function finishExploration(){
   // Masquer le bouton
   var finBtn=document.getElementById('lands-finish-btn');
   if(finBtn) finBtn.style.display='none';
-  // Marquer la SESSION d'exploration comme terminée (localStorage + DB)
+  // Marquer la SESSION d'exploration comme terminée (DB + localStorage pour compat)
   if(currentUser){
     localStorage.setItem('expl-done-'+currentUser.id,'1');
-    // Enregistrer la date du dernier run à l'instant du Terminer.
-    // → le tracé réapparaîtra dès qu'un NOUVEAU run (date > cette valeur) sera importé.
+    // Enregistrer la date du dernier run à l'instant du Terminer EN DB (cross-device).
+    // → le tracé réapparaîtra dès qu'un NOUVEAU run (date > cette valeur) sera importé,
+    //    quelle que soit la machine sur laquelle le RP se reconnecte.
+    var dismissedAt=new Date().toISOString();
     try{
       var {data:latestRun}=await supabaseClient.from('runs')
         .select('run_date').eq('player_id',currentUser.id)
         .order('run_date',{ascending:false}).limit(1).maybeSingle();
-      if(latestRun&&latestRun.run_date){
-        localStorage.setItem('expl-hide-at-'+currentUser.id,latestRun.run_date);
-      } else {
-        localStorage.setItem('expl-hide-at-'+currentUser.id,new Date().toISOString());
-      }
+      if(latestRun&&latestRun.run_date) dismissedAt=latestRun.run_date;
+      localStorage.setItem('expl-hide-at-'+currentUser.id,dismissedAt);
       localStorage.setItem('expl-hide-'+currentUser.id,'1');
-    }catch(e){console.warn('[finishExpl] hide-flag save failed:',e);}
-    // Effacer pending_exploration en DB pour ne plus déclencher la modale
+    }catch(e){console.warn('[finishExpl] hide-flag local save failed:',e);}
+    // Effacer pending_exploration + persister exploration_dismissed_at en DB
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
       method:'PATCH',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
-      body:JSON.stringify({pending_exploration:null})
+      body:JSON.stringify({pending_exploration:null,exploration_dismissed_at:dismissedAt})
     });
   }
   // ⚠️ NE PAS supprimer les lands free globalement — avant, un DELETE non
