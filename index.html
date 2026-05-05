@@ -1580,7 +1580,7 @@ select option{background:#040c1c}
       <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Explorer · Louer · Acheter · Étoiles · Trésors</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-left:auto">
-      <div class="pill pill-rpc" style="font-size:.72rem" id="lands-loyer-total">Loyer ce mois : <strong style="color:var(--muted2);margin-left:.35rem">—</strong></div>
+      <div class="pill pill-rpc" style="font-size:.72rem;cursor:pointer" id="lands-loyer-total" onclick="reopenRentValidationModal()" title="Cliquer pour payer le loyer mensuel">Loyer ce mois : <strong style="color:var(--muted2);margin-left:.35rem">—</strong></div>
     </div>
   </div>
 
@@ -2961,6 +2961,26 @@ function askConfirm(message, opts){
         <div style="font-size:.72rem;color:var(--muted2);margin-bottom:.5rem">Force le prélèvement du loyer pour toutes les lands en location, sans vérifier la date.</div>
         <button onclick="adminForceRent()" style="padding:.45rem .8rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">🏠 Forcer le loyer</button>
         <div id="admin-rent-msg" style="font-size:.72rem;min-height:1rem;margin-top:.3rem"></div>
+      </div>
+    </div>
+
+    <!-- Régul prorata loyer (avril-mai 2026) -->
+    <div class="block" style="margin-top:1rem;border-color:rgba(32,208,224,.3)">
+      <div class="block-header" style="border-color:rgba(32,208,224,.15)">
+        <div class="block-title">💸 Régul <span class="hl">prorata loyer</span></div>
+      </div>
+      <div class="block-body-sm">
+        <div style="font-size:.72rem;color:var(--muted2);margin-bottom:.5rem">Audite les acquisitions facturées au tarif plein (5000 RPC) avant l'application du prorata, et rembourse le trop-payé. Filtre par mois (par défaut : avril + mai 2026). Le dry-run n'applique aucun crédit.</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.4rem">
+          <label style="font-size:.65rem;color:var(--muted2)">Du
+            <input id="admin-prorata-from" type="date" value="2026-04-01" style="margin-left:.3rem;padding:.3rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.72rem">
+          </label>
+          <label style="font-size:.65rem;color:var(--muted2)">Au
+            <input id="admin-prorata-to" type="date" value="2026-06-01" style="margin-left:.3rem;padding:.3rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.72rem">
+          </label>
+        </div>
+        <button onclick="adminAuditProrataRefunds(false)" style="padding:.45rem .8rem;border-radius:6px;border:1.5px solid var(--cyan,#20d0e0);background:rgba(32,208,224,.1);color:var(--cyan,#20d0e0);font-weight:700;font-size:.78rem;cursor:pointer">🔍 Dry-run</button>
+        <div id="admin-prorata-msg" style="font-size:.72rem;min-height:1rem;margin-top:.4rem"></div>
       </div>
     </div>
 
@@ -7199,10 +7219,16 @@ async function showLandDetail(landId){
   }
   if(land.status==='free'){
     var period=_periodData.period||1;
-    var rentCost=5000;
+    var prorata=_computeRentProrata();
+    var rentCost=prorata.cost;
+    var costLine=rentCost>0
+      ?'<div style="font-family:Space Mono,monospace;font-size:.9rem;color:var(--gold);font-weight:700;margin-bottom:.15rem">−'+rentCost.toLocaleString('fr')+' RPC</div>'
+       +'<div style="font-size:.62rem;color:var(--muted2);margin-bottom:.4rem">Prorata '+prorata.days+' j restant'+(prorata.days>1?'s':'')+' · puis 5 000 RPC/mois</div>'
+      :'<div style="font-family:Space Mono,monospace;font-size:.9rem;color:var(--green);font-weight:700;margin-bottom:.15rem">Gratuit</div>'
+       +'<div style="font-size:.62rem;color:var(--muted2);margin-bottom:.4rem">Fin de mois · 5 000 RPC pour le mois suivant</div>';
     body+='<div style="margin-top:.75rem;padding:.6rem;border-radius:8px;border:1.5px solid var(--gold);background:rgba(245,200,66,.06);text-align:center">'
       +'<div style="font-size:.7rem;color:var(--muted2);margin-bottom:.3rem">Louer cette Land</div>'
-      +'<div style="font-family:Space Mono,monospace;font-size:.9rem;color:var(--gold);font-weight:700;margin-bottom:.4rem">−'+rentCost.toLocaleString('fr')+' RPC / période</div>'
+      +costLine
       +'<button onclick="rentLand(\''+landId+'\')" style="padding:.4rem 1.5rem;border-radius:6px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.82rem;cursor:pointer">🔑 Louer</button>'
     +'</div>';
   }
@@ -7305,8 +7331,10 @@ async function rentLand(landId){
     }
   }
   var period=_periodData.period||1;
-  // Acquisition = mois 1 de location pour ce RP sur cette land → tarif plein 5000
-  var rentCost=getRentCostByMonths(1);
+  // Acquisition = prorata des jours restants du mois courant (165 RPC/jour).
+  // Le mois plein (5000 RPC) sera prélevé le 5 du mois suivant.
+  var prorata=_computeRentProrata();
+  var rentCost=prorata.cost;
   var w=window.__wallet||{rpc:0};
   if(w.rpc<rentCost){showToast('⚠️ Pas assez de RPC ('+rentCost.toLocaleString('fr')+' requis)');return;}
   // Vérifier ban
@@ -7335,9 +7363,15 @@ async function rentLand(landId){
     });
     if(error){showToast('⚠️ '+error.message);return;}
   }
-  await walletCredit(-rentCost,0,'Loyer Land '+landId.substring(0,8));
+  if(rentCost>0){
+    await walletCredit(-rentCost,0,'Loyer prorata '+prorata.days+'j Land '+landId.substring(0,8));
+  }
   closeModal('land-modal');
-  showToast('🔑 Land louée ! −'+rentCost.toLocaleString('fr')+' RPC');
+  if(rentCost>0){
+    showToast('🔑 Land louée ! Prorata '+prorata.days+' j : −'+rentCost.toLocaleString('fr')+' RPC');
+  } else {
+    showToast('🔑 Land louée ! Pas de loyer ce mois (mois plein dès le 1er)');
+  }
   // Retirer cet hex de pending_exploration (il est maintenant matérialisé en land)
   if(typeof _removeFromPendingExploration==='function') _removeFromPendingExploration(landId);
   loadLandsOnMap();
@@ -7928,11 +7962,30 @@ async function adminSimulateExploration(){
 var _exploreSelection={lands:[],playerId:null};
 
 // ── Loyer mensuel lands — auto-déduction le 5 du mois ──
+// Tarif prorata journalier (5000 / 30 ≈ 165) appliqué à l'acquisition
+// pour les jours restants du mois en cours. Le mois suivant = mois plein.
+var RENT_DAILY_RATE=165;
+
+// "YYYY-MM" d'une date (tz Europe/Paris)
+function _rentMonthOf(date){
+  var d=new Date(new Date(date).toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+  var m=d.getMonth()+1;
+  return d.getFullYear()+'-'+(m<10?'0'+m:m);
+}
+
 // "YYYY-MM" du mois courant (tz Europe/Paris)
 function _currentRentMonth(){
+  return _rentMonthOf(new Date());
+}
+
+// Prorata d'acquisition : nb de jours restants dans le mois courant × tarif/jour.
+// Le jour de location lui-même n'est pas facturé (ex: loc le 23 avril → 7 jours = 24-30).
+function _computeRentProrata(){
   var today=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
-  var m=today.getMonth()+1;
-  return today.getFullYear()+'-'+(m<10?'0'+m:m);
+  var year=today.getFullYear(), month=today.getMonth(), day=today.getDate();
+  var daysInMonth=new Date(year,month+1,0).getDate();
+  var daysRemaining=Math.max(0,daysInMonth-day);
+  return {days:daysRemaining,cost:daysRemaining*RENT_DAILY_RATE};
 }
 
 async function _getRentStatus(uid){
@@ -7946,17 +7999,24 @@ async function _markRentPaid(uid){
 
 async function _loadMyRentedLandsForRent(){
   var {data:lands}=await supabaseClient.from('lands')
-    .select('id,rent_periods,stars,rented_at')
+    .select('id,rent_periods,rent_start_period,stars,rented_at')
     .eq('tenant_id',currentUser.id)
     .eq('status','rented');
   if(!lands||!lands.length) return {lands:[],total:0};
+  // Skip les lands acquises dans le mois courant : prorata déjà débité à la location,
+  // le mois plein commencera au cycle 5-10 du mois suivant.
+  var currentMonth=_currentRentMonth();
+  var billable=lands.filter(function(l){
+    return !l.rented_at || _rentMonthOf(l.rented_at)!==currentMonth;
+  });
+  if(!billable.length) return {lands:[],total:0};
   var total=0;
-  lands.forEach(function(l){
+  billable.forEach(function(l){
     var rp=_computeRentPeriods(l);
     l._cost=getRentCostByMonths(rp);
     total+=l._cost;
   });
-  return {lands:lands,total:total};
+  return {lands:billable,total:total};
 }
 
 async function processMonthlyRent(){
@@ -8031,6 +8091,16 @@ async function submitRentPayment(){
 function goToLandsFromRent(){
   closeModal('rent-validation-modal');
   if(typeof nav==='function') nav('lands');
+}
+
+async function reopenRentValidationModal(){
+  if(!currentUser) return;
+  var currentMonth=_currentRentMonth();
+  var lastPaid=await _getRentStatus(currentUser.id);
+  if(lastPaid===currentMonth){showToast('✅ Loyer déjà payé ce mois');return;}
+  var info=await _loadMyRentedLandsForRent();
+  if(!info.lands.length){showToast('Aucune land en location');return;}
+  _openRentValidationModal(info);
 }
 
 async function _releaseSingleLand(landId){
@@ -8131,6 +8201,135 @@ async function adminForceRent(){
   }
   if(msg){msg.style.color='var(--green)';msg.textContent='✓ Loyer prélevé : −'+totalDebited.toLocaleString('fr')+' RPC sur '+tenantsProcessed+' joueur'+(tenantsProcessed>1?'s':'')+' ('+allRented.length+' lands)';}
   if(typeof renderMyLands==='function') renderMyLands();
+}
+
+// ── Admin: régul prorata loyer (correctif rétro) ──
+// Audite wallet_tx pour les acquisitions facturées 5000 RPC plein (avant l'application
+// du prorata) et calcule le remboursement = 5000 − (jours_restants × 165 RPC/jour).
+// Le crédit ne touche PAS rpc_cumulated (ce n'est pas un gain, c'est une correction).
+async function _refundProrataPlayer(playerId, amount, reason){
+  var {data:p}=await supabaseClient.from('players').select('rpc_balance').eq('id',playerId).single();
+  if(!p) return false;
+  var newRpc=(p.rpc_balance||0)+amount;
+  var resp=await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(playerId),{
+    method:'PATCH',
+    headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({rpc_balance:newRpc})
+  });
+  if(!resp.ok) return false;
+  try{
+    await supabaseClient.from('wallet_tx').insert({player_id:playerId, rpc_delta:amount, nyx_delta:0, reason:reason});
+  }catch(e){}
+  return true;
+}
+
+// Lock anti-double-click (session courante uniquement)
+var _prorataLockedLands={};
+
+async function adminAuditProrataRefunds(execute){
+  if(!isAdmin()) return;
+  var msg=document.getElementById('admin-prorata-msg');
+  var fromInput=document.getElementById('admin-prorata-from');
+  var toInput=document.getElementById('admin-prorata-to');
+  var fromIso=(fromInput&&fromInput.value)||'2026-04-01';
+  var toIso=(toInput&&toInput.value)||'2026-06-01';
+  if(msg){msg.style.color='var(--cyan,#20d0e0)';msg.textContent='Calcul en cours…';}
+
+  // 1. Source = table lands (lisible par admin pour tous joueurs, contrairement à wallet_tx limité par RLS).
+  //    On capture toutes les locations actives dont rented_at tombe dans la période.
+  var {data:lands, error}=await supabaseClient.from('lands')
+    .select('id, tenant_id, rented_at, status, free_until')
+    .eq('status','rented')
+    .gte('rented_at', fromIso)
+    .lt('rented_at', toIso)
+    .order('rented_at');
+  if(error){if(msg){msg.style.color='var(--red)';msg.textContent='Erreur : '+error.message;}return;}
+  if(!lands||!lands.length){if(msg){msg.style.color='var(--muted2)';msg.textContent='Aucune location active dans la période.';}return;}
+
+  // 2. Détection des régul déjà appliquées — limitée par RLS aux propres tx de l'admin
+  //    (utile quand l'admin a déjà été remboursé lors d'un run précédent).
+  var {data:done}=await supabaseClient.from('wallet_tx')
+    .select('reason')
+    .like('reason', 'Régul prorata loyer %');
+  var doneSet={};
+  (done||[]).forEach(function(d){
+    var m=(d.reason||'').match(/Land ([a-zA-Z0-9]+)/);
+    if(m) doneSet[m[1]]=true;
+  });
+  var hasPriorRegul=(done||[]).length>0;
+
+  // 3. Calcul prorata pour chaque land
+  var refunds=[];
+  lands.forEach(function(l){
+    if(!l.rented_at) return;
+    var landKey=l.id.substring(0,8);
+    if(doneSet[landKey]) return; // admin a déjà été remboursée pour cette land
+    if(_prorataLockedLands[l.id]) return; // déjà traitée dans cette session
+    var d=new Date(new Date(l.rented_at).toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+    var year=d.getFullYear(), month=d.getMonth(), day=d.getDate();
+    var daysInMonth=new Date(year,month+1,0).getDate();
+    var daysRemaining=Math.max(0,daysInMonth-day);
+    var shouldHavePaid=daysRemaining*RENT_DAILY_RATE;
+    var refund=5000-shouldHavePaid;
+    if(refund<=0) return;
+    refunds.push({
+      land_id:l.id, player_id:l.tenant_id, date:l.rented_at,
+      land:l.id, day:day, month:month+1, year:year,
+      daysRemaining:daysRemaining, shouldHavePaid:shouldHavePaid, refund:refund
+    });
+  });
+
+  if(!refunds.length){if(msg){msg.style.color='var(--muted2)';msg.textContent='Rien à régulariser (déjà fait ou aucune surfacturation).';}return;}
+
+  // 4. Agrégation par joueur + récup usernames
+  var byPlayer={};
+  refunds.forEach(function(r){
+    if(!byPlayer[r.player_id]) byPlayer[r.player_id]={total:0,count:0,items:[]};
+    byPlayer[r.player_id].total+=r.refund;
+    byPlayer[r.player_id].count++;
+    byPlayer[r.player_id].items.push(r);
+  });
+  var ids=Object.keys(byPlayer);
+  var {data:players}=await supabaseClient.from('players').select('id,username').in('id',ids);
+  var nameMap={};(players||[]).forEach(function(p){nameMap[p.id]=p.username||p.id.substring(0,8);});
+
+  // 5. Affichage
+  var grandTotal=refunds.reduce(function(s,r){return s+r.refund;},0);
+  var html='<div style="margin-top:.5rem;padding:.6rem;border:1px solid '+(execute?'var(--green)':'var(--cyan,#20d0e0)')+';border-radius:6px;max-height:55vh;overflow-y:auto;text-align:left">';
+  html+='<div style="font-weight:700;color:'+(execute?'var(--green)':'var(--cyan,#20d0e0)')+';margin-bottom:.5rem">'+(execute?'✅ EXÉCUTION':'🔍 DRY-RUN')+' · '+ids.length+' joueur'+(ids.length>1?'s':'')+' · '+refunds.length+' acquisition'+(refunds.length>1?'s':'')+' · Total +'+grandTotal.toLocaleString('fr')+' RPC</div>';
+  if(hasPriorRegul && !execute){
+    html+='<div style="padding:.4rem;border-radius:5px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.3);color:var(--gold);font-size:.7rem;margin-bottom:.5rem">⚠️ Une régul a déjà été appliquée par le passé (visible dans tes propres tx). Vérifie la liste ci-dessous avant d\'exécuter.</div>';
+  }
+  ids.forEach(function(pid){
+    var b=byPlayer[pid];
+    html+='<div style="margin-bottom:.4rem;padding:.35rem;border-bottom:1px solid var(--border);font-size:.72rem">'
+      +'<div><strong>'+nameMap[pid]+'</strong> · '+b.count+' land'+(b.count>1?'s':'')+' · <span style="color:var(--green)">+'+b.total.toLocaleString('fr')+' RPC</span></div>';
+    b.items.forEach(function(it){
+      html+='<div style="margin-left:.6rem;color:var(--muted2);font-size:.65rem">· '+it.date.substring(0,10)+' · land '+it.land.substring(0,8)+' · '+it.daysRemaining+'j × '+RENT_DAILY_RATE+' = '+it.shouldHavePaid.toLocaleString('fr')+' → +'+it.refund.toLocaleString('fr')+'</div>';
+    });
+    html+='</div>';
+  });
+  if(!execute){
+    html+='<button onclick="adminAuditProrataRefunds(true)" style="margin-top:.5rem;padding:.45rem .8rem;border-radius:6px;border:1.5px solid var(--green);background:rgba(45,219,128,.12);color:var(--green);font-weight:700;font-size:.78rem;cursor:pointer">▶ Exécuter les remboursements (+'+grandTotal.toLocaleString('fr')+' RPC)</button>';
+  }
+  html+='</div>';
+  if(msg){msg.style.color='var(--text)';msg.innerHTML=html;}
+
+  // 6. Si execute, applique les crédits
+  if(execute){
+    var ok=0, ko=0;
+    for(var i=0;i<refunds.length;i++){
+      var r=refunds[i];
+      var success=await _refundProrataPlayer(r.player_id, r.refund, 'Régul prorata loyer '+r.month+'/'+r.year+' Land '+r.land.substring(0,8));
+      if(success){ok++; _prorataLockedLands[r.land_id]=true;} else ko++;
+    }
+    showToast('✅ Régul appliquée : '+ok+' crédit'+(ok>1?'s':'')+(ko>0?(' · '+ko+' erreur(s)'):''));
+    // Refresh mon wallet si je suis dans la liste
+    if(byPlayer[currentUser.id]){
+      var {data:me}=await supabaseClient.from('players').select('rpc_balance,nyx_balance').eq('id',currentUser.id).single();
+      if(me){window.__wallet.rpc=me.rpc_balance||0;window.__wallet.nyx=me.nyx_balance||0;walletRefreshUI();}
+    }
+  }
 }
 
 // Charger les explorations en attente depuis la DB
@@ -8448,9 +8647,12 @@ async function showExploreSelectModal(hexIds, playerId, playerName){
 
   _exploreSelection={lands:freeLands.map(function(l){return l.id;}),playerId:playerId};
   var period=_periodData.period||1;
-  var rentCost=getRentCostByMonths(1); // acquisition = mois 1
+  // Acquisition = prorata des jours restants du mois courant (165 RPC/jour).
+  var prorata=_computeRentProrata();
+  var rentCost=prorata.cost;
 
-  sub.textContent=playerName+' — '+freeLands.length+' Land'+(freeLands.length>1?'s':'')+' disponible'+(freeLands.length>1?'s':'')+' · '+rentCost.toLocaleString('fr')+' RPC / Land';
+  var prorataLabel=prorata.cost>0?('prorata '+prorata.days+'j · '+rentCost.toLocaleString('fr')+' RPC / Land'):'gratuit ce mois (fin de mois)';
+  sub.textContent=playerName+' — '+freeLands.length+' Land'+(freeLands.length>1?'s':'')+' disponible'+(freeLands.length>1?'s':'')+' · '+prorataLabel;
 
   list.innerHTML=freeLands.map(function(l,i){
     return '<label style="display:flex;align-items:center;gap:.6rem;padding:.4rem .6rem;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.03);cursor:pointer">'
@@ -8471,7 +8673,7 @@ async function showExploreSelectModal(hexIds, playerId, playerName){
 
 function updateExploreSelectCost(){
   var checked=document.querySelectorAll('.explore-cb:checked');
-  var rentCost=getRentCostByMonths(1); // acquisition = mois 1
+  var rentCost=_computeRentProrata().cost; // acquisition = prorata jours restants
   var total=checked.length*rentCost;
   var costEl=document.getElementById('explore-select-cost');
   if(costEl) costEl.textContent=checked.length+' sélectionnée'+(checked.length>1?'s':'')+' · −'+total.toLocaleString('fr')+' RPC';
@@ -8486,7 +8688,9 @@ async function confirmRentSelection(){
   var checked=document.querySelectorAll('.explore-cb:checked');
   if(!checked.length) return;
   var period=_periodData.period||1;
-  var rentCost=getRentCostByMonths(1); // acquisition = mois 1
+  // Acquisition = prorata des jours restants du mois courant (165 RPC/jour).
+  var prorata=_computeRentProrata();
+  var rentCost=prorata.cost;
   var totalCost=checked.length*rentCost;
   var playerId=_exploreSelection.playerId;
 
@@ -8499,11 +8703,12 @@ async function confirmRentSelection(){
   }
 
   // Louer chaque land sélectionnée
+  var rentedAt=new Date().toISOString();
   var rented=0;
   for(var i=0;i<checked.length;i++){
     var landId=checked[i].dataset.id;
     var {error}=await supabaseClient.from('lands').update({
-      tenant_id:playerId, status:'rented', rent_start_period:period, rent_periods:1
+      tenant_id:playerId, status:'rented', rent_start_period:period, rent_periods:1, rented_at:rentedAt
     }).eq('id',landId).eq('status','free');
     if(!error) rented++;
   }
@@ -8519,7 +8724,12 @@ async function confirmRentSelection(){
   }
 
   closeModal('explore-select-modal');
-  showToast('🔑 '+rented+' Land'+(rented>1?'s':'')+' louée'+(rented>1?'s':'')+' ! −'+(rented*rentCost).toLocaleString('fr')+' RPC');
+  var debited=rented*rentCost;
+  if(debited>0){
+    showToast('🔑 '+rented+' Land'+(rented>1?'s':'')+' louée'+(rented>1?'s':'')+' ! Prorata '+prorata.days+'j : −'+debited.toLocaleString('fr')+' RPC');
+  } else {
+    showToast('🔑 '+rented+' Land'+(rented>1?'s':'')+' louée'+(rented>1?'s':'')+' ! Pas de loyer ce mois');
+  }
   loadLandsOnMap();
   renderMyLands();
 }
@@ -12997,12 +13207,17 @@ async function syncStravaActivities(silent){
         continue;
       }
       // 5. Accélération GPS : vérifier les segments (en ignorant les bords imprécis)
+      // V2 : on exige 3 segments suspects CONSÉCUTIFS pour flag (avant : 1 seul suffisait).
+      // Un saut GPS isolé crée au max 2 segments rapides consécutifs (jump + retour) → ignoré.
+      // Une vraie anomalie (déplacement en véhicule sur plusieurs dizaines de mètres) crée
+      // une série continue de segments rapides → toujours détectée.
       var gpsRejected=false;
       if(polyline&&typeof decodePolyline==='function'){
         var gpsPoints=decodePolyline(polyline);
         // Skip 5 premiers/derniers points (GPS imprécis démarrage/arrêt)
         var gStart=Math.min(5,Math.floor(gpsPoints.length/4));
         var gEnd=Math.max(gpsPoints.length-5,gpsPoints.length-Math.floor(gpsPoints.length/4));
+        var consecBad=0;
         for(var g=Math.max(1,gStart);g<gEnd;g++){
           var dLat=gpsPoints[g][0]-gpsPoints[g-1][0];
           var dLng=gpsPoints[g][1]-gpsPoints[g-1][1];
@@ -13010,15 +13225,16 @@ async function syncStravaActivities(silent){
           var segTime=timeMin/gpsPoints.length;
           if(segTime>0){
             var segSpd=distKm/(segTime/60);
-            // Seuil assoupli à 35 km/h (avant : 25)
             if(segSpd>35){
-              gpsRejected=true;
-              break;
+              consecBad++;
+              if(consecBad>=3){gpsRejected=true;break;}
+            } else {
+              consecBad=0;
             }
           }
         }
       }
-      // Si accélération suspecte : on importe mais on flag
+      // Si accélération suspecte (3 segments consécutifs > 35 km/h) : on importe mais on flag
       var _accelFlag=gpsRejected;
       // ── FIN ANTI-TRICHE ──────────────────────────
 
