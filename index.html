@@ -408,6 +408,17 @@ body::before{
    (pas un white bright qui "claque" comme une enseigne) + outline noir fin
    pour rester lisible sur n'importe quelle couleur de hex sous-jacente. */
 .hex-initial{pointer-events:none;background:none!important;border:none!important}
+.hex-sponsor-logo{pointer-events:none;background:none!important;border:none!important;display:flex!important;align-items:center;justify-content:center}
+.hex-sponsor-logo img{object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+/* Logo sponsor : caché en zoom large (sinon il écrase les hexes), taille fixe par palier */
+#lands-map.lz-tiny .hex-sponsor-logo,
+#lands-map.lz-12 .hex-sponsor-logo,
+#lands-map.lz-13 .hex-sponsor-logo,
+#lands-map.lz-14 .hex-sponsor-logo{display:none!important}
+#lands-map.lz-15 .hex-sponsor-logo img{width:32px;height:32px}
+#lands-map.lz-16 .hex-sponsor-logo img{width:42px;height:42px}
+#lands-map.lz-17 .hex-sponsor-logo img{width:54px;height:54px}
+#lands-map.lz-18p .hex-sponsor-logo img{width:64px;height:64px}
 .hex-initial-text{
   color:rgba(255,255,255,.42);
   font-family:'Bebas Neue',sans-serif;
@@ -2922,32 +2933,17 @@ function askConfirm(message, opts){
       </div>
     </div>
 
-    <!-- Simulateur Exploration Lands -->
+    <!-- Trouver une adresse + Sponsoring lands -->
     <div class="block" style="margin-top:1rem;border-color:rgba(74,144,255,.3)">
       <div class="block-header" style="border-color:rgba(74,144,255,.15)">
-        <div class="block-title">🗺️ Simuler une <span class="hl">Exploration</span></div>
+        <div class="block-title">📍 Trouver une <span class="hl">adresse</span></div>
       </div>
       <div class="block-body-sm">
-        <div style="display:flex;flex-direction:column;gap:.6rem">
-          <div>
-            <label style="font-size:.65rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">Joueur</label>
-            <select id="admin-explore-player" style="width:100%;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.82rem;outline:none">
-              <option value="">— Choisir —</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:.65rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">Ville / Lieu (centre de la course)</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-              <input id="admin-explore-lat" type="number" step="0.0001" placeholder="Latitude (ex: 48.8566)" style="padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.8rem;font-family:'Space Mono',monospace;outline:none">
-              <input id="admin-explore-lng" type="number" step="0.0001" placeholder="Longitude (ex: 2.3522)" style="padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.8rem;font-family:'Space Mono',monospace;outline:none">
-            </div>
-          </div>
-          <div>
-            <label style="font-size:.65rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.2rem">Rayon de la boucle (en hexagones)</label>
-            <input id="admin-explore-count" type="number" min="2" max="15" value="5" style="width:80px;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.85rem;font-family:'Space Mono',monospace;outline:none">
-          </div>
-          <button onclick="adminSimulateExploration()" style="padding:.45rem .8rem;border-radius:6px;border:1.5px solid var(--cyan,#20d0e0);background:rgba(32,208,224,.1);color:var(--cyan,#20d0e0);font-weight:700;font-size:.78rem;cursor:pointer">🗺️ Simuler l'exploration</button>
-          <div id="admin-explore-msg" style="font-size:.72rem;min-height:1rem"></div>
+        <div style="font-size:.7rem;color:var(--muted2);margin-bottom:.4rem">Géocoder une adresse pour récupérer les hexes correspondants (centre + 6 voisins) et sponsoriser jusqu'à 3 lands sur une durée donnée. Pendant la sponsorisation, le locataire ne paie pas de loyer.</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <input id="admin-addr-input" type="text" placeholder="ex : 200 Rue du Phare du Bout du Monde, 80440 Boves" style="width:100%;padding:.45rem .6rem;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.82rem;outline:none">
+          <button onclick="adminFindAddress()" style="padding:.45rem .8rem;border-radius:6px;border:1.5px solid var(--cyan,#20d0e0);background:rgba(32,208,224,.1);color:var(--cyan,#20d0e0);font-weight:700;font-size:.78rem;cursor:pointer">🔍 Trouver les hexes</button>
+          <div id="admin-addr-msg" style="font-size:.72rem;min-height:1rem"></div>
         </div>
       </div>
     </div>
@@ -2961,6 +2957,21 @@ function askConfirm(message, opts){
         <div style="font-size:.72rem;color:var(--muted2);margin-bottom:.5rem">Force le prélèvement du loyer pour toutes les lands en location, sans vérifier la date.</div>
         <button onclick="adminForceRent()" style="padding:.45rem .8rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">🏠 Forcer le loyer</button>
         <div id="admin-rent-msg" style="font-size:.72rem;min-height:1rem;margin-top:.3rem"></div>
+      </div>
+    </div>
+
+    <!-- Doublons par RP -->
+    <div class="block" style="margin-top:1rem;border-color:rgba(255,68,68,.3)">
+      <div class="block-header" style="border-color:rgba(255,68,68,.15)">
+        <div class="block-title">🔁 Doublons <span class="hl">par RP</span></div>
+      </div>
+      <div class="block-body-sm">
+        <div style="font-size:.72rem;color:var(--muted2);margin-bottom:.4rem">Trouver les courses en doublon (départs à moins de 2 min ou intervalles qui se chevauchent) chez un joueur. La suppression débite automatiquement les RPC associés.</div>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <input id="admin-dup-user" type="text" placeholder="Pseudo du RP" style="flex:1;padding:.4rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.78rem">
+          <button onclick="adminFindPlayerDuplicates()" style="padding:.4rem .8rem;border-radius:5px;border:1.5px solid var(--red);background:rgba(255,68,68,.08);color:var(--red);font-weight:700;font-size:.75rem;cursor:pointer">🔍 Chercher</button>
+        </div>
+        <div id="admin-dup-msg" style="font-size:.72rem;min-height:1rem;margin-top:.4rem"></div>
       </div>
     </div>
 
@@ -6679,7 +6690,7 @@ async function loadLandsOnMap(){
   // tronquait silencieusement les lands. 200k couvre ~200 RPs en beta.
   // TODO V1.0 : implémenter un filtrage par viewport (charger uniquement les
   // lands dans la zone visible ±5km) pour scaler au-delà.
-  var {data:lands}=await supabaseClient.from('lands').select('id,hex_col,hex_row,owner_id,tenant_id,status,stars').limit(200000);
+  var {data:lands}=await supabaseClient.from('lands').select('id,hex_col,hex_row,owner_id,tenant_id,status,stars,free_until,sponsor_name,sponsor_logo_url').limit(200000);
   // Charger les ventes actives
   var {data:sales}=await supabaseClient.from('land_sales').select('land_id,price_nyx').eq('status','active').limit(10000);
   var salesMap={};
@@ -6958,12 +6969,14 @@ async function loadLandsOnMap(){
         // On vérifie si cette land a un passage de moi (chargé en cache)
         if(window._myPassageLandIds&&window._myPassageLandIds.indexOf(land.id)>=0) isMyPassage=true;
       }
-      if(land.status==='free'&&!isNewExplored&&!isMyPassage) return;
+      // Land sponsorisée actuellement : free_until dans le futur (visible peu importe l'état).
+      var isSponsored=(land.free_until && new Date(land.free_until).getTime()>Date.now());
+      if(land.status==='free'&&!isNewExplored&&!isMyPassage&&!isSponsored) return;
       var otherPid=land.owner_id||land.tenant_id;
       var otherColor=(otherPid&&rpColorMap[otherPid])?rpColorMap[otherPid]:'#555';
-      var color=(isNewExplored||isMyPassage)?'#ffffff':isMineOwned?_myMapColor:isMineRented?_myMapColor:(land.status!=='free'?otherColor:'#555');
-      var fillOpacity=(isNewExplored||isMyPassage)?0.12:isMineOwned?1:(land.status==='owned'?0.9:isMineRented?0.3:land.status!=='free'?0.25:0.08);
-      var weight=isNewExplored?2:1;
+      var color=(isNewExplored||isMyPassage)?'#ffffff':isMineOwned?_myMapColor:isMineRented?_myMapColor:(land.status!=='free'?otherColor:(isSponsored?'#f5c842':'#555'));
+      var fillOpacity=(isNewExplored||isMyPassage)?0.12:isMineOwned?1:(land.status==='owned'?0.9:isMineRented?0.3:land.status!=='free'?0.25:(isSponsored?0.25:0.08));
+      var weight=isNewExplored?2:(isSponsored?2:1);
       var borderCol=color;
       var poly=L.polygon(latlngs,{
         color:borderCol,fillColor:color,fillOpacity:fillOpacity,
@@ -6971,7 +6984,29 @@ async function loadLandsOnMap(){
       }).addTo(_landsHexLayer);
       var starsTxt=land.stars>0?(' ★'.repeat(land.stars)):'';
       var statusTxt=isNewExplored?'<span style="color:#ffffff">LIBRE — Cliquer pour louer</span>':isMineOwned?'Ma propriété':isMineRented?'Ma location':land.status==='owned'?'Propriété':land.status==='rented'?'Loué':'Libre';
+      if(isSponsored){
+        var fuStr=new Date(land.free_until).toLocaleDateString('fr');
+        var sponsorLabel=land.sponsor_name?(land.sponsor_name+' '):'';
+        statusTxt+=' · <span style="color:#f5c842">⭐ '+sponsorLabel+'jusqu\'au '+fuStr+'</span>';
+      }
       poly.bindTooltip('<strong>'+land.id.substring(0,8)+'…</strong>'+starsTxt+'<br>'+statusTxt,{className:'hex-tt'});
+      // Logo du sponsor au centre de la land sponsorisée. La taille est gérée en CSS
+      // par paliers de zoom (.hex-sponsor-logo img) — caché en vue large, scale au plus près.
+      if(isSponsored && land.sponsor_logo_url){
+        try{
+          var spCtr=h3.cellToLatLng(land.id);
+          var spUrlSafe=land.sponsor_logo_url.replace(/"/g,'&quot;');
+          L.marker([spCtr[0],spCtr[1]],{
+            icon:L.divIcon({
+              className:'hex-sponsor-logo',
+              html:'<img src="'+spUrlSafe+'" onerror="this.style.display=\'none\'" alt="">',
+              iconSize:[64,64],
+              iconAnchor:[32,32]
+            }),
+            interactive:false
+          }).addTo(_landsHexLayer);
+        }catch(e){}
+      }
       poly.on('click',function(){showLandDetail(land.id);});
       // Initiale du propriétaire/locataire au centre — uniquement pour les lands
       // des AUTRES RPs (pas les miennes ni les libres). Aide à distinguer plusieurs
@@ -7182,22 +7217,64 @@ async function showLandDetail(landId){
     nbPassages=Array.isArray(_passList)?_passList.length:0;
   }catch(e){}
 
-  // Land offerte par défi voisin (gratuité jusqu'à free_until)
+  // Détection : gratuité (défi voisin) vs sponsorisation admin (sponsor_name présent)
   var _ldFreeLine='';
+  var _ldSponsorBlock='';
+  var _isSponsored=false;
   if(land.free_until && new Date(land.free_until).getTime()>Date.now()){
     var _fuD=new Date(land.free_until);
     var _fuTxt=_fuD.toLocaleDateString('fr',{day:'2-digit',month:'long',year:'numeric'});
-    _ldFreeLine='<span style="color:var(--green);font-weight:700">🎁 Gratuite jusqu\'au '+_fuTxt+'</span><br>';
+    if(land.sponsor_name){
+      _isSponsored=true;
+      var _spName=land.sponsor_name.replace(/</g,'&lt;');
+      var _spLogoUrl=land.sponsor_logo_url||'';
+      var _spSiteUrl=land.sponsor_url||'';
+      var _spMsg=land.sponsor_message||'';
+      var _logoImg=_spLogoUrl
+        ?'<img src="'+_spLogoUrl.replace(/"/g,'&quot;')+'" alt="'+_spName+'" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);background:#fff;object-fit:cover;box-shadow:0 2px 8px rgba(245,200,66,.3);flex-shrink:0">'
+        :'';
+      // Cadre entier cliquable (vers site partenaire si renseigné), sans flèche
+      var _cardCursor=_spSiteUrl?'cursor:pointer;':'';
+      var _cardInner='<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem;border-radius:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);'+_cardCursor+'">'
+        +_logoImg
+        +'<div style="flex:1;text-align:left">'
+          +'<span style="color:var(--gold);font-weight:700;font-size:.9rem">⭐ '+_spName+'</span>'
+          +'<div style="color:var(--muted2);font-size:.7rem;margin-top:.15rem">Sponsorisée jusqu\'au '+_fuTxt+'</div>'
+        +'</div>'
+      +'</div>';
+      _ldSponsorBlock=_spSiteUrl
+        ?'<a href="'+_spSiteUrl.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;margin:.4rem 0;color:inherit">'+_cardInner+'</a>'
+        :'<div style="margin:.4rem 0">'+_cardInner+'</div>';
+      if(_spMsg){
+        _ldSponsorBlock+='<div style="margin:.5rem 0 .3rem;padding:.55rem .7rem;border-left:3px solid var(--gold);background:rgba(245,200,66,.05);font-size:.78rem;color:var(--text);line-height:1.5;font-style:italic;text-align:left">'+_spMsg.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>';
+      }
+    } else {
+      _ldFreeLine='<span style="color:var(--green);font-weight:700">🎁 Gratuite jusqu\'au '+_fuTxt+'</span><br>';
+    }
   }
-  var body='<div style="font-size:.82rem;color:var(--muted2);line-height:2">'
-    +statusLine+'<br>'
-    +_ldFreeLine
-    +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
-    +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
-    +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
-    +'Passages ce mois : <strong onclick="showLandPassersList(\''+landId+'\')" style="color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
-    +'Rendement ce mois : <strong style="color:var(--gold)">'+(land.monthly_revenue||0).toLocaleString('fr')+' RPC</strong>'
-  +'</div>';
+  var body;
+  if(_isSponsored){
+    // Land sponsorisée : on n'affiche que le cadre sponsor + son message personnalisé.
+    // Pas d'infos économiques ni de statut/étoiles, c'est une vitrine partenaire.
+    body=_ldSponsorBlock;
+  } else {
+    body='<div style="font-size:.82rem;color:var(--muted2);line-height:2">'
+      +statusLine+'<br>'
+      +_ldFreeLine
+      +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
+      +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
+      +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
+      +'Passages ce mois : <strong onclick="showLandPassersList(\''+landId+'\')" style="color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
+      +'Rendement ce mois : <strong style="color:var(--gold)">'+(land.monthly_revenue||0).toLocaleString('fr')+' RPC</strong>'
+    +'</div>';
+  }
+  // Bouton admin "Libérer" sur land sponsorisée OU sur land orpheline avec free_until
+  // (= ancienne sponsorisation sans sponsor_name, parasites à nettoyer).
+  var _isOrphanFree=(land.status==='free' && !land.tenant_id && !land.owner_id && land.free_until && new Date(land.free_until).getTime()>Date.now());
+  if((_isSponsored||_isOrphanFree) && typeof isAdmin==='function' && isAdmin()){
+    var _btnLabel=_isSponsored?'🔓 Libérer la sponsorisation':'🗑️ Supprimer cette land orpheline';
+    body+='<button onclick="adminReleaseSponsoredLand(\''+landId+'\')" style="margin-top:.6rem;padding:.4rem .9rem;border-radius:6px;border:1.5px solid var(--red);background:rgba(255,68,68,.1);color:var(--red);font-weight:700;font-size:.75rem;cursor:pointer">'+_btnLabel+'</button>';
+  }
 
   // Si en vente et pas à moi → bouton Acheter
   if(activeSale&&activeSale.seller_id!==myId){
@@ -7221,7 +7298,7 @@ async function showLandDetail(landId){
       body+='<div style="margin-top:.5rem;padding:.35rem .8rem;border-radius:6px;border:1px dashed rgba(245,200,66,.4);background:rgba(245,200,66,.04);color:var(--muted2);font-size:.7rem">⭐ 2★/3★ réservé Premium</div>';
     }
   }
-  if(land.status==='free'){
+  if(land.status==='free' && !_isSponsored){
     var period=_periodData.period||1;
     var prorata=_computeRentProrata();
     var rentCost=prorata.cost;
@@ -7718,9 +7795,22 @@ async function renderMyLands(page){
       ? 'Lands <span class="hl">de '+(window.__viewedPlayer.name||'RP')+'</span>'
       : 'Mes <span class="hl">Lands</span>';
   }
-  var {data:myLands}=await supabaseClient.from('lands').select('id,status,stars,rent_periods,rent_start_period,monthly_revenue,owner_id,tenant_id,free_until,rented_at')
+  var {data:myLands}=await supabaseClient.from('lands').select('id,status,stars,rent_periods,rent_start_period,monthly_revenue,owner_id,tenant_id,free_until,rented_at,sponsor_name,sponsor_logo_url,sponsor_url,sponsor_message')
     .or('tenant_id.eq.'+_lTargetUuid+',owner_id.eq.'+_lTargetUuid)
     .order('status');
+  // Admin uniquement (consulte ses propres lands) : on ajoute les lands sponsorisées
+  // (sponsor_name renseigné, free_until futur, libres). Elles n'appartiennent à personne
+  // mais c'est l'admin qui les gère.
+  if(!_lIsOther && typeof isAdmin==='function' && isAdmin()){
+    var {data:spLands}=await supabaseClient.from('lands').select('id,status,stars,rent_periods,rent_start_period,monthly_revenue,owner_id,tenant_id,free_until,rented_at,sponsor_name,sponsor_logo_url,sponsor_url,sponsor_message')
+      .not('sponsor_name','is',null)
+      .gt('free_until',new Date().toISOString());
+    if(spLands && spLands.length){
+      var existingIds={};
+      (myLands||[]).forEach(function(l){existingIds[l.id]=true;});
+      spLands.forEach(function(l){if(!existingIds[l.id]) myLands.push(l);});
+    }
+  }
   if(!myLands||!myLands.length){
     tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--muted2);font-size:.82rem">Aucune Land.<br>Explore pour en découvrir !</td></tr>';
     if(summary) summary.innerHTML='<span style="font-size:.68rem;color:var(--muted2)">0 lands</span>';
@@ -7803,7 +7893,9 @@ async function renderMyLands(page){
     // naviguer manuellement (utile quand on a beaucoup de lands éparpillées).
     var clickAttr='onclick="focusLandOnMap(\''+l.id+'\')" title="Voir sur la carte" style="cursor:pointer;';
     // Detection : land offerte par défi voisin (gratuite jusqu'à free_until)
+    // ou sponsorisée par admin (sponsor_name renseigné)
     var isFree=l.free_until && new Date(l.free_until).getTime()>nowMs;
+    var isSponsoredRow=isFree && l.sponsor_name;
     var freeUntilTxt='';
     if(isFree){
       var fuD=new Date(l.free_until);
@@ -7813,9 +7905,11 @@ async function renderMyLands(page){
       ?(isForSale
         ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(32,208,224,.12);border:1px solid rgba(32,208,224,.4);color:var(--cyan)">À vendre · '+activeSaleSet[l.id]+' NYX</span>'
         :'<span class="badge g-confirme" '+clickAttr+'font-size:.55rem">Propriété</span>')
+      :(isSponsoredRow
+        ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.5);color:var(--gold)" title="Sponsorisée par '+(l.sponsor_name||'').replace(/"/g,'&quot;')+' — jusqu\'au '+freeUntilTxt+'">⭐ '+(l.sponsor_name||'Sponsor').substring(0,12)+'</span>'
       :(isFree
         ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(45,219,128,.15);border:1px solid rgba(45,219,128,.45);color:var(--green)" title="Land offerte par défi voisin — gratuite jusqu\'au '+freeUntilTxt+'">🎁 Gratuite</span>'
-        :'<span class="badge g-debutant" '+clickAttr+'font-size:.55rem">Location</span>');
+        :'<span class="badge g-debutant" '+clickAttr+'font-size:.55rem">Location</span>'));
     // Loyer selon la période de location (gratuit si free_until > now)
     var rp=_computeRentPeriods(l);
     var rentCost=rp<=1?5000:rp<=6?4800:4600;
@@ -8755,7 +8849,7 @@ async function confirmRentSelection(){
   renderMyLands();
 }
 
-// Initialiser le select joueurs dans le simulateur exploration
+// Initialiser le select joueurs dans le simulateur exploration (legacy, plus utilisé)
 async function initAdminExplorePanel(){
   var sel=document.getElementById('admin-explore-player');
   if(!sel||!isAdmin()) return;
@@ -8766,6 +8860,162 @@ async function initAdminExplorePanel(){
       sel.innerHTML+='<option value="'+p.id+'">'+p.username+'</option>';
     });
   }
+}
+
+// ── Admin: trouver une adresse + sponsoriser des lands ──
+// Usage : géocode l'adresse via Nominatim (OSM), affiche le hex H3 central + ses
+// 6 voisins (résolution 10 = ~65m), permet à l'admin de sélectionner 1-3 lands
+// et de poser un free_until dessus pour la durée choisie. Pendant cette période,
+// le locataire ne paie pas de loyer (mécanique free_until existante).
+var _adminAddrHexes=[];
+
+async function adminFindAddress(){
+  if(!isAdmin()) return;
+  var msg=document.getElementById('admin-addr-msg');
+  var addr=(document.getElementById('admin-addr-input').value||'').trim();
+  if(!addr){if(msg){msg.style.color='var(--red)';msg.textContent='Saisis une adresse.';}return;}
+  if(msg){msg.style.color='var(--cyan,#20d0e0)';msg.textContent='Géocodage en cours…';}
+  try{
+    var resp=await window.fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(addr)+'&format=json&limit=1');
+    var data=await resp.json();
+    if(!data||!data.length){if(msg){msg.style.color='var(--red)';msg.textContent='Adresse introuvable.';}return;}
+    var lat=parseFloat(data[0].lat);
+    var lng=parseFloat(data[0].lon);
+    var displayName=(data[0].display_name||'').replace(/</g,'&lt;');
+    if(typeof h3==='undefined'){if(msg){msg.style.color='var(--red)';msg.textContent='Lib h3 non chargée.';}return;}
+    var center=h3.latLngToCell(lat,lng,H3_RESOLUTION);
+    var ring=h3.gridDisk(center,1);
+    // Mettre le centre en premier
+    var ordered=[center].concat(ring.filter(function(h){return h!==center;}));
+    var hexInfos=[];
+    for(var i=0;i<ordered.length;i++){
+      var h=ordered[i];
+      var c=h3.cellToLatLng(h);
+      var {data:ld}=await supabaseClient.from('lands').select('id,status,tenant_id,owner_id,free_until').eq('id',h).maybeSingle();
+      hexInfos.push({hex:h,lat:c[0],lng:c[1],isCenter:h===center,land:ld||null});
+    }
+    var pids=new Set();
+    hexInfos.forEach(function(hi){if(hi.land){if(hi.land.tenant_id)pids.add(hi.land.tenant_id);if(hi.land.owner_id)pids.add(hi.land.owner_id);}});
+    var nameMap={};
+    if(pids.size){
+      var {data:players}=await supabaseClient.from('players').select('id,username').in('id',Array.from(pids));
+      (players||[]).forEach(function(p){nameMap[p.id]=p.username;});
+    }
+    _adminAddrHexes=hexInfos;
+    var nowMs=Date.now();
+    var html='<div style="margin-top:.5rem;padding:.55rem;border:1px solid var(--border);border-radius:6px;text-align:left">';
+    html+='<div style="font-size:.68rem;color:var(--muted2);margin-bottom:.5rem">📍 '+displayName+'<br>Lat '+lat.toFixed(5)+' · Lng '+lng.toFixed(5)+'</div>';
+    html+='<div style="font-size:.7rem;color:var(--muted2);margin-bottom:.4rem">Coche 1 à 3 lands à sponsoriser :</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:.3rem">';
+    hexInfos.forEach(function(hi,idx){
+      var statusTxt='Libre (pas en DB)';
+      var statusColor='var(--muted2)';
+      if(hi.land){
+        if(hi.land.status==='rented'){statusTxt='Loué par '+(nameMap[hi.land.tenant_id]||hi.land.tenant_id.substring(0,8));statusColor='var(--blue)';}
+        else if(hi.land.status==='owned'){statusTxt='Propriété de '+(nameMap[hi.land.owner_id]||hi.land.owner_id.substring(0,8));statusColor='var(--green)';}
+        else {statusTxt='Libre';}
+        if(hi.land.free_until && new Date(hi.land.free_until).getTime()>nowMs){
+          var fuDate=new Date(hi.land.free_until).toLocaleDateString('fr');
+          statusTxt+=' · sponsorisée jusqu\'au '+fuDate;
+          statusColor='var(--gold)';
+        }
+      }
+      html+='<label style="display:flex;align-items:center;gap:.5rem;padding:.35rem .55rem;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.03);cursor:pointer;font-size:.7rem">'
+        +'<input type="checkbox" class="admin-addr-cb" data-idx="'+idx+'" onchange="_adminAddrCheckMax(this)" style="accent-color:var(--cyan,#20d0e0);width:14px;height:14px">'
+        +'<span style="font-family:Space Mono,monospace;flex:1;color:var(--text)">'+(hi.isCenter?'★ ':'')+hi.hex.substring(0,12)+'…</span>'
+        +'<span style="font-size:.62rem;color:'+statusColor+'">'+statusTxt+'</span>'
+        +'</label>';
+    });
+    html+='</div>';
+    html+='<div style="margin-top:.7rem;display:flex;flex-direction:column;gap:.4rem">'
+      +'<input id="admin-addr-sponsor-name" type="text" placeholder="Nom du sponsor (ex : Foulées Amiens)" style="padding:.4rem .55rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.75rem">'
+      +'<input id="admin-addr-sponsor-logo" type="text" placeholder="URL du logo / image (https://…)" style="padding:.4rem .55rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.75rem;font-family:Space Mono,monospace">'
+      +'<input id="admin-addr-sponsor-url" type="text" placeholder="URL du site partenaire (https://…)" style="padding:.4rem .55rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.75rem;font-family:Space Mono,monospace">'
+      +'<textarea id="admin-addr-sponsor-msg" placeholder="Message personnalisé (ex : Promo chez notre partenaire le 19 mai, viens chercher ton dossard…)" rows="2" style="padding:.4rem .55rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.75rem;font-family:inherit;resize:vertical;min-height:50px"></textarea>'
+      +'<div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">'
+        +'<label style="font-size:.7rem;color:var(--muted2)">Durée (jours) :</label>'
+        +'<input id="admin-addr-days" type="number" value="30" min="1" max="365" style="width:70px;padding:.3rem;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:.78rem">'
+        +'<button onclick="adminSponsorLands()" style="padding:.4rem .8rem;border-radius:5px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.75rem;cursor:pointer">⭐ Sponsoriser</button>'
+      +'</div>'
+    +'</div>';
+    html+='</div>';
+    if(msg){msg.style.color='var(--text)';msg.innerHTML=html;}
+  }catch(err){
+    if(msg){msg.style.color='var(--red)';msg.textContent='Erreur géocodage : '+(err.message||err);}
+  }
+}
+
+function _adminAddrCheckMax(cb){
+  var checked=document.querySelectorAll('.admin-addr-cb:checked').length;
+  if(checked>3){
+    cb.checked=false;
+    showToast('⚠️ Max 3 lands à sponsoriser à la fois');
+  }
+}
+
+// Libère la sponsorisation d'une land (admin uniquement). Si la land était libre
+// (créée uniquement pour la sponsorisation), on la supprime carrément. Sinon
+// on retire juste les champs sponsor + free_until.
+async function adminReleaseSponsoredLand(landId){
+  if(!isAdmin()){showToast('⚠️ Admin uniquement');return;}
+  if(!confirm('Libérer la sponsorisation de cette land ?')) return;
+  var {data:land}=await supabaseClient.from('lands').select('id,status,tenant_id,owner_id,sponsor_name').eq('id',landId).maybeSingle();
+  if(!land){showToast('⚠️ Land introuvable');return;}
+  if(land.status==='free' && !land.tenant_id && !land.owner_id){
+    // Land créée uniquement pour la sponsorisation → on la supprime
+    await supabaseClient.from('lands').delete().eq('id',landId);
+    showToast('🔓 Sponsorisation libérée — land retirée');
+  } else {
+    // Land louée/possédée par quelqu'un → on retire juste la sponsorisation
+    await supabaseClient.from('lands').update({sponsor_name:null,sponsor_logo_url:null,sponsor_url:null,sponsor_message:null,free_until:null}).eq('id',landId);
+    showToast('🔓 Sponsorisation libérée');
+  }
+  closeModal('land-modal');
+  if(typeof loadLandsOnMap==='function') loadLandsOnMap();
+  if(typeof renderMyLands==='function') renderMyLands();
+}
+
+async function adminSponsorLands(){
+  if(!isAdmin()) return;
+  var checked=document.querySelectorAll('.admin-addr-cb:checked');
+  if(!checked.length){showToast('⚠️ Sélectionne au moins 1 land');return;}
+  if(checked.length>3){showToast('⚠️ Max 3 lands');return;}
+  var daysInput=document.getElementById('admin-addr-days');
+  var days=parseInt((daysInput&&daysInput.value)||0,10);
+  if(!days||days<1){showToast('⚠️ Durée invalide');return;}
+  var sponsorName=((document.getElementById('admin-addr-sponsor-name')||{}).value||'').trim()||null;
+  var sponsorLogo=((document.getElementById('admin-addr-sponsor-logo')||{}).value||'').trim()||null;
+  var sponsorUrl=((document.getElementById('admin-addr-sponsor-url')||{}).value||'').trim()||null;
+  var sponsorMsg=((document.getElementById('admin-addr-sponsor-msg')||{}).value||'').trim()||null;
+  var freeUntil=new Date();
+  freeUntil.setDate(freeUntil.getDate()+days);
+  var freeUntilIso=freeUntil.toISOString();
+  var sponsored=0, skipped=0;
+  for(var i=0;i<checked.length;i++){
+    var idx=parseInt(checked[i].dataset.idx,10);
+    var hi=_adminAddrHexes[idx];
+    if(!hi) continue;
+    if(hi.land){
+      var {error:upErr}=await supabaseClient.from('lands').update({free_until:freeUntilIso,sponsor_name:sponsorName,sponsor_logo_url:sponsorLogo,sponsor_url:sponsorUrl,sponsor_message:sponsorMsg}).eq('id',hi.hex);
+      if(upErr){skipped++;} else sponsored++;
+    } else {
+      var {error:insErr}=await supabaseClient.from('lands').insert({
+        id:hi.hex,
+        hex_col:Math.round(hi.lng*10000),
+        hex_row:Math.round(hi.lat*10000),
+        status:'free',
+        stars:0,
+        free_until:freeUntilIso,
+        sponsor_name:sponsorName,
+        sponsor_logo_url:sponsorLogo,
+        sponsor_url:sponsorUrl,
+        sponsor_message:sponsorMsg
+      });
+      if(insErr){skipped++;} else sponsored++;
+    }
+  }
+  showToast('⭐ '+sponsored+' land'+(sponsored>1?'s':'')+' sponsorisée'+(sponsored>1?'s':'')+' jusqu\'au '+freeUntil.toLocaleDateString('fr')+(skipped>0?(' · '+skipped+' échec'):''));
+  setTimeout(function(){adminFindAddress();},500);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -10668,13 +10918,99 @@ async function adminUnflagRun(runId){
 }
 
 async function adminDeleteRun(runId){
+  // Charger la course pour récupérer player_id et points (RPC = points × 6)
+  var {data:run}=await supabaseClient.from('runs').select('id,player_id,points,name').eq('id',runId).maybeSingle();
+  if(!run){showToast('⚠️ Course introuvable');return;}
+  var rpcDebit=(run.points||0)*6;
+  // Supprimer la course
   await window.fetch(supabaseUrl+'/rest/v1/runs?id=eq.'+encodeURIComponent(runId),{
     method:'DELETE',
     headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey}
   });
-  showToast('✕ Course supprimée');
-  adminLoadFlagged();
+  // Débiter le joueur des RPC qu'il avait reçus pour cette course
+  if(rpcDebit>0 && run.player_id){
+    var {data:p}=await supabaseClient.from('players').select('rpc_balance,rpc_cumulated').eq('id',run.player_id).single();
+    if(p){
+      var newRpc=Math.max(0,(p.rpc_balance||0)-rpcDebit);
+      var newCum=Math.max(0,(p.rpc_cumulated||0)-rpcDebit);
+      await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(run.player_id),{
+        method:'PATCH',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+        body:JSON.stringify({rpc_balance:newRpc,rpc_cumulated:newCum})
+      });
+      try{
+        await supabaseClient.from('wallet_tx').insert({player_id:run.player_id,rpc_delta:-rpcDebit,nyx_delta:0,reason:'Suppression course '+(run.name||'')+' · '+run.points+' pts'});
+      }catch(e){}
+    }
+  }
+  showToast('✕ Course supprimée'+(rpcDebit>0?' · −'+rpcDebit.toLocaleString('fr')+' RPC':''));
+  if(typeof adminLoadFlagged==='function') adminLoadFlagged();
   if(typeof loadPlayersFromSupabase==='function') loadPlayersFromSupabase();
+}
+
+// ── Admin: recherche & suppression des doublons d'un RP ──
+async function adminFindPlayerDuplicates(){
+  if(!isAdmin()) return;
+  var msg=document.getElementById('admin-dup-msg');
+  var name=(document.getElementById('admin-dup-user').value||'').trim();
+  if(!name){if(msg){msg.style.color='var(--red)';msg.textContent='Saisis un pseudo.';}return;}
+  if(msg){msg.style.color='var(--cyan,#20d0e0)';msg.textContent='Recherche…';}
+
+  var {data:players}=await supabaseClient.from('players').select('id,username').ilike('username',name).limit(5);
+  if(!players||!players.length){if(msg){msg.style.color='var(--red)';msg.textContent='Aucun RP trouvé pour "'+name+'"';}return;}
+  var player=players[0];
+
+  var {data:runs}=await supabaseClient.from('runs').select('id,name,distance,time,points,run_date,strava_activity_id').eq('player_id',player.id).order('run_date');
+  if(!runs||runs.length<2){if(msg){msg.style.color='var(--muted2)';msg.textContent=player.username+' — pas assez de courses pour avoir des doublons.';}return;}
+
+  // Détecter les paires en doublon (même règles que l'import)
+  var pairs=[];
+  var seen={};
+  for(var i=0;i<runs.length;i++){
+    var ra=runs[i];
+    if(!ra.run_date) continue;
+    var aStart=new Date(ra.run_date).getTime();
+    if(isNaN(aStart)) continue;
+    var aEnd=aStart+(ra.time||0)*60*1000;
+    for(var j=i+1;j<runs.length;j++){
+      var rb=runs[j];
+      if(!rb.run_date) continue;
+      var bStart=new Date(rb.run_date).getTime();
+      if(isNaN(bStart)) continue;
+      var bEnd=bStart+(rb.time||0)*60*1000;
+      var closeStart=Math.abs(aStart-bStart)<120*1000;
+      var overlap=Math.max(aStart,bStart)<Math.min(aEnd,bEnd);
+      if(closeStart||overlap){
+        var key=ra.id+'|'+rb.id;
+        if(!seen[key]){seen[key]=true; pairs.push({a:ra,b:rb,reason:closeStart?'départ < 2 min':'chevauchement temporel'});}
+      }
+    }
+  }
+
+  if(!pairs.length){if(msg){msg.style.color='var(--green)';msg.textContent='✓ Aucun doublon détecté pour '+player.username;}return;}
+
+  var html='<div style="margin-top:.4rem;padding:.5rem;border:1px solid var(--red);border-radius:6px;text-align:left;max-height:50vh;overflow-y:auto">';
+  html+='<div style="font-weight:700;color:var(--red);margin-bottom:.5rem">'+pairs.length+' doublon'+(pairs.length>1?'s':'')+' détecté'+(pairs.length>1?'s':'')+' chez <strong>'+player.username+'</strong></div>';
+  pairs.forEach(function(p){
+    html+='<div style="margin-bottom:.5rem;padding:.4rem;border:1px solid var(--border);border-radius:5px;background:rgba(255,68,68,.04)">';
+    html+='<div style="font-size:.68rem;color:var(--red);margin-bottom:.35rem">⚠ '+p.reason+'</div>';
+    [p.a,p.b].forEach(function(r){
+      var dt=r.run_date?(r.run_date.substring(0,16).replace('T',' ')):'—';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:.68rem;padding:.25rem 0;gap:.4rem">'
+        +'<span style="flex:1;color:var(--text)">'+dt+' · '+(r.name||'(sans nom)')+' · '+r.distance+' km · '+(r.time||0)+' min · <strong>'+r.points+' pts</strong></span>'
+        +'<button onclick="adminDeleteRunAndRefreshDup(\''+r.id+'\')" style="padding:.2rem .5rem;border-radius:4px;border:1.5px solid var(--red);background:rgba(255,68,68,.1);color:var(--red);font-size:.62rem;font-weight:700;cursor:pointer">✕ Supprimer</button>'
+        +'</div>';
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  if(msg){msg.style.color='var(--text)';msg.innerHTML=html;}
+}
+
+async function adminDeleteRunAndRefreshDup(runId){
+  if(!confirm('Supprimer cette course ? Les RPC associés seront aussi débités.')) return;
+  await adminDeleteRun(runId);
+  setTimeout(function(){adminFindPlayerDuplicates();}, 500);
 }
 
 function adminPreviewPts(){
@@ -13410,27 +13746,50 @@ async function syncStravaActivities(silent){
       //    n'existe plus dans le jeu, mais la règle reste pour les anciennes courses
       //    manuelles encore présentes en DB chez certains RPs historiques.
       var {data:sameDayRuns}=await supabaseClient.from('runs')
-        .select('id,distance,name,strava_activity_id')
+        .select('id,distance,name,strava_activity_id,run_date,time')
         .eq('player_id',currentUser.id)
         .gte('run_date',runDateDay+'T00:00:00')
         .lt('run_date',runDateDay+'T23:59:59.999');
-      var isDup=false, dupName='';
-      if(sameDayRuns && sameDayRuns.length>0){
+      var isDup=false, dupName='', dupReason='';
+      // 2a. Doublon temporel : départ à 120 s près OU intervalles qui se chevauchent.
+      //     Un coureur ne peut pas faire 2 courses en simultané (2 montres, GPX dupliqué…).
+      //     Ex : run1 14h00→15h30 et run2 14h15→15h00 → impossible, donc doublon.
+      var newStartMs=new Date(runDateFull).getTime();
+      var newDurSec=a.elapsed_time||a.moving_time||(timeMin*60);
+      var newEndMs=newStartMs+newDurSec*1000;
+      if(sameDayRuns && sameDayRuns.length>0 && !isNaN(newStartMs)){
+        for(var ov=0; ov<sameDayRuns.length; ov++){
+          var er=sameDayRuns[ov];
+          if(!er.run_date) continue;
+          var erStartMs=new Date(er.run_date).getTime();
+          if(isNaN(erStartMs)) continue;
+          var erEndMs=erStartMs+(er.time||0)*60*1000;
+          var closeStart=Math.abs(newStartMs-erStartMs)<120*1000;
+          var overlap=Math.max(newStartMs,erStartMs)<Math.min(newEndMs,erEndMs);
+          if(closeStart||overlap){
+            isDup=true; dupName=er.name||'course';
+            dupReason=closeStart?'départ < 2 min d\'écart':'chevauchement temporel';
+            break;
+          }
+        }
+      }
+      // 2b. Doublon contre une course MANUELLE (legacy) du même jour à distance proche.
+      //     On ne déduplique pas contre une course Strava ici : le test 2a (temporel)
+      //     gère déjà le cas Strava↔Strava de manière fiable.
+      if(!isDup && sameDayRuns && sameDayRuns.length>0){
         for(var sd=0; sd<sameDayRuns.length; sd++){
           var r=sameDayRuns[sd];
-          // Skip si c'est une course Strava (rule #1 a déjà géré le doublon par id).
-          // On ne déduplique que contre les courses sans strava_activity_id (= manuelles).
           if(r.strava_activity_id) continue;
-          // Tolérance ±15% sur la distance pour considérer comme doublon manuelle
           var ratio=km>0?Math.abs(r.distance-km)/km:1;
           if(ratio<=0.15){
             isDup=true; dupName=r.name||'course';
+            dupReason='distance similaire (course manuelle)';
             break;
           }
         }
       }
       if(isDup){
-        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — doublon probable avec « '+dupName+' » (même jour, distance similaire)</div>';
+        resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — doublon avec « '+dupName+' » ('+dupReason+')</div>';
         continue;
       }
       // Calculer les points : boost basé sur la DATE DE DÉPART de la course
