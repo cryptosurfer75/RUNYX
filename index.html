@@ -1015,6 +1015,7 @@ select option{background:#040c1c}
       <div onclick="event.stopPropagation();navMenu('grades')"     class="rtw-item">🎖️ Grades</div>
       <div onclick="event.stopPropagation();navMenu('rules')"      class="rtw-item">📋 Règles</div>
       <div onclick="event.stopPropagation();navMenu('legal')"      class="rtw-item">⚖️ CGV / CGU</div>
+        <div onclick="event.stopPropagation();navMenu('settings')"   class="rtw-item">⚙️ Mon profil</div>
       <div style="border-top:1px solid rgba(255,68,68,.2);margin-top:2px">
         <div onclick="event.stopPropagation();disconnectApp()" class="rtw-item" style="color:#ff6060">⏻ Déconnexion</div>
       </div>
@@ -3397,6 +3398,72 @@ function askConfirm(message, opts){
   </div>
 </div>
 
+<!-- ============================================================
+     PAGE : MON PROFIL (⚙️ Paramètres)
+============================================================ -->
+<div id="page-settings" class="page">
+  <div style="max-width:640px;margin:0 auto">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1;margin-bottom:1.25rem">
+      <span style="color:var(--text)">Mon</span> <span style="color:var(--gold)">profil</span>
+    </div>
+
+    <!-- ── Photo perso ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">📸 Photo <span class="hl">personnelle</span></div></div>
+      <div class="block-body-sm" style="text-align:center">
+        <div style="font-size:.68rem;color:var(--muted2);margin-bottom:.6rem">Visible uniquement par toi</div>
+        <div style="display:inline-block;position:relative">
+          <div id="settings-photo-frame" style="width:120px;height:120px;border-radius:50%;border:2px solid var(--gold);background:rgba(245,200,66,.06);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:2.5rem;color:var(--muted2)">👤</div>
+          <div onclick="openPersonalPhotoPicker()" style="position:absolute;bottom:4px;right:4px;width:28px;height:28px;border-radius:50%;background:rgba(4,12,28,.85);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.75rem" title="Changer la photo">✏️</div>
+        </div>
+        <input type="file" id="settings-photo-input" accept="image/*" style="display:none" onchange="uploadPersonalPhoto(this)">
+      </div>
+    </div>
+
+    <!-- ── Identité ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">👤 <span class="hl">Identité</span></div></div>
+      <div class="block-body-sm" id="settings-identity"></div>
+    </div>
+
+    <!-- ── Profil sportif ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">🏃 Profil <span class="hl">sportif</span></div></div>
+      <div class="block-body-sm" id="settings-sport"></div>
+    </div>
+
+    <!-- ── Compte ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">🔐 <span class="hl">Compte</span></div></div>
+      <div class="block-body-sm" id="settings-account"></div>
+    </div>
+
+    <!-- ── Abonnement ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">⭐ <span class="hl">Abonnement</span></div></div>
+      <div class="block-body-sm" id="settings-subscription"></div>
+    </div>
+
+    <!-- ── Préférences ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">🔔 <span class="hl">Préférences</span></div></div>
+      <div class="block-body-sm" id="settings-prefs"></div>
+    </div>
+
+    <!-- ── Zone rouge ───────────────────────────────────── -->
+    <div class="block" style="margin-bottom:1rem;border-color:rgba(255,68,68,.16)">
+      <div class="block-header" style="border-color:rgba(255,68,68,.08)"><div class="block-title" style="color:#d97070">Zone <span style="color:#d97070">rouge</span></div></div>
+      <div class="block-body-sm">
+        <div style="font-size:.72rem;color:var(--muted2);margin-bottom:.6rem;line-height:1.5">
+          Supprimer ton compte est <strong style="color:#d97070">définitif</strong>. Tu perdras l'accès à l'app, tes Lands seront libérées, et ton historique sera anonymisé.
+        </div>
+        <button onclick="openDeleteAccountModal()" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid rgba(255,68,68,.35);background:rgba(255,68,68,.05);color:#d97070;font-weight:700;font-size:.82rem;cursor:pointer">Supprimer mon compte</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <div class="toast" id="toast">✓ <span id="toast-msg"></span></div>
 
 <!-- ==========================================
@@ -4856,6 +4923,9 @@ function _closeGradeUpgrade(){
 function natFlag(v){ return v?(v.trim().split(/\s+/)[0]||'🏳️'):'🏳️'; }
 var SQUARE_FLAGS=['🇨🇭','🇻🇦','🇳🇵'];
 function natFlagHtml(v,sz){sz=sz||'1.15rem';var f=natFlag(v);var isSq=SQUARE_FLAGS.indexOf(f)>=0;var scale=isSq?'transform:scale(1.35);':'';return '<div style="width:1.4em;height:1.1em;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;font-size:'+sz+';line-height:1;flex-shrink:0"><span style="'+scale+'">'+f+'</span></div>';}
+// Anti-XSS : à utiliser sur toute donnée saisie par un RP/admin avant injection en innerHTML
+// (usernames, team names, descriptions de course, commentaires, messages de chat, sponsor name/message…).
+function escapeHtml(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // Generate large player pools per league
 const PLAYERS=[];
@@ -6985,7 +7055,7 @@ async function loadLandsOnMap(){
       var statusTxt=isNewExplored?'<span style="color:#ffffff">LIBRE — Cliquer pour louer</span>':isMineOwned?'Ma propriété':isMineRented?'Ma location':land.status==='owned'?'Propriété':land.status==='rented'?'Loué':'Libre';
       if(isSponsored){
         var fuStr=new Date(land.free_until).toLocaleDateString('fr');
-        var sponsorLabel=land.sponsor_name?(land.sponsor_name+' '):'';
+        var sponsorLabel=land.sponsor_name?(escapeHtml(land.sponsor_name)+' '):'';
         statusTxt+=' · <span style="color:#f5c842">⭐ '+sponsorLabel+'jusqu\'au '+fuStr+'</span>';
       }
       poly.bindTooltip('<strong>'+land.id.substring(0,8)+'…</strong>'+starsTxt+'<br>'+statusTxt,{className:'hex-tt'});
@@ -6994,7 +7064,7 @@ async function loadLandsOnMap(){
       if(isSponsored && land.sponsor_logo_url){
         try{
           var spCtr=h3.cellToLatLng(land.id);
-          var spUrlSafe=land.sponsor_logo_url.replace(/"/g,'&quot;');
+          var spUrlSafe=escapeHtml(land.sponsor_logo_url);
           L.marker([spCtr[0],spCtr[1]],{
             icon:L.divIcon({
               className:'hex-sponsor-logo',
@@ -7017,7 +7087,7 @@ async function loadLandsOnMap(){
       if(!isMineOwned && !isMineRented && !isNewExplored && !isMyPassage && land.status!=='free' && otherPid && (land.stars||0)<1 && !_totemLandIds.has(land.id)){
         var ownerNm=rpUsernameMap[otherPid];
         if(ownerNm){
-          var initial=ownerNm.charAt(0).toUpperCase();
+          var initial=escapeHtml(ownerNm.charAt(0).toUpperCase());
           var ctr=h3.cellToLatLng(land.id);
           L.marker([ctr[0],ctr[1]],{
             icon:L.divIcon({
@@ -7225,12 +7295,12 @@ async function showLandDetail(landId){
     var _fuTxt=_fuD.toLocaleDateString('fr',{day:'2-digit',month:'long',year:'numeric'});
     if(land.sponsor_name){
       _isSponsored=true;
-      var _spName=land.sponsor_name.replace(/</g,'&lt;');
+      var _spName=escapeHtml(land.sponsor_name);
       var _spLogoUrl=land.sponsor_logo_url||'';
       var _spSiteUrl=land.sponsor_url||'';
       var _spMsg=land.sponsor_message||'';
       var _logoImg=_spLogoUrl
-        ?'<img src="'+_spLogoUrl.replace(/"/g,'&quot;')+'" alt="'+_spName+'" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);background:#fff;object-fit:cover;box-shadow:0 2px 8px rgba(245,200,66,.3);flex-shrink:0">'
+        ?'<img src="'+escapeHtml(_spLogoUrl)+'" alt="'+_spName+'" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);background:#fff;object-fit:cover;box-shadow:0 2px 8px rgba(245,200,66,.3);flex-shrink:0">'
         :'';
       // Cadre entier cliquable (vers site partenaire si renseigné), sans flèche
       var _cardCursor=_spSiteUrl?'cursor:pointer;':'';
@@ -7242,10 +7312,10 @@ async function showLandDetail(landId){
         +'</div>'
       +'</div>';
       _ldSponsorBlock=_spSiteUrl
-        ?'<a href="'+_spSiteUrl.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;margin:.4rem 0;color:inherit">'+_cardInner+'</a>'
+        ?'<a href="'+escapeHtml(_spSiteUrl)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;margin:.4rem 0;color:inherit">'+_cardInner+'</a>'
         :'<div style="margin:.4rem 0">'+_cardInner+'</div>';
       if(_spMsg){
-        _ldSponsorBlock+='<div style="margin:.5rem 0 .3rem;padding:.55rem .7rem;border-left:3px solid var(--gold);background:rgba(245,200,66,.05);font-size:.78rem;color:var(--text);line-height:1.5;font-style:italic;text-align:left">'+_spMsg.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>';
+        _ldSponsorBlock+='<div style="margin:.5rem 0 .3rem;padding:.55rem .7rem;border-left:3px solid var(--gold);background:rgba(245,200,66,.05);font-size:.78rem;color:var(--text);line-height:1.5;font-style:italic;text-align:left">'+escapeHtml(_spMsg).replace(/\n/g,'<br>')+'</div>';
       }
     } else {
       _ldFreeLine='<span style="color:var(--green);font-weight:700">🎁 Gratuite jusqu\'au '+_fuTxt+'</span><br>';
@@ -7399,14 +7469,14 @@ async function showLandPassersList(landId){
 
 async function rentLand(landId){
   if(!currentUser){showToast('⚠️ Connecte-toi');return;}
-  // Limite Premium : free RPs plafonnés à 12 Lands en location simultanée.
+  // Limite Premium : free RPs plafonnés à 10 Lands en location simultanée.
   // Premium = illimité (= incite la conversion quand on devient territorial).
   if(typeof isPremium==='function' && !isPremium()){
     var {count:_nbLoc}=await supabaseClient.from('lands')
       .select('id',{count:'exact',head:true})
       .eq('tenant_id',currentUser.id).eq('status','rented');
-    if((_nbLoc||0)>=12){
-      showToast('⚠️ Limite atteinte : 12 Lands max en location pour les non-Premium');
+    if((_nbLoc||0)>=10){
+      showToast('⚠️ Limite atteinte : 10 Lands max en location pour les non-Premium');
       return;
     }
   }
@@ -7905,7 +7975,7 @@ async function renderMyLands(page){
         ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(32,208,224,.12);border:1px solid rgba(32,208,224,.4);color:var(--cyan)">À vendre · '+activeSaleSet[l.id]+' NYX</span>'
         :'<span class="badge g-confirme" '+clickAttr+'font-size:.55rem">Propriété</span>')
       :(isSponsoredRow
-        ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.5);color:var(--gold)" title="Sponsorisée par '+(l.sponsor_name||'').replace(/"/g,'&quot;')+' — jusqu\'au '+freeUntilTxt+'">⭐ '+(l.sponsor_name||'Sponsor').substring(0,12)+'</span>'
+        ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.5);color:var(--gold)" title="Sponsorisée par '+escapeHtml(l.sponsor_name||'')+' — jusqu\'au '+freeUntilTxt+'">⭐ '+escapeHtml((l.sponsor_name||'Sponsor').substring(0,12))+'</span>'
       :(isFree
         ?'<span class="badge" '+clickAttr+'font-size:.55rem;background:rgba(45,219,128,.15);border:1px solid rgba(45,219,128,.45);color:var(--green)" title="Land offerte par défi voisin — gratuite jusqu\'au '+freeUntilTxt+'">🎁 Gratuite</span>'
         :'<span class="badge g-debutant" '+clickAttr+'font-size:.55rem">Location</span>'));
@@ -8856,7 +8926,7 @@ async function initAdminExplorePanel(){
   if(players){
     sel.innerHTML='<option value="">— Choisir —</option>';
     players.forEach(function(p){
-      sel.innerHTML+='<option value="'+p.id+'">'+p.username+'</option>';
+      sel.innerHTML+='<option value="'+p.id+'">'+escapeHtml(p.username)+'</option>';
     });
   }
 }
@@ -9805,14 +9875,14 @@ async function loadTeamChat(teamId){
     var time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'}):'';
     var date=m.created_at?new Date(m.created_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'';
     return '<div style="display:flex;gap:.4rem;align-items:flex-start'+(isMe?';flex-direction:row-reverse':'')+'">'
-      +(p.avatar?'<img src="'+p.avatar+'" style="width:24px;height:24px;border-radius:6px;object-fit:cover;flex-shrink:0">':'<div style="width:24px;height:24px;border-radius:6px;background:rgba(74,144,255,.15);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:var(--muted2);flex-shrink:0">'+p.username.charAt(0).toUpperCase()+'</div>')
+      +(p.avatar?'<img src="'+escapeHtml(p.avatar)+'" style="width:24px;height:24px;border-radius:6px;object-fit:cover;flex-shrink:0">':'<div style="width:24px;height:24px;border-radius:6px;background:rgba(74,144,255,.15);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:var(--muted2);flex-shrink:0">'+escapeHtml(p.username.charAt(0).toUpperCase())+'</div>')
       +'<div style="max-width:75%;padding:.35rem .55rem;border-radius:8px;background:'+(isMe?'rgba(74,144,255,.12)':'rgba(30,37,53,.6)')+';border:1px solid '+(isMe?'rgba(74,144,255,.2)':'rgba(30,37,53,.8)')+'">'
       +'<div style="display:flex;align-items:center;gap:.3rem;margin-bottom:.15rem">'
-      +'<span style="font-size:.6rem;font-weight:700;color:'+(isMe?'#4a90ff':'var(--text)')+'">'+p.username+'</span>'
+      +'<span style="font-size:.6rem;font-weight:700;color:'+(isMe?'#4a90ff':'var(--text)')+'">'+escapeHtml(p.username)+'</span>'
       +'<span style="font-size:.5rem;color:var(--muted)">'+date+' '+time+'</span>'
       +(canDel?'<span onclick="deleteTeamMessage(\''+m.id+'\')" style="margin-left:auto;color:#ff4444;cursor:pointer;font-size:.55rem;padding:0 .15rem" title="Supprimer">✕</span>':'')
       +'</div>'
-      +'<div style="font-size:.72rem;color:var(--text);line-height:1.4;word-break:break-word">'+m.content+'</div>'
+      +'<div style="font-size:.72rem;color:var(--text);line-height:1.4;word-break:break-word">'+escapeHtml(m.content)+'</div>'
       +'</div></div>';
   }).join('');
   // Scroll en bas
@@ -9873,9 +9943,9 @@ function searchPlayers(query){
       var isMe=currentUser&&p.id===currentUser.id;
       var followed=isFollowing.indexOf(p.id)>=0;
       return '<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;cursor:pointer;border-bottom:1px solid rgba(30,37,53,.4);transition:background .1s" onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'transparent\'">'
-        +(p.avatar?'<img src="'+p.avatar+'" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1.5px solid '+gc+'">':'<div style="width:28px;height:28px;border-radius:6px;border:1.5px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:'+gc+'">'+p.username.charAt(0).toUpperCase()+'</div>')
+        +(p.avatar?'<img src="'+escapeHtml(p.avatar)+'" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1.5px solid '+gc+'">':'<div style="width:28px;height:28px;border-radius:6px;border:1.5px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:'+gc+'">'+escapeHtml(p.username.charAt(0).toUpperCase())+'</div>')
         +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:.78rem;font-weight:700;color:var(--text)">'+p.username+' '+natFlagHtml(p.nat)+'</div>'
+        +'<div style="font-size:.78rem;font-weight:700;color:var(--text)">'+escapeHtml(p.username)+' '+natFlagHtml(p.nat)+'</div>'
         +'</div>'
         +(!isMe?'<button onclick="event.stopPropagation();toggleFollow(\''+p.id+'\');searchPlayers(document.getElementById(\'feed-search\').value)" style="font-size:.55rem;padding:.12rem .4rem;border-radius:4px;border:1px solid '+(followed?'rgba(255,68,68,.4)':'rgba(45,219,128,.4)')+';background:'+(followed?'rgba(255,68,68,.08)':'rgba(45,219,128,.08)')+';color:'+(followed?'#ff6060':'var(--green)')+';cursor:pointer;font-weight:700">'+(followed?'✕ Retirer':'+ Suivre')+'</button>':'')
         +'</div>';
@@ -10045,8 +10115,8 @@ async function renderSocialFeed(){
     }
     var dateStr=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
     var avatarHtml=p.avatar
-      ?'<img src="'+p.avatar+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid '+gc+'">'
-      :'<div style="width:36px;height:36px;border-radius:8px;border:2px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:'+gc+'">'+p.username.charAt(0).toUpperCase()+'</div>';
+      ?'<img src="'+escapeHtml(p.avatar)+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid '+gc+'">'
+      :'<div style="width:36px;height:36px;border-radius:8px;border:2px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:'+gc+'">'+escapeHtml(p.username.charAt(0).toUpperCase())+'</div>';
     var reacts=reactMap[r.id]||{like:[],heart:[],flash:[]};
     var myId=currentUser.id;
     function rBtn(type,emoji,arr){
@@ -10103,7 +10173,7 @@ async function renderSocialFeed(){
     var descHtml='';
     if(r.description){
       descHtml='<div style="position:relative;background:rgba(144,96,240,.06);border:1px solid rgba(144,96,240,.15);border-radius:8px;padding:.5rem .65rem;margin:.4rem 0">'
-        +'<div style="font-size:.8rem;color:var(--text);line-height:1.5">'+r.description+'</div>'
+        +'<div style="font-size:.8rem;color:var(--text);line-height:1.5">'+escapeHtml(r.description)+'</div>'
         +(isMyRun?'<span onclick="removeRunDesc(\''+r.id+'\')" style="position:absolute;top:4px;right:4px;color:#ff4444;cursor:pointer;font-size:.55rem" title="Supprimer">✕</span>':'')
         +(isAdmin()&&!isMyRun?'<span onclick="removeRunDesc(\''+r.id+'\')" style="position:absolute;top:4px;right:4px;color:#ff4444;cursor:pointer;font-size:.55rem" title="Supprimer (admin)">✕</span>':'')
         +'</div>';
@@ -10121,7 +10191,7 @@ async function renderSocialFeed(){
       var isMine=c.player_id===currentUser.id;
       var canDelete=isMine||isAdmin();
       var delBtn=canDelete?'<span onclick="deleteComment(\''+c.id+'\')" style="margin-left:auto;color:#ff4444;cursor:pointer;font-size:.65rem;flex-shrink:0;padding:0 .2rem" title="Supprimer">✕</span>':'';
-      return '<div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-top:1px solid rgba(30,37,53,.5)"><span style="font-weight:700;font-size:.7rem;color:var(--text);flex-shrink:0">'+cp.username+'</span><span style="font-size:.7rem;color:var(--muted2);flex:1">'+c.content+'</span>'+delBtn+'</div>';
+      return '<div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-top:1px solid rgba(30,37,53,.5)"><span style="font-weight:700;font-size:.7rem;color:var(--text);flex-shrink:0">'+escapeHtml(cp.username)+'</span><span style="font-size:.7rem;color:var(--muted2);flex:1">'+escapeHtml(c.content)+'</span>'+delBtn+'</div>';
     }).join('');
 
     return '<div class="block" style="border-color:rgba(74,144,255,.32);box-shadow:0 2px 10px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.02)">'
@@ -10130,7 +10200,7 @@ async function renderSocialFeed(){
       +'<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">'
       +avatarHtml
       +'<div style="flex:1;min-width:0">'
-      +'<div style="display:flex;align-items:center;gap:.4rem"><div style="font-weight:700;font-size:.85rem;color:var(--text)">'+p.username+'</div>'+natFlagHtml(p.nat)
+      +'<div style="display:flex;align-items:center;gap:.4rem"><div style="font-weight:700;font-size:.85rem;color:var(--text)">'+escapeHtml(p.username)+'</div>'+natFlagHtml(p.nat)
       +(r.player_id!==currentUser.id&&isPremium()?'<button onclick="event.stopPropagation();toggleFollow(\''+r.player_id+'\')" style="font-size:.55rem;padding:.12rem .4rem;border-radius:4px;border:1px solid '+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.4)':'rgba(45,219,128,.4)')+';background:'+(_myFollowing.indexOf(r.player_id)>=0?'rgba(255,68,68,.08)':'rgba(45,219,128,.08)')+';color:'+(_myFollowing.indexOf(r.player_id)>=0?'#ff6060':'var(--green)')+';cursor:pointer;font-weight:700">'+(_myFollowing.indexOf(r.player_id)>=0?'✕ Retirer':'+ Suivre')+'</button>':'')
       +'</div>'
       +'<div style="font-size:.62rem;color:var(--muted)">'+dateStr+'</div>'
@@ -10715,7 +10785,7 @@ function renderOnlineUsersList(){
   body.innerHTML=sorted.map(function(u){
     return '<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-radius:6px;background:rgba(45,219,128,.05);border:1px solid rgba(45,219,128,.15)">'
       +'<span style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);flex-shrink:0"></span>'
-      +'<span style="font-size:.82rem;color:var(--text)">'+(u.username||'?')+'</span>'
+      +'<span style="font-size:.82rem;color:var(--text)">'+escapeHtml(u.username||'?')+'</span>'
     +'</div>';
   }).join('');
 }
@@ -10770,7 +10840,7 @@ async function initAdminPanel(){
   if(players){
     sel.innerHTML='<option value="">— Choisir un joueur —</option>';
     players.forEach(function(p){
-      sel.innerHTML+='<option value="'+p.id+'">'+p.username+'</option>';
+      sel.innerHTML+='<option value="'+p.id+'">'+escapeHtml(p.username)+'</option>';
     });
   }
   // Preview des points en temps réel
@@ -10785,7 +10855,7 @@ async function initAdminPanel(){
     if(s&&players){
       s.innerHTML='<option value="">— Choisir —</option>';
       players.forEach(function(p){
-        s.innerHTML+='<option value="'+p.id+'">'+p.username+'</option>';
+        s.innerHTML+='<option value="'+p.id+'">'+escapeHtml(p.username)+'</option>';
       });
     }
   });
@@ -10828,7 +10898,7 @@ async function adminLoadTeamList(){
   if(teams){
     sel.innerHTML='<option value="">— Choisir une team —</option>';
     teams.forEach(function(t){
-      sel.innerHTML+='<option value="'+t.id+'">'+t.name+'</option>';
+      sel.innerHTML+='<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>';
     });
   }
 }
@@ -10855,9 +10925,9 @@ async function adminLoadTeamChat(teamId){
     var time=m.created_at?new Date(m.created_at).toLocaleString('fr',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
     return '<div style="display:flex;align-items:flex-start;gap:.4rem;padding:.25rem 0;border-bottom:1px solid rgba(30,37,53,.4)">'
       +'<div style="flex:1;min-width:0">'
-      +'<span style="font-size:.65rem;font-weight:700;color:var(--text)">'+name+'</span> '
+      +'<span style="font-size:.65rem;font-weight:700;color:var(--text)">'+escapeHtml(name)+'</span> '
       +'<span style="font-size:.55rem;color:var(--muted)">'+time+'</span>'
-      +'<div style="font-size:.7rem;color:var(--muted2);word-break:break-word">'+m.content+'</div>'
+      +'<div style="font-size:.7rem;color:var(--muted2);word-break:break-word">'+escapeHtml(m.content)+'</div>'
       +'</div>'
       +'<span onclick="adminDeleteTeamMsg(\''+m.id+'\',\''+teamId+'\')" style="color:#ff4444;cursor:pointer;font-size:.6rem;flex-shrink:0;padding:.1rem" title="Supprimer">✕</span>'
       +'</div>';
@@ -11105,7 +11175,7 @@ async function adminCheckStarterPromotion(playerId, playerName){
     var targetLg=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
     if(!targetLg) return;
     await supabaseClient.from('players').update({league:targetLg.key}).eq('id',playerId);
-    if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">🚀 '+playerName+' sort de Starter → '+targetLg.name+' '+targetLg.label+' ('+totalPts+' pts)</span>';
+    if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">🚀 '+escapeHtml(playerName)+' sort de Starter → '+targetLg.name+' '+targetLg.label+' ('+totalPts+' pts)</span>';
     return;
   }
 
@@ -11118,7 +11188,7 @@ async function adminCheckStarterPromotion(playerId, playerName){
     var targetIdx=LEAGUES.findIndex(function(l){return l.key===targetLg2.key;});
     if(targetIdx<=currentIdx) return; // Pas de descente en calibrage
     await supabaseClient.from('players').update({league:targetLg2.key}).eq('id',playerId);
-    if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">📈 '+playerName+' monte en calibrage → '+targetLg2.name+' '+targetLg2.label+' ('+totalPts+' pts)</span>';
+    if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">📈 '+escapeHtml(playerName)+' monte en calibrage → '+targetLg2.name+' '+targetLg2.label+' ('+totalPts+' pts)</span>';
   }
 }
 
@@ -11978,9 +12048,9 @@ async function _checkPremiumExpiration(){
 }
 
 function _openPremiumExpireModal(nbLoc){
-  var excess=Math.max(0, nbLoc - 12);
+  var excess=Math.max(0, nbLoc - 10);
   var landsLine=excess>0
-    ?'<div style="margin-top:.6rem;padding:.45rem;border-radius:6px;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);font-size:.72rem;color:var(--red);text-align:left">⚠️ Tu as actuellement <strong>'+nbLoc+' lands</strong> en location. En quittant Premium, tu devras libérer <strong>'+excess+' land'+(excess>1?'s':'')+'</strong> (limite Free = 12).</div>'
+    ?'<div style="margin-top:.6rem;padding:.45rem;border-radius:6px;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);font-size:.72rem;color:var(--red);text-align:left">⚠️ Tu as actuellement <strong>'+nbLoc+' lands</strong> en location. En quittant Premium, tu devras libérer <strong>'+excess+' land'+(excess>1?'s':'')+'</strong> (limite Free = 10).</div>'
     :'';
   document.getElementById('lm-title').textContent='⚠️ Fin de Premium';
   document.getElementById('lm-sub').textContent='';
@@ -12012,7 +12082,7 @@ async function _acceptPremiumExit(){
     .eq('tenant_id',currentUser.id)
     .eq('status','rented');
   var nbLoc=(lands||[]).length;
-  if(nbLoc<=12){
+  if(nbLoc<=10){
     await _finalizePremiumExit();
     showToast('😔 Désolé de te voir quitter le statut Premium. Reviens quand tu le souhaites.');
     return;
@@ -12021,11 +12091,11 @@ async function _acceptPremiumExit(){
 }
 
 function _openPremiumReleaseModal(lands){
-  var excess=lands.length-12;
+  var excess=lands.length-10;
   // Tri par date la plus récente en haut (plus simple à libérer)
   lands.sort(function(a,b){return new Date(b.rented_at||0)-new Date(a.rented_at||0);});
   document.getElementById('lm-title').textContent='Libérer des Lands';
-  document.getElementById('lm-sub').textContent='Sélectionne '+excess+' land'+(excess>1?'s':'')+' à libérer pour rentrer dans la limite Free (12 max).';
+  document.getElementById('lm-sub').textContent='Sélectionne '+excess+' land'+(excess>1?'s':'')+' à libérer pour rentrer dans la limite Free (10 max).';
   var listHtml='<div style="display:flex;flex-direction:column;gap:.3rem;max-height:40vh;overflow-y:auto;margin-bottom:.6rem;text-align:left">';
   lands.forEach(function(l){
     var stars=l.stars?(' '+'⭐'.repeat(l.stars)):'';
@@ -12131,7 +12201,10 @@ function nav(page){
     // Sync la checkbox de préférence partage position avec la valeur en mémoire
     if(typeof syncSharePrefCheckbox==='function') syncSharePrefCheckbox();
   }
-  const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin'];
+  const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin','settings'];
+  if(page==='settings'){
+    if(typeof renderSettingsPage==='function') renderSettingsPage();
+  }
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
   // Initialiser la carte Lands quand on y navigue
   if(page==='lands'){
@@ -12308,7 +12381,7 @@ function navPlayerCard(){
   window.scrollTo(0,0);
   if(typeof renderDashboard==='function') renderDashboard();
   if(typeof renderTeams==='function') renderTeams();
-  var pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin'];
+  var pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin','settings'];
   document.querySelectorAll('.nav-tab')[pages.indexOf('dashboard')]?.classList.add('active');
 }
 function toggleRtwMenu(){
@@ -12825,7 +12898,7 @@ async function checkReferralNotifications(){
       if(r.rpc_amount>0) rewardParts.push('<span style="color:var(--gold)">+'+r.rpc_amount.toLocaleString('fr')+' RPC</span>');
       if(r.nyx_amount>0) rewardParts.push('<span style="color:var(--green)">+'+r.nyx_amount+' 💎 NYX</span>');
       var rewardHtml=rewardParts.join(' &nbsp;·&nbsp; ');
-      document.getElementById('ref-notif-text').innerHTML='<strong style="color:var(--gold)">'+name+'</strong> '+action+' !';
+      document.getElementById('ref-notif-text').innerHTML='<strong style="color:var(--gold)">'+escapeHtml(name)+'</strong> '+action+' !';
       // Adapter le montant affiché (innerHTML pour préserver les couleurs)
       var rewardEl=document.querySelector('#referral-notif-modal .modal-box > div:nth-child(5)');
       if(rewardEl) rewardEl.innerHTML=rewardHtml;
@@ -13856,7 +13929,7 @@ async function syncStravaActivities(silent){
         await _mergePendingExploration(hexes, _ctrLat, _ctrLng);
       }
       resultsHtml+='<div style="display:flex;justify-content:space-between;padding:.35rem .3rem;border-bottom:1px solid rgba(30,37,53,.6);font-size:.72rem;border-radius:4px">'
-        +'<span style="color:var(--text)">'+a.name+' <span style="color:var(--muted2)">'+Math.round(km*10)/10+'km</span></span>'
+        +'<span style="color:var(--text)">'+escapeHtml(a.name)+' <span style="color:var(--muted2)">'+Math.round(km*10)/10+'km</span></span>'
         +'<span style="display:flex;align-items:center;gap:.4rem"><span style="color:var(--gold);font-family:Space Mono,monospace">'+pts+' pts</span>'
         +(hexes.length?'<span style="color:var(--cyan);font-size:.6rem">'+hexes.length+' lands</span>':'')
         +'</span>'
@@ -15546,7 +15619,7 @@ async function renderTeams(){
           :requestBtn;
         var subLine=isOpen
           ?nb+' RP'+bonusLabel
-          :'📍 '+t.city+' · '+nb+' RP'+bonusLabel;
+          :'📍 '+escapeHtml(t.city||'')+' · '+nb+' RP'+bonusLabel;
         var _bIdx=getBlasonIdx(t);
         var emblemHtml=(_bIdx>=0&&AVAIL_BLASON_SMALL[_bIdx])
           ?'<div class="tmb-blason" data-bidx="'+_bIdx+'" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="cursor:pointer;flex-shrink:0;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><img src="'+AVAIL_BLASON_SMALL[_bIdx]+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1.5px solid '+teamColor+'55;display:block;pointer-events:none"></div>'
@@ -15555,7 +15628,7 @@ async function renderTeams(){
           +'<div class="team-pos" style="width:44px">'+rankEl+'</div>'
           +emblemHtml
           +'<div class="team-info" style="flex:1;min-width:0">'
-            +'<div class="team-name tmb-name" data-id="'+t.id+'" data-name="'+encodeURIComponent(t.name)+'" style="color:'+teamColor+';cursor:pointer" title="Voir la composition">'+t.name+typeTag+'</div>'
+            +'<div class="team-name tmb-name" data-id="'+t.id+'" data-name="'+encodeURIComponent(t.name)+'" style="color:'+teamColor+';cursor:pointer" title="Voir la composition">'+escapeHtml(t.name)+typeTag+'</div>'
             +'<div class="team-sub">'+subLine+'</div>'
           +'</div>'
           +'<div class="team-pts-col" style="text-align:right;min-width:60px">'
@@ -15812,8 +15885,8 @@ async function renderTeams(){
         +'<td><div class="rank-num '+rc+'">'+(i+1)+'</div></td>'
         +'<td><div style="display:flex;align-items:center;gap:.55rem">'
           +natFlagHtml(p.nat)
-          +'<div '+clickPC+' style="cursor:pointer;width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'">'+(p.avatar?'<img src="'+p.avatar+'" style="width:28px;height:28px;object-fit:cover;display:block;pointer-events:none">':'<canvas id="'+avId+'" width="28" height="28" style="display:block;pointer-events:none"></canvas>')+'</div>'
-          +'<div class="runner-name" onclick="showPlayerCardByUuid(\''+m.player_id+'\')" style="cursor:pointer">'+(p.username||'—')+'</div>'
+          +'<div '+clickPC+' style="cursor:pointer;width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'">'+(p.avatar?'<img src="'+escapeHtml(p.avatar)+'" style="width:28px;height:28px;object-fit:cover;display:block;pointer-events:none">':'<canvas id="'+avId+'" width="28" height="28" style="display:block;pointer-events:none"></canvas>')+'</div>'
+          +'<div class="runner-name" onclick="showPlayerCardByUuid(\''+m.player_id+'\')" style="cursor:pointer">'+escapeHtml(p.username||'—')+'</div>'
           +(isCap?'<span style="font-size:.58rem;font-weight:700;padding:.1rem .4rem;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:var(--gold);letter-spacing:.5px">C</span>':'')
           +kickBtn
         +'</div></td>'
@@ -18170,6 +18243,494 @@ function dashShowInviteCode(){
   }
   // renderTeams déjà appelée dans onLoginSuccess si session active
 })();
+
+/* ============================================================
+   PAGE ⚙️ MON PROFIL — rendering & actions
+============================================================ */
+
+// Helpers UI
+function _setRowsHtml(elId, rows){
+  var el=document.getElementById(elId);
+  if(!el) return;
+  el.innerHTML=rows.map(function(r){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem 0;border-bottom:1px solid rgba(30,37,53,.5)">'
+      +'<div style="font-size:.72rem;color:var(--muted2);flex-shrink:0;min-width:110px">'+escapeHtml(r.label)+'</div>'
+      +'<div style="font-size:.78rem;color:var(--text);text-align:right;flex:1;word-break:break-word">'+(r.html||escapeHtml(r.value||'—'))+'</div>'
+      +(r.action?'<div style="flex-shrink:0">'+r.action+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+function _editBtn(fn){
+  return '<button onclick="'+fn+'" style="padding:.25rem .55rem;border-radius:5px;border:1px solid rgba(74,144,255,.3);background:rgba(74,144,255,.08);color:#4a90ff;font-size:.65rem;font-weight:700;cursor:pointer;white-space:nowrap">Modifier</button>';
+}
+
+async function renderSettingsPage(){
+  if(!currentUser){ return; }
+  // Charger le RP courant depuis Supabase (toutes les colonnes nouvelles incluses)
+  var {data:p}=await supabaseClient.from('players').select('*').eq('id',currentUser.id).maybeSingle();
+  if(!p){ return; }
+  window.__settingsPlayer=p;
+
+  // Photo perso
+  _refreshSettingsPhoto(p.avatar_personal);
+
+  // Identité
+  _renderSettingsIdentity(p);
+  // Sport
+  _renderSettingsSport(p);
+  // Compte
+  _renderSettingsAccount(p);
+  // Abonnement
+  _renderSettingsSubscription(p);
+  // Préférences
+  _renderSettingsPrefs(p);
+}
+
+function _refreshSettingsPhoto(url){
+  var frame=document.getElementById('settings-photo-frame');
+  if(!frame) return;
+  frame.innerHTML=url
+    ? '<img src="'+escapeHtml(url)+'" style="width:100%;height:100%;object-fit:cover">'
+    : '👤';
+}
+
+function _renderSettingsIdentity(p){
+  _setRowsHtml('settings-identity',[
+    {label:'Nom de RP',     value:p.username||'—',         action:_editBtn('editSettingsField(\'username\')')},
+    {label:'Nationalité',   html:(p.nat?escapeHtml(p.nat):'<span style="color:var(--muted2)">—</span>'), action:_editBtn('editSettingsField(\'nat\')')},
+    {label:'Ville',         value:p.city||'—',             action:_editBtn('editSettingsField(\'city\')')},
+    {label:'Bio',           value:p.bio||'—',              action:_editBtn('editSettingsField(\'bio\')')},
+  ]);
+}
+
+function _renderSettingsSport(p){
+  var dob='—';
+  if(p.birth_date){
+    try{ dob=new Date(p.birth_date).toLocaleDateString('fr',{day:'numeric',month:'long',year:'numeric'}); }catch(e){}
+  }
+  var genderTxt=p.gender==='homme'?'Homme':p.gender==='femme'?'Femme':p.gender==='autre'?'Autre':'—';
+  _setRowsHtml('settings-sport',[
+    {label:'Poids',           value:p.weight_kg?(p.weight_kg+' kg'):'—',  action:_editBtn('editSettingsField(\'weight_kg\')')},
+    {label:'Date de naiss.',  value:dob,                                  action:_editBtn('editSettingsField(\'birth_date\')')},
+    {label:'Sexe',            value:genderTxt,                            action:_editBtn('editSettingsField(\'gender\')')},
+  ]);
+}
+
+function _renderSettingsAccount(p){
+  var email=(currentUser&&currentUser.email)||'—';
+  var inscritDepuis='—';
+  try{
+    var ca=currentUser&&currentUser.created_at;
+    if(ca) inscritDepuis=new Date(ca).toLocaleDateString('fr',{day:'numeric',month:'long',year:'numeric'});
+  }catch(e){}
+  _setRowsHtml('settings-account',[
+    {label:'Email',           value:email,            action:_editBtn('changeMyEmail()')},
+    {label:'Mot de passe',    html:'••••••••',        action:_editBtn('changeMyPassword()')},
+    {label:'Inscrit depuis',  value:inscritDepuis},
+  ]);
+}
+
+function _renderSettingsSubscription(p){
+  var statusHtml;
+  var actionBtn='';
+  if(p.premium && p.premium_until && new Date(p.premium_until)>new Date()){
+    var until=new Date(p.premium_until).toLocaleDateString('fr',{day:'numeric',month:'long',year:'numeric'});
+    var label=p.premium_trial?'Essai Premium':'Premium';
+    statusHtml='<span style="color:var(--gold);font-weight:700">⭐ '+label+'</span> · jusqu\'au '+until;
+    actionBtn='<button onclick="navMenu(\'access\')" style="padding:.25rem .55rem;border-radius:5px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-size:.65rem;font-weight:700;cursor:pointer">Gérer</button>';
+  } else {
+    statusHtml='<span style="color:var(--muted2)">Free</span>';
+    actionBtn='<button onclick="navMenu(\'access\')" style="padding:.25rem .55rem;border-radius:5px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-size:.65rem;font-weight:700;cursor:pointer">Passer Premium</button>';
+  }
+  _setRowsHtml('settings-subscription',[
+    {label:'Statut', html:statusHtml, action:actionBtn},
+  ]);
+}
+
+function _renderSettingsPrefs(p){
+  var pushOn=p.notif_push_enabled!==false;
+  var pushSwitch=_settingsSwitch('push',pushOn,'togglePushNotifs');
+  _setRowsHtml('settings-prefs',[
+    {label:'Notifications push',  html:pushSwitch},
+  ]);
+}
+
+function _settingsSwitch(id,on,fn){
+  var bg=on?'rgba(45,219,128,.25)':'rgba(80,80,80,.25)';
+  var brd=on?'rgba(45,219,128,.5)':'rgba(120,120,120,.4)';
+  var dotPos=on?'right:3px':'left:3px';
+  var dotCol=on?'#2ddb80':'#888';
+  return '<div onclick="'+fn+'()" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer">'
+    +'<span style="font-size:.7rem;color:'+(on?'var(--green)':'var(--muted2)')+';font-weight:700">'+(on?'ON':'OFF')+'</span>'
+    +'<div style="position:relative;width:36px;height:18px;border-radius:9px;background:'+bg+';border:1px solid '+brd+'">'
+      +'<div style="position:absolute;top:2px;'+dotPos+';width:12px;height:12px;border-radius:50%;background:'+dotCol+';transition:all .15s"></div>'
+    +'</div>'
+  +'</div>';
+}
+
+// ────────────── Edition d'un champ ──────────────
+async function editSettingsField(field){
+  var p=window.__settingsPlayer||{};
+  var label, type='text', current=p[field]||'', placeholder='', validate=null, transform=null;
+  switch(field){
+    case 'username':
+      label='Nouveau nom de RP'; placeholder='SpeedyJoe'; current=p.username||'';
+      validate=function(v){return v && v.length>=3 && v.length<=12 ? null : 'Entre 3 et 12 caractères';};
+      break;
+    case 'nat':
+      // Sélection contrôlée parmi la liste officielle (même que l'inscription).
+      _openCountryPickerModal(p.nat||'',async function(val){
+        await _saveSettingsField('nat',val);
+      });
+      return;
+    case 'city':
+      label='Ville'; placeholder='Amiens, France'; current=p.city||'';
+      validate=function(v){return v && v.length<=80 ? null : 'Max 80 caractères';};
+      // Majuscule à la 1ère lettre, le reste en minuscule
+      transform=function(v){return v ? v.charAt(0).toUpperCase()+v.slice(1).toLowerCase() : v;};
+      break;
+    case 'bio':
+      label='Bio (200 caractères max)'; placeholder='Quelques mots sur toi…'; current=p.bio||'';
+      validate=function(v){return v.length<=200 ? null : 'Max 200 caractères';};
+      break;
+    case 'weight_kg':
+      label='Poids (kg)'; type='number'; placeholder='65'; current=p.weight_kg||'';
+      validate=function(v){var n=parseFloat(v);return (n>20 && n<250)?null:'Entre 20 et 250 kg';};
+      transform=function(v){return parseFloat(v);};
+      break;
+    case 'birth_date':
+      label='Date de naissance'; type='date'; current=p.birth_date||'';
+      validate=function(v){
+        if(!v) return 'Requis';
+        var d=new Date(v); var now=new Date();
+        var age=(now-d)/(365.25*24*3600*1000);
+        if(age<10||age>110) return 'Date invalide';
+        if(age<18) return 'Tu dois avoir 18 ans ou plus';
+        return null;
+      };
+      break;
+    case 'gender':
+      label='Sexe'; current=p.gender||'';
+      // Cas particulier : choix multiple, on traite directement ici
+      _openSelectModal(label,[
+        {v:'homme',l:'Homme'},{v:'femme',l:'Femme'},{v:'autre',l:'Autre'}
+      ],current,async function(val){
+        await _saveSettingsField('gender',val);
+      });
+      return;
+  }
+  _openInputModal(label,type,current,placeholder,async function(val){
+    if(validate){ var err=validate(val); if(err){ showToast('⚠️ '+err); return false; } }
+    var finalVal=transform?transform(val):val;
+    await _saveSettingsField(field,finalVal);
+    return true;
+  });
+}
+
+async function _saveSettingsField(field,value){
+  if(!currentUser) return;
+  var patch={}; patch[field]=value;
+  var {error}=await supabaseClient.from('players').update(patch).eq('id',currentUser.id);
+  if(error){ showToast('⚠️ Erreur sauvegarde'); console.warn('[settings] save',field,error); return; }
+  if(window.__settingsPlayer) window.__settingsPlayer[field]=value;
+  if(window.__myPlayer && (field in window.__myPlayer)) window.__myPlayer[field]=value;
+  showToast('✓ Sauvegardé');
+  renderSettingsPage();
+}
+
+// Modale d'édition générique : champ texte/nombre/date
+function _openInputModal(label,type,current,placeholder,onSubmit){
+  var modal=document.getElementById('lm-modal-generic');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='lm-modal-generic';
+    modal.className='modal';
+    modal.innerHTML='<div class="modal-box" style="max-width:380px"><button class="modal-close" onclick="closeModal(\'lm-modal-generic\')">✕</button>'
+      +'<div class="modal-title" id="lmg-title">—</div>'
+      +'<div style="margin:.7rem 0"><input id="lmg-input" style="width:100%;padding:.55rem .7rem;border-radius:7px;border:1px solid rgba(74,144,255,.25);background:rgba(4,12,28,.5);color:var(--text);font-size:.85rem;outline:none;box-sizing:border-box"></div>'
+      +'<div id="lmg-msg" style="font-size:.7rem;min-height:1rem;margin-bottom:.4rem"></div>'
+      +'<div style="display:flex;gap:.5rem;justify-content:flex-end">'
+        +'<button onclick="closeModal(\'lm-modal-generic\')" style="padding:.45rem .9rem;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:.78rem;cursor:pointer">Annuler</button>'
+        +'<button id="lmg-ok" style="padding:.45rem .9rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">Valider</button>'
+      +'</div>'
+      +'</div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('lmg-title').textContent=label;
+  var input=document.getElementById('lmg-input');
+  input.type=type||'text';
+  input.value=current||'';
+  input.placeholder=placeholder||'';
+  document.getElementById('lmg-msg').textContent='';
+  document.getElementById('lmg-ok').onclick=async function(){
+    var v=input.value.trim();
+    var ok=await onSubmit(v);
+    if(ok!==false) closeModal('lm-modal-generic');
+  };
+  openModal('lm-modal-generic');
+  setTimeout(function(){input.focus();},150);
+}
+
+// Modale picker pays — clone les options du select d'inscription pour rester
+// aligné sur la liste officielle (drapeau auto-attribué via la valeur de l'option).
+function _openCountryPickerModal(current,onPick){
+  var modal=document.getElementById('country-picker-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='country-picker-modal';
+    modal.className='modal';
+    modal.innerHTML='<div class="modal-box" style="max-width:340px"><button class="modal-close" onclick="closeModal(\'country-picker-modal\')">✕</button>'
+      +'<div class="modal-title">Nationalité</div>'
+      +'<div style="margin:.7rem 0">'
+        +'<select id="cpm-select" style="width:100%;padding:.55rem .7rem;border-radius:7px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#fff;font-size:.85rem;outline:none;box-sizing:border-box"></select>'
+      +'</div>'
+      +'<div style="display:flex;gap:.5rem;justify-content:flex-end">'
+        +'<button onclick="closeModal(\'country-picker-modal\')" style="padding:.45rem .9rem;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-size:.78rem;cursor:pointer">Annuler</button>'
+        +'<button id="cpm-ok" style="padding:.45rem .9rem;border-radius:6px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">Valider</button>'
+      +'</div>'
+    +'</div>';
+    document.body.appendChild(modal);
+  }
+  // Cloner les options depuis le select d'inscription (#reg-nat) pour rester
+  // aligné. Fallback minimal si jamais le select n'est plus dans le DOM.
+  var cpmSel=document.getElementById('cpm-select');
+  var src=document.getElementById('reg-nat');
+  cpmSel.innerHTML=(src && src.innerHTML)
+    ? src.innerHTML
+    : '<option value="🇫🇷">🇫🇷 France</option><option value="🇧🇪">🇧🇪 Belgique</option><option value="🇨🇭">🇨🇭 Suisse</option><option value="🇨🇦">🇨🇦 Canada</option>';
+  // Pré-sélectionner la valeur courante
+  if(current) cpmSel.value=current;
+  document.getElementById('cpm-ok').onclick=async function(){
+    var val=cpmSel.value;
+    if(!val){ showToast('⚠️ Choisis un pays'); return; }
+    await onPick(val);
+    closeModal('country-picker-modal');
+  };
+  openModal('country-picker-modal');
+}
+
+// Modale select (sexe)
+function _openSelectModal(label,options,current,onPick){
+  var modal=document.getElementById('lm-modal-select');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='lm-modal-select';
+    modal.className='modal';
+    modal.innerHTML='<div class="modal-box" style="max-width:340px"><button class="modal-close" onclick="closeModal(\'lm-modal-select\')">✕</button>'
+      +'<div class="modal-title" id="lms-title">—</div>'
+      +'<div id="lms-options" style="display:flex;flex-direction:column;gap:.4rem;margin-top:.7rem"></div>'
+      +'</div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('lms-title').textContent=label;
+  document.getElementById('lms-options').innerHTML=options.map(function(o){
+    var sel=o.v===current;
+    return '<button data-v="'+escapeHtml(o.v)+'" style="padding:.55rem;border-radius:7px;border:1.5px solid '+(sel?'var(--gold)':'var(--border2)')+';background:'+(sel?'rgba(245,200,66,.1)':'transparent')+';color:'+(sel?'var(--gold)':'var(--text)')+';font-size:.85rem;font-weight:'+(sel?700:500)+';cursor:pointer">'+escapeHtml(o.l)+'</button>';
+  }).join('');
+  document.getElementById('lms-options').querySelectorAll('button').forEach(function(b){
+    b.onclick=async function(){
+      await onPick(b.dataset.v);
+      closeModal('lm-modal-select');
+    };
+  });
+  openModal('lm-modal-select');
+}
+
+// ────────────── Photo perso ──────────────
+function uploadPersonalPhoto(input){
+  if(!input.files||!input.files[0]) return;
+  var file=input.files[0];
+  if(file.size>2*1024*1024){ showToast('⚠️ Photo trop lourde (max 2 Mo)'); return; }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=async function(){
+      var c=document.createElement('canvas');
+      c.width=240; c.height=240;
+      var ctx=c.getContext('2d');
+      var side=Math.min(img.width,img.height);
+      var sx=(img.width-side)/2, sy=(img.height-side)/2;
+      ctx.drawImage(img,sx,sy,side,side,0,0,240,240);
+      var b64=c.toDataURL('image/jpeg',0.85);
+      await _saveSettingsField('avatar_personal',b64);
+      _refreshSettingsPhoto(b64);
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+// Mini-modale "Source de la photo" : Strava ou téléverser
+function openPersonalPhotoPicker(){
+  var modal=document.getElementById('personal-photo-picker');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='personal-photo-picker';
+    modal.className='modal';
+    modal.innerHTML='<div class="modal-box" style="max-width:320px;text-align:center">'
+      +'<button class="modal-close" onclick="closeModal(\'personal-photo-picker\')">✕</button>'
+      +'<div class="modal-title">Changer la photo</div>'
+      +'<div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.9rem">'
+        +'<button onclick="closeModal(\'personal-photo-picker\');document.getElementById(\'settings-photo-input\').click()" style="padding:.6rem;border-radius:7px;border:1.5px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-weight:700;font-size:.82rem;cursor:pointer">📤 Télécharger</button>'
+        +'<button onclick="closeModal(\'personal-photo-picker\');importPersonalPhotoFromStrava()" style="padding:.6rem;border-radius:7px;border:1.5px solid rgba(252,82,0,.4);background:rgba(252,82,0,.08);color:#fc5200;font-weight:700;font-size:.82rem;cursor:pointer">📥 Importer depuis Strava</button>'
+      +'</div>'
+    +'</div>';
+    document.body.appendChild(modal);
+  }
+  openModal('personal-photo-picker');
+}
+
+async function importPersonalPhotoFromStrava(){
+  if(!window.__stravaToken){
+    showToast('⚠️ Connecte-toi d\'abord à Strava');
+    return;
+  }
+  try{
+    var resp=await fetch('https://www.strava.com/api/v3/athlete',{
+      headers:{'Authorization':'Bearer '+window.__stravaToken}
+    });
+    if(!resp.ok){ showToast('⚠️ Strava : token expiré'); return; }
+    var ath=await resp.json();
+    var url=ath.profile;
+    if(!url||url==='avatar/athlete/large.png'){ showToast('⚠️ Pas de photo sur Strava'); return; }
+    await _saveSettingsField('avatar_personal',url);
+    _refreshSettingsPhoto(url);
+    showToast('✓ Photo importée depuis Strava');
+  }catch(e){
+    console.warn('[strava-photo]',e);
+    showToast('⚠️ Erreur Strava');
+  }
+}
+
+// ────────────── Email & mot de passe (Supabase Auth) ──────────────
+async function changeMyEmail(){
+  _openInputModal('Nouvel email','email',(currentUser&&currentUser.email)||'','toi@exemple.com',async function(v){
+    if(!v||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ showToast('⚠️ Email invalide'); return false; }
+    var {error}=await supabaseClient.auth.updateUser({email:v});
+    if(error){ showToast('⚠️ '+(error.message||'Erreur')); return false; }
+    showToast('✓ Email de confirmation envoyé');
+    return true;
+  });
+}
+
+async function changeMyPassword(){
+  _openInputModal('Nouveau mot de passe (6+ car.)','password','','••••••',async function(v){
+    if(!v||v.length<6){ showToast('⚠️ Min 6 caractères'); return false; }
+    var {error}=await supabaseClient.auth.updateUser({password:v});
+    if(error){ showToast('⚠️ '+(error.message||'Erreur')); return false; }
+    showToast('✓ Mot de passe modifié');
+    return true;
+  });
+}
+
+// ────────────── Préférences ──────────────
+async function togglePushNotifs(){
+  var p=window.__settingsPlayer||{};
+  var newVal=!(p.notif_push_enabled!==false);
+  if(newVal){
+    // Activation : demander permission au navigateur
+    if(!('Notification' in window)){
+      showToast('⚠️ Notifications non supportées sur cet appareil');
+      return;
+    }
+    var perm=Notification.permission;
+    if(perm==='denied'){
+      showToast('⚠️ Notifications bloquées dans les réglages du navigateur');
+      return;
+    }
+    if(perm!=='granted'){
+      perm=await Notification.requestPermission();
+      if(perm!=='granted'){
+        showToast('Permission refusée');
+        return;
+      }
+    }
+    // Enregistrer la préférence en DB. La vraie inscription au push (VAPID + endpoint)
+    // sera ajoutée en phase 2 quand l'envoi serveur sera prêt.
+    await _saveSettingsField('notif_push_enabled',true);
+    showToast('✓ Notifications activées');
+  } else {
+    await _saveSettingsField('notif_push_enabled',false);
+    showToast('✓ Notifications désactivées');
+  }
+}
+
+// ────────────── Suppression de compte ──────────────
+function openDeleteAccountModal(){
+  var modal=document.getElementById('delete-account-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='delete-account-modal';
+    modal.className='modal';
+    modal.innerHTML='<div class="modal-box" style="max-width:420px;border:1.5px solid rgba(255,68,68,.4)">'
+      +'<button class="modal-close" onclick="closeModal(\'delete-account-modal\')">✕</button>'
+      +'<div style="text-align:center">'
+        +'<div style="font-size:2.5rem;margin-bottom:.4rem">⚠️</div>'
+        +'<div class="modal-title" style="color:#ff6060">Supprimer mon compte</div>'
+        +'<div style="font-size:.78rem;color:var(--text);line-height:1.6;margin:.7rem 0">Cette action est <strong style="color:#ff6060">définitive</strong>. Tu vas perdre :</div>'
+        +'<ul style="text-align:left;font-size:.74rem;color:var(--muted2);line-height:1.7;padding-left:1.2rem;margin:.4rem auto;max-width:300px">'
+          +'<li>L\'accès à ton compte (déconnexion immédiate)</li>'
+          +'<li>Tes Lands en location seront libérées</li>'
+          +'<li>Ton historique sera anonymisé (RP supprimé)</li>'
+          +'<li>Ton email, ton mot de passe et tes données perso seront effacés</li>'
+        +'</ul>'
+        +'<div style="font-size:.74rem;color:var(--text);margin:.8rem 0 .3rem">Pour confirmer, tape ton nom de RP :</div>'
+        +'<div id="dam-target" style="font-family:Space Mono,monospace;font-size:.85rem;color:var(--gold);margin-bottom:.5rem">—</div>'
+        +'<input id="dam-confirm" type="text" placeholder="Nom de RP" style="width:100%;padding:.55rem .7rem;border-radius:7px;border:1px solid rgba(255,68,68,.3);background:rgba(4,12,28,.5);color:var(--text);font-size:.85rem;outline:none;text-align:center;box-sizing:border-box;font-family:Space Mono,monospace">'
+        +'<div style="display:flex;gap:.5rem;justify-content:center;margin-top:.9rem;flex-wrap:wrap">'
+          +'<button onclick="closeModal(\'delete-account-modal\')" style="padding:.55rem 1rem;border-radius:7px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">Annuler</button>'
+          +'<button onclick="confirmDeleteAccount()" style="padding:.55rem 1rem;border-radius:7px;border:1.5px solid #ff4444;background:rgba(255,68,68,.1);color:#ff6060;font-weight:700;font-size:.78rem;cursor:pointer">🔴 Supprimer définitivement</button>'
+        +'</div>'
+      +'</div></div>';
+    document.body.appendChild(modal);
+  }
+  var p=window.__settingsPlayer||window.__myPlayer||{};
+  document.getElementById('dam-target').textContent=p.username||'?';
+  document.getElementById('dam-confirm').value='';
+  openModal('delete-account-modal');
+}
+
+async function confirmDeleteAccount(){
+  var p=window.__settingsPlayer||window.__myPlayer||{};
+  var typed=(document.getElementById('dam-confirm').value||'').trim();
+  if(typed!==(p.username||'')){
+    showToast('⚠️ Le nom saisi ne correspond pas');
+    return;
+  }
+  if(!currentUser){ showToast('⚠️ Pas connecté'); return; }
+  showToast('Suppression en cours…');
+  try{
+    // 1) Libérer toutes les lands en location
+    await supabaseClient.from('lands')
+      .update({tenant_id:null,status:'free',rented_at:null,rent_periods:null,rent_start_period:null,monthly_revenue:null})
+      .eq('tenant_id',currentUser.id).eq('status','rented');
+    // 2) Anonymiser le profil (on garde la ligne pour préserver les FK historiques)
+    var anonName='RP supprimé';
+    await supabaseClient.from('players').update({
+      username:anonName, avatar:null, avatar_personal:null, nat:null,
+      city:null, bio:null, weight_kg:null, birth_date:null, gender:null,
+      premium:false, premium_until:null, premium_trial:false,
+      is_visible:false, frozen:true, notif_push_enabled:false
+    }).eq('id',currentUser.id);
+    // 3) Supprimer les abonnements push
+    await supabaseClient.from('push_subscriptions').delete().eq('player_id',currentUser.id);
+    // 4) Verrouiller l'auth : on remplace email + mot de passe par des valeurs aléatoires
+    // pour bloquer toute reconnexion. La suppression définitive de la ligne auth.users
+    // nécessite une Edge Function admin (à brancher en V2).
+    var rand=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+    var deletedEmail='deleted+'+currentUser.id.substring(0,8)+'@speedixleague.invalid';
+    try{ await supabaseClient.auth.updateUser({email:deletedEmail, password:'X9!'+rand}); }catch(e){}
+    await supabaseClient.auth.signOut();
+    closeModal('delete-account-modal');
+    showToast('✓ Compte supprimé. À bientôt peut-être.');
+    setTimeout(function(){ window.location.href='/'; }, 1500);
+  }catch(e){
+    console.warn('[delete-account]',e);
+    showToast('⚠️ Erreur — contacte contact@speedixleague.com');
+  }
+}
 
 </script>
 <!-- ======= MODAL : CODE D'INVITATION ======= -->
