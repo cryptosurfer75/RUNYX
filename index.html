@@ -18253,16 +18253,17 @@ function _setRowsHtml(elId, rows){
   var el=document.getElementById(elId);
   if(!el) return;
   el.innerHTML=rows.map(function(r){
+    var titleAttr=r.value?' title="'+escapeHtml(r.value)+'"':'';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem 0;border-bottom:1px solid rgba(30,37,53,.5)">'
-      +'<div style="font-size:.72rem;color:var(--muted2);flex-shrink:0;min-width:110px">'+escapeHtml(r.label)+'</div>'
-      +'<div style="font-size:.78rem;color:var(--text);text-align:right;flex:1;word-break:break-word">'+(r.html||escapeHtml(r.value||'—'))+'</div>'
+      +'<div style="font-size:.72rem;color:var(--muted2);flex-shrink:0;min-width:90px">'+escapeHtml(r.label)+'</div>'
+      +'<div'+titleAttr+' style="font-size:.78rem;color:var(--text);text-align:right;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r.html||escapeHtml(r.value||'—'))+'</div>'
       +(r.action?'<div style="flex-shrink:0">'+r.action+'</div>':'')
     +'</div>';
   }).join('');
 }
 
 function _editBtn(fn){
-  return '<button onclick="'+fn+'" style="padding:.25rem .55rem;border-radius:5px;border:1px solid rgba(74,144,255,.3);background:rgba(74,144,255,.08);color:#4a90ff;font-size:.65rem;font-weight:700;cursor:pointer;white-space:nowrap">Modifier</button>';
+  return '<span onclick="'+fn+'" title="Modifier" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.85rem;opacity:.7;transition:opacity .15s,background .15s" onmouseover="this.style.opacity=1;this.style.background=\'rgba(74,144,255,.1)\'" onmouseout="this.style.opacity=.7;this.style.background=\'transparent\'">✏️</span>';
 }
 
 async function renderSettingsPage(){
@@ -18349,10 +18350,11 @@ function _renderSettingsSubscription(p){
 }
 
 function _renderSettingsPrefs(p){
-  var pushOn=p.notif_push_enabled!==false;
-  var pushSwitch=_settingsSwitch('push',pushOn,'togglePushNotifs');
+  // Notifs push désactivées en attendant le passage stores (FCM Android + APNs iOS).
+  // Le toggle réapparaîtra automatiquement quand on aura branché Capacitor PushNotifications.
+  var soonBadge='<span style="font-size:.62rem;padding:.18rem .5rem;border-radius:8px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.3);color:var(--gold);font-weight:700;letter-spacing:.5px">⏳ Bientôt</span>';
   _setRowsHtml('settings-prefs',[
-    {label:'Notifications push',  html:pushSwitch},
+    {label:'Notifications push',  html:soonBadge},
   ]);
 }
 
@@ -18625,14 +18627,36 @@ async function changeMyPassword(){
   });
 }
 
-// ────────────── Préférences ──────────────
+// ────────────── Notifications push (VAPID) ──────────────
+// Clé publique VAPID — identifie SPEEDIX auprès des téléphones (peut être visible).
+// La clé privée correspondante est stockée dans Supabase secrets (Edge Functions).
+var VAPID_PUBLIC_KEY='BMB41PcFjWSNUkjPmH97QdTd_Mcg5xCLhMVxBL_zUVfxk-c_znG8uP6HBfWNsxiIk_RDEl34mARry_AsFEdNzwI';
+
+// Convertit la clé URL-base64 en Uint8Array (format attendu par PushManager).
+function _urlBase64ToUint8Array(b64){
+  var pad='='.repeat((4-b64.length%4)%4);
+  var s=(b64+pad).replace(/-/g,'+').replace(/_/g,'/');
+  var raw=atob(s);
+  var arr=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+
 async function togglePushNotifs(){
   var p=window.__settingsPlayer||{};
   var newVal=!(p.notif_push_enabled!==false);
   if(newVal){
-    // Activation : demander permission au navigateur
-    if(!('Notification' in window)){
-      showToast('⚠️ Notifications non supportées sur cet appareil');
+    // ── Activation : permission + inscription au PushManager + DB ──
+    if(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)){
+      // Détection iOS Safari hors PWA — donne un message qui guide.
+      var ua=navigator.userAgent||'';
+      var isIOS=/iPhone|iPad|iPod/i.test(ua);
+      var isStandalone=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches;
+      if(isIOS && !isStandalone){
+        showToast('⚠️ Sur iPhone, ajoute SPEEDIX à l\'écran d\'accueil pour activer les notifs');
+      } else {
+        showToast('⚠️ Notifications non supportées sur ce navigateur');
+      }
       return;
     }
     var perm=Notification.permission;
@@ -18642,16 +18666,51 @@ async function togglePushNotifs(){
     }
     if(perm!=='granted'){
       perm=await Notification.requestPermission();
-      if(perm!=='granted'){
-        showToast('Permission refusée');
-        return;
-      }
+      if(perm!=='granted'){ showToast('Permission refusée'); return; }
     }
-    // Enregistrer la préférence en DB. La vraie inscription au push (VAPID + endpoint)
-    // sera ajoutée en phase 2 quand l'envoi serveur sera prêt.
-    await _saveSettingsField('notif_push_enabled',true);
-    showToast('✓ Notifications activées');
+    try{
+      var reg=await navigator.serviceWorker.ready;
+      // Si déjà inscrit (autre session), on récupère l'abonnement existant
+      var sub=await reg.pushManager.getSubscription();
+      if(!sub){
+        sub=await reg.pushManager.subscribe({
+          userVisibleOnly:true,
+          applicationServerKey:_urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      var json=sub.toJSON();
+      var endpoint=json.endpoint || sub.endpoint;
+      var p256dh=(json.keys&&json.keys.p256dh)||'';
+      var auth=(json.keys&&json.keys.auth)||'';
+      // Upsert dans push_subscriptions (clé unique : player_id + endpoint)
+      await supabaseClient.from('push_subscriptions').upsert({
+        player_id:currentUser.id,
+        endpoint:endpoint,
+        p256dh_key:p256dh,
+        auth_key:auth,
+        user_agent:(navigator.userAgent||'').slice(0,200),
+        last_used_at:new Date().toISOString()
+      },{onConflict:'player_id,endpoint'});
+      await _saveSettingsField('notif_push_enabled',true);
+      showToast('✓ Notifications activées');
+    }catch(e){
+      console.warn('[push-subscribe]',e);
+      showToast('⚠️ Erreur inscription : '+(e.message||e));
+    }
   } else {
+    // ── Désactivation : désinscription PushManager + suppression DB ──
+    try{
+      if('serviceWorker' in navigator){
+        var reg2=await navigator.serviceWorker.ready;
+        var sub2=await reg2.pushManager.getSubscription();
+        if(sub2){
+          var ep=sub2.endpoint;
+          await sub2.unsubscribe();
+          await supabaseClient.from('push_subscriptions').delete()
+            .eq('player_id',currentUser.id).eq('endpoint',ep);
+        }
+      }
+    }catch(e){ console.warn('[push-unsubscribe]',e); }
     await _saveSettingsField('notif_push_enabled',false);
     showToast('✓ Notifications désactivées');
   }
