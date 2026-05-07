@@ -13494,12 +13494,17 @@ function connectStrava(){
     syncStravaActivities();
     return;
   }
-  // OAuth : rediriger vers Strava
-  // approval_prompt=force : Strava affiche TOUJOURS la page de consentement
-  // (au lieu d'auto-valider via cookie). Évite les bugs multi-comptes :
-  // un user qui change de compte SPEEDIX dans le même navigateur ne va pas
-  // se faire silencieusement reconnecter au Strava cookie en mémoire.
-  var authUrl='https://www.strava.com/oauth/authorize'
+  // OAuth : rediriger vers Strava.
+  // Sur mobile (Android/iOS), on utilise l'endpoint /oauth/mobile/authorize :
+  // si l'app Strava est installée, elle s'ouvre directement, le RP autorise en 1 clic.
+  // Plus de saisie email + code one-time : son app Strava native est déjà connectée.
+  // Sur ordinateur : on garde /oauth/authorize (flow web classique).
+  // approval_prompt=force : page de consentement systématique (sécurité multi-comptes).
+  var isMobile=/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  var base=isMobile
+    ? 'https://www.strava.com/oauth/mobile/authorize'
+    : 'https://www.strava.com/oauth/authorize';
+  var authUrl=base
     +'?client_id='+STRAVA_CLIENT_ID
     +'&redirect_uri='+encodeURIComponent(STRAVA_REDIRECT)
     +'&response_type=code'
