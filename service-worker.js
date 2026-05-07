@@ -6,7 +6,7 @@
 //   SKIP_WAITING, et recharge automatiquement dès que le nouveau prend le
 //   contrôle — les utilisateurs ont ainsi la nouvelle version sans refresh manuel.
 
-const CACHE_VERSION = 'speedix-v283';
+const CACHE_VERSION = 'speedix-v284';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -95,6 +95,46 @@ self.addEventListener('fetch', event => {
         }
         return resp;
       }).catch(() => cached);
+    })
+  );
+});
+
+// ── Push : réception d'une notif envoyée par l'Edge Function SPEEDIX ──────
+// Le payload attendu (JSON) : { title, body, url?, tag?, icon? }
+self.addEventListener('push', event => {
+  let payload = { title: 'SPEEDIX', body: 'Tu as une notification' };
+  try {
+    if (event.data) payload = event.data.json();
+  } catch (e) {
+    try { payload.body = event.data.text(); } catch (_) {}
+  }
+  const opts = {
+    body: payload.body || '',
+    icon: payload.icon || '/icon-192.png',
+    badge: '/icon-180.png',
+    tag: payload.tag || 'speedix-default',
+    data: { url: payload.url || '/' },
+    vibrate: [120, 60, 120]
+  };
+  event.waitUntil(
+    self.registration.showNotification(payload.title || 'SPEEDIX', opts)
+  );
+});
+
+// ── Click sur notif : ouvre/focus l'app sur l'URL fournie ────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if ('focus' in c) {
+          c.focus();
+          if ('navigate' in c) c.navigate(target).catch(() => {});
+          return;
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
     })
   );
 });
