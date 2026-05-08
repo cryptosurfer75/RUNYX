@@ -6266,8 +6266,12 @@ async function renderHistory(page){
     var spd=timeMin>0?Math.round(km/(timeMin/60)*100)/100:0;
     var elv=r.elevation||0;
     var pts=r.points||0;
-    var ptsBase=km>0?Math.round(computePts(km,spd,elv,false)):pts;
-    var hadBoost=pts>ptsBase&&ptsBase>0;
+    // Détection boost : on recalcule avec la vitesse EXACTE (pas arrondie) pour
+    // éviter les faux positifs dus aux écarts de rounding entre client et serveur.
+    // Tolérance de 5% pour absorber les arrondis de time (stocké à 0.1 min près).
+    var _spdExact=timeMin>0?km/(timeMin/60):0;
+    var ptsBase=km>0?Math.round(computePts(km,_spdExact,elv,false)):pts;
+    var hadBoost=pts>=Math.round(ptsBase*1.05)&&ptsBase>0;
     var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'-';
     var boostCell=hadBoost
       ?'<span style="color:var(--gold);font-family:Space Mono,monospace;font-size:.72rem;font-weight:700">⚡ +10%</span>'
@@ -6313,8 +6317,10 @@ function showRunDetails(runId){
   var pace=paceTotal>0?paceMin+':'+(paceSec<10?'0':'')+paceSec:null;
   var elv=r.elevation||0;
   var pts=r.points||0;
-  var ptsBase=km>0?Math.round(computePts(km,spd,elv,false)):pts;
-  var hadBoost=pts>ptsBase&&ptsBase>0;
+  // Détection boost : vitesse EXACTE + tolérance 5 % (cf. note ci-dessus)
+  var _spdExact=timeMin>0?km/(timeMin/60):0;
+  var ptsBase=km>0?Math.round(computePts(km,_spdExact,elv,false)):pts;
+  var hadBoost=pts>=Math.round(ptsBase*1.05)&&ptsBase>0;
   var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
   // Formate la durée : < 1h → "MM:SS" · >= 1h → "H:MM:SS"
   var durationStr;
@@ -17324,8 +17330,24 @@ if(!window._collabCountdownInterval){
 async function acceptCollabChallenge(participantId){
   if(!currentUser) return;
   try {
-    // CAP : un RP ne peut pas avoir plus de N défis collaboratifs engagés
-    // simultanément (acceptés + status proposed/in_progress). Empêche la
+    // CAP MENSUEL : Free = 2 défis/mois calendaire, Premium = 5 défis/mois.
+    // Compte tout défi accepté (declined=false, accepted_at>=début du mois courant).
+    var _maxMonth=(typeof isPremium==='function' && isPremium())?5:2;
+    var _now=new Date();
+    var _monthStartIso=new Date(_now.getFullYear(),_now.getMonth(),1).toISOString();
+    var {data:myMonth}=await supabaseClient.from('collab_challenge_participants')
+      .select('id')
+      .eq('player_id',currentUser.id)
+      .eq('declined',false)
+      .gte('accepted_at',_monthStartIso);
+    var monthCount=(myMonth||[]).length;
+    if(monthCount>=_maxMonth){
+      var _premiumMonthHint=(_maxMonth===2)?' (Premium = 5 max)':'';
+      showToast('⚠️ Quota mensuel atteint : '+_maxMonth+' défis collaboratifs ce mois'+_premiumMonthHint+'. Reviens le mois prochain.');
+      return;
+    }
+    // CAP SIMULTANÉ : un RP ne peut pas avoir plus de N défis collaboratifs
+    // engagés à la fois (acceptés + status proposed/in_progress). Empêche la
     // dispersion et garde les défis significatifs.
     //   Free    = 2 défis max
     //   Premium = 3 défis max
