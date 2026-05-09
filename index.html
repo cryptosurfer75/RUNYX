@@ -3168,6 +3168,8 @@ function askConfirm(message, opts){
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
         Crée ou rejoins une Team de <strong style="color:var(--text)">6 à 20 RP</strong>.<br>
         Score Team = moyenne des <strong style="color:var(--text)">6 meilleurs</strong> + bonus par RP supp.<br>
+        Bonus = <strong style="color:var(--green)">+2%</strong> par RP au-delà des 6 meilleurs, à condition d'avoir <strong style="color:var(--text)">≥ 40 pts</strong> sur la période.<br>
+        ⚠️ Un RP qui rejoint une team <strong style="color:var(--text)">en cours de période</strong> ne contribue au score qu'à partir de la <strong style="color:var(--text)">période suivante</strong> (anti-recrutement de dernière minute).<br>
         Podium récompensé en <strong style="color:var(--gold)">RPC</strong> + <strong style="color:var(--green)">NYX</strong> + médaille permanente sur la PC.<br>
         Bonus <strong style="color:var(--green)">Engagement</strong> : 2 000 RPC/membre pour la team la plus active.
       </div>
@@ -15633,7 +15635,11 @@ async function renderTeams(){
         var teamEmoji=t.emoji||'🏃';
         var teamColor=t.color||'#4a90ff';
         var isOpen=(t.invite_code===OPEN_TEAM_MARKER);
-        var bonusLabel=t._bonusPct>0?' · <span style="color:var(--green)">+'+t._bonusPct+'%</span>':'';
+        // Bonus team : affiché dès qu'il y a >6 RP (vert si actif, gris si 0%)
+        // pour donner la visibilité du potentiel même quand les extras sont inactifs.
+        var bonusLabel=nb>6
+          ?' · <span style="color:'+(t._bonusPct>0?'var(--green)':'var(--muted2)')+'">+'+(t._bonusPct||0)+'%</span>'
+          :'';
         var hasMyTeam=!!window.__myTeamId;
         var requestBtn=(!isOpen&&t.private&&!hasMyTeam&&currentUser)?'<span onclick="event.stopPropagation();requestJoinTeam(\''+t.id+'\',\''+encodeURIComponent(t.name)+'\')" title="Demander à rejoindre" style="font-size:.75rem;margin-left:.3rem;cursor:pointer;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">📩</span>':'';
         // Inversion 2026-05-01 : 99% des teams privées vont l'être par défaut (créées
@@ -18094,9 +18100,11 @@ async function loadTeamMembers(teamId, teamName){
   tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:1rem;color:var(--muted2)">Chargement…</td></tr>';
   openModal('team-members-modal');
   // Charger membres + runs + médailles en parallèle
+  // joined_at est nécessaire pour appliquer le filtre "rejoint avant période courante"
+  // (cohérent avec renderTeams). run_date pour calculer ptsBeforeJoin (cas RP zéro pts).
   var [membRes, runsRes, medalRes]=await Promise.all([
-    supabaseClient.from('team_members').select('player_id, role, players(username, grade, nat, avatar)').eq('team_id',teamId),
-    supabaseClient.from('runs').select('player_id, points').eq('period',0),
+    supabaseClient.from('team_members').select('player_id, role, joined_at, players(username, grade, nat, avatar)').eq('team_id',teamId),
+    supabaseClient.from('runs').select('player_id, points, run_date').eq('period',0),
     supabaseClient.from('palmares').select('rank').eq('team_id',teamId)
   ]);
   // Compter les médailles
@@ -18125,14 +18133,45 @@ async function loadTeamMembers(teamId, teamName){
     +miniMedal(3,tBronze,'#e8a060','#6a2e08','#cd7f32','#111',18);
   if(title) title.innerHTML=decodedName+(medalHtml?'<span style="margin-left:.75rem;display:inline-flex;gap:.3rem;vertical-align:middle">'+medalHtml+'</span>':'');
   if(membRes.error||!membRes.data){tbody.innerHTML='<tr><td colspan="4" style="color:#f66;font-size:.8rem;padding:.5rem">Erreur</td></tr>';return;}
-  // Agréger points par joueur
+  // Agréger points par joueur (total période courante)
   var ptsByP={};
   (runsRes.data||[]).forEach(function(r){ptsByP[r.player_id]=(ptsByP[r.player_id]||0)+(r.points||0);});
   var data=membRes.data;
-  data.forEach(function(m){m._pts=ptsByP[m.player_id]||0;});
-  data.sort(function(a,b){return (b._pts||0)-(a._pts||0);});
+  // Calcul ptsForTeam (cohérent avec renderTeams) : un RP qui rejoint APRÈS le début
+  // de la période ne compte pas pour le bonus, sauf s'il avait 0 pt à son arrivée.
+  var _periodStart=(_periodData && _periodData.start)?_periodData.start:null;
+  data.forEach(function(m){
+    var pts=ptsByP[m.player_id]||0;
+    m._pts=pts;
+    var joinedBefore=(!_periodStart||!m.joined_at||new Date(m.joined_at)<new Date(_periodStart));
+    var isCap=(m.role==='capitaine');
+    var ptsForTeam=(joinedBefore||isCap)?pts:0;
+    if(!joinedBefore && !isCap && m.joined_at){
+      var ptsBefore=(runsRes.data||[]).filter(function(r){
+        return r.player_id===m.player_id && r.run_date && new Date(r.run_date)<new Date(m.joined_at);
+      }).reduce(function(s,r){return s+(r.points||0);},0);
+      if(ptsBefore===0) ptsForTeam=pts;
+    }
+    m._ptsForTeam=ptsForTeam;
+  });
+  // Tri principal : ptsForTeam desc (pour identifier top 6 et extras), tiebreak sur pts
+  data.sort(function(a,b){
+    if((b._ptsForTeam||0)!==(a._ptsForTeam||0)) return (b._ptsForTeam||0)-(a._ptsForTeam||0);
+    return (b._pts||0)-(a._pts||0);
+  });
   var totalPts=data.reduce(function(s,m){return s+m._pts;},0);
-  if(sub) sub.textContent=data.length+' membre'+(data.length>1?'s':'')+' · '+totalPts.toLocaleString('fr')+' pts total';
+  // Bonus team : 2% par RP supp au-delà des 6 meilleurs avec ptsForTeam ≥ 40
+  // (même règle exacte que renderTeams).
+  var _bonusPct=0;
+  if(data.length>6){
+    var _extras=data.slice(6).filter(function(m){return (m._ptsForTeam||0)>=40;}).length;
+    _bonusPct=_extras*2;
+  }
+  // Bonus affiché dès >6 RP (vert si >0, gris si 0%) pour cohérence avec le classement
+  var _bonusHtml=data.length>6
+    ?' · <span style="color:'+(_bonusPct>0?'var(--green)':'var(--muted2)')+';font-weight:700">+'+_bonusPct+'%</span>'
+    :'';
+  if(sub) sub.innerHTML=data.length+' membre'+(data.length>1?'s':'')+' · '+totalPts.toLocaleString('fr')+' pts total'+_bonusHtml;
   tbody.innerHTML=data.map(function(m,i){
     var p=m.players||{};
     var isCap=m.role==='capitaine';
