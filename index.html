@@ -2440,6 +2440,16 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modale dédiée "cadeau Premium 15j" (lancée 2026-05-09 pour la phase beta).
+     DOM séparé de land-modal pour qu'elle ne soit pas écrasée par les autres
+     notifications déclenchées juste après login (badges, streak, etc.). -->
+<div class="modal" id="premium-gift-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('premium-gift-modal')">✕</button>
+    <div id="pg-body"></div>
+  </div>
+</div>
+
 <div class="modal" id="territoire-ranking-modal">
   <div class="modal-box" style="max-width:480px">
     <button class="modal-close" onclick="closeModal('territoire-ranking-modal')">✕</button>
@@ -3974,6 +3984,34 @@ async function onLoginSuccess(user, isNew){
       if(typeof showRunRecoveryBanner==='function') showRunRecoveryBanner();
     }, 1200);
   }
+  // ── Cadeau Premium 15 jours (campagne beta lancée 2026-05-09) ─────────
+  // 1. Si le RP n'est PAS Premium actif → on lui offre 15 jours et on flag trial
+  // 2. Si le RP est déjà en Premium trial et n'a jamais vu la modale → on l'affiche
+  // Tracking "vu" via localStorage (clé gift-premium-2026-05-seen) → 1 affichage / device.
+  try {
+    var _now=new Date();
+    var _premUntil=(pd && pd.premium_until)?new Date(pd.premium_until):null;
+    var _isPremActive=(pd && pd.premium && _premUntil && _premUntil>_now);
+    var _seenGift=localStorage.getItem('gift-premium-2026-05-seen');
+    if(!_isPremActive){
+      var _giftUntil=new Date(_now.getTime()+15*24*3600*1000);
+      await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(user.id),{
+        method:'PATCH',
+        headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+        body:JSON.stringify({premium:true,premium_until:_giftUntil.toISOString(),premium_trial:true})
+      });
+      if(window.__myPlayer){
+        window.__myPlayer.premium=true;
+        window.__myPlayer.premiumUntil=_giftUntil.toISOString();
+        window.__myPlayer.premiumTrial=true;
+      }
+      setTimeout(function(){ if(typeof showPremiumGiftPopup==='function') showPremiumGiftPopup(_giftUntil); }, 1200);
+      localStorage.setItem('gift-premium-2026-05-seen','1');
+    } else if(pd.premium_trial && !_seenGift){
+      setTimeout(function(){ if(typeof showPremiumGiftPopup==='function') showPremiumGiftPopup(_premUntil); }, 1200);
+      localStorage.setItem('gift-premium-2026-05-seen','1');
+    }
+  } catch(e){ console.warn('[gift premium] failed', e); }
 }
 
 // Bandeau "Course interrompue détectée — reprendre ?" affiché si le snapshot
@@ -4484,6 +4522,13 @@ function _clearUserScopedState(){
     if(typeof _landsHexLayer!=='undefined' && _landsHexLayer){
       try{_landsHexLayer.clearLayers();}catch(e){}
     }
+    // Chat team : stopper le poll s'il tournait encore (sinon il continue à tirer
+    // currentUser.id alors que currentUser vient d'être nullifié → null deref crash).
+    if(typeof _chatPollInterval!=='undefined' && _chatPollInterval){
+      try{clearInterval(_chatPollInterval);}catch(e){}
+      _chatPollInterval=null;
+    }
+    if(typeof _teamChatId!=='undefined') _teamChatId=null;
   }catch(e){console.warn('[_clearUserScopedState] fail',e);}
 }
 
@@ -9858,6 +9903,12 @@ function startChatPoll(teamId){
 }
 async function loadTeamChat(teamId){
   _teamChatId=teamId;
+  // Guard : si plus de user connecté (logout / changement de session pendant un poll
+  // 3s en cours), on stoppe le poll et on sort. Évite l'erreur "Cannot read 'id' of null".
+  if(!currentUser){
+    if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;}
+    return;
+  }
   var chatLocked=document.getElementById('team-chat-locked');
   var chatContent=document.getElementById('team-chat-content');
   if(chatLocked) chatLocked.style.display='none';
@@ -9877,11 +9928,18 @@ async function loadTeamChat(teamId){
   var {data:players}=await supabaseClient.from('players').select('id,username,avatar').in('id',pids);
   var pMap={};
   (players||[]).forEach(function(p){pMap[p.id]=p;});
+  // Re-check currentUser : entre les awaits ci-dessus, l'user a pu se déconnecter
+  // ou changer (changement de compte). Sans ce guard, msgs.map crash sur currentUser.id.
+  if(!currentUser){
+    if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;}
+    return;
+  }
   // Afficher du plus ancien au plus récent
   msgs.reverse();
+  var _myUid=currentUser.id;
   el.innerHTML=msgs.map(function(m){
     var p=pMap[m.player_id]||{username:'?',avatar:null};
-    var isMe=m.player_id===currentUser.id;
+    var isMe=m.player_id===_myUid;
     var canDel=isMe||isAdmin();
     var time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'}):'';
     var date=m.created_at?new Date(m.created_at).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'';
@@ -11967,6 +12025,38 @@ function updatePremiumUI(){
     el.innerHTML='<span style="color:var(--muted2)">Statut : Free</span>';
     if(btn) btn.textContent='⭐ Passer Premium';
   }
+}
+
+// Modale "cadeau Premium 15 jours" (lancée 2026-05-09 pour la phase beta).
+// Affichée 1 seule fois par appareil (flag localStorage gift-premium-2026-05-seen).
+// Texte voulu : montre TOUTES les fonctions accessibles pendant la période.
+// Utilise sa PROPRE modale (premium-gift-modal) pour ne pas être écrasée par les
+// autres notifications du login (badges, streak, etc.) qui squattent land-modal.
+// Reste affichée tant que le RP ne ferme pas explicitement (× ou bouton FONCEZ).
+function showPremiumGiftPopup(untilDate){
+  var dateStr='';
+  if(untilDate){
+    try{
+      var _d=untilDate instanceof Date?untilDate:new Date(untilDate);
+      dateStr=_d.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+    }catch(e){}
+  }
+  var body=document.getElementById('pg-body');
+  if(!body) return;
+  body.innerHTML='<div style="text-align:center;padding:.4rem 0">'
+    +'<div style="font-size:2.8rem;margin-bottom:.4rem">🎁</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--gold);margin-bottom:.6rem">FÉLICITATIONS !</div>'
+    +'<div style="font-size:.88rem;color:var(--text);line-height:1.55;margin-bottom:1rem">'
+    +'Speedix t\'offre <strong style="color:var(--gold)">15 jours de Premium</strong>.<br>'
+    +'Pendant cette période, profite de <strong>toutes les fonctions</strong> de l\'app sans aucune restriction.'
+    +'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem;margin-bottom:1.1rem">'
+    +['🏆 League','💎 Player Cards','📰 Feed','🎯 Challenges','⚔️ Défis','etc.']
+       .map(function(f){return '<span style="font-size:.7rem;padding:.22rem .5rem;border-radius:6px;background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.35);color:var(--gold);font-weight:700">'+f+'</span>';}).join('')
+    +'</div>'
+    +(dateStr?'<div style="font-size:.72rem;color:var(--muted2)">Premium actif jusqu\'au <strong style="color:var(--text)">'+dateStr+'</strong></div>':'')
+    +'</div>';
+  openModal('premium-gift-modal');
 }
 
 function showPremiumGate(message){
