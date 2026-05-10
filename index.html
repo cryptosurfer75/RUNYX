@@ -17178,6 +17178,7 @@ async function renderCollabChallenges(){
 
     // 5. Catégoriser les défis pour affichage propre (ordre : à accepter > en attente > en cours > terminés)
     var toAccept=[], waiting=[], inProgress=[], finished=[];
+    var _renderNowMs=Date.now();
     myParts.forEach(function(mp){
       var c=chalById[mp.challenge_id]; if(!c) return;
       var n=neighborByChal[mp.challenge_id];
@@ -17187,7 +17188,14 @@ async function renderCollabChallenges(){
         else if(mp.accepted_at && (!n || (!n.accepted_at && !n.declined))) waiting.push(item);
         else finished.push(item); // refusé par moi ou voisin
       } else if(c.status==='in_progress'){
-        inProgress.push(item);
+        // Si la deadline est dépassée mais que le cron resolve-collab-challenges
+        // n'est pas encore passé, on traite localement comme un terminé/expiré
+        // pour éviter qu'il pollue "EN COURS" et bloque le cap d'acceptation.
+        if(c.deadline && new Date(c.deadline).getTime()<_renderNowMs){
+          finished.push(item);
+        } else {
+          inProgress.push(item);
+        }
       } else {
         finished.push(item); // success/failed/expired/cancelled
       }
@@ -17314,6 +17322,11 @@ async function renderCollabChallenges(){
         else if(it.chal.status==='failed'){ label='❌ Échec'; color='var(--red)'; }
         else if(it.chal.status==='expired'){ label='⏱ Expiré'; color='var(--orange)'; }
         else if(it.chal.status==='cancelled'){ label='🚫 Annulé'; color='var(--muted2)'; }
+        // Cas particulier : status DB encore in_progress mais deadline passée
+        // (cron resolve-collab-challenges pas encore rattrapé) → on affiche Expiré localement.
+        else if(it.chal.status==='in_progress' && it.chal.deadline && new Date(it.chal.deadline).getTime()<Date.now()){
+          label='⏱ Expiré'; color='var(--orange)';
+        }
         else if(it.part.declined){ label='Refusé'; color='var(--muted2)'; }
         else { label=it.chal.status; color='var(--muted2)'; }
         // Récompense obtenue (uniquement si success)
@@ -17449,13 +17462,21 @@ async function acceptCollabChallenge(participantId){
     //   Premium = 3 défis max
     var _maxActive=(typeof isPremium==='function' && isPremium())?3:2;
     var {data:myActive}=await supabaseClient.from('collab_challenge_participants')
-      .select('challenge_id,collab_challenges(status)')
+      .select('challenge_id,collab_challenges(status,deadline)')
       .eq('player_id',currentUser.id)
       .not('accepted_at','is',null)
       .eq('declined',false);
+    // Un défi compte comme "actif" UNIQUEMENT si son statut est proposed/in_progress
+    // ET que sa deadline n'est pas dépassée. Sans ce 2e check, un défi expiré non
+    // encore rattrapé par le cron resolve-collab-challenges resterait actif et
+    // bloquerait l'acceptation d'un nouveau (cas remonté par Val-DM 2026-05-10).
+    var _nowMs=Date.now();
     var activeCount=(myActive||[]).filter(function(p){
-      var st=p.collab_challenges&&p.collab_challenges.status;
-      return st==='proposed'||st==='in_progress';
+      var c=p.collab_challenges; if(!c) return false;
+      var st=c.status;
+      if(st!=='proposed' && st!=='in_progress') return false;
+      if(c.deadline && new Date(c.deadline).getTime()<_nowMs) return false;
+      return true;
     }).length;
     if(activeCount>=_maxActive){
       var _premiumHint=(_maxActive===2)?' (Premium = 3 max)':'';
