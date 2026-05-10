@@ -2450,6 +2450,15 @@ select option{background:#040c1c}
   </div>
 </div>
 
+<!-- Modale "raison du refus" — défi collaboratif. Le RP choisit une explication
+     qui sera transmise au voisin (stockée dans collab_challenge_participants.declined_reason). -->
+<div class="modal" id="decline-reason-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('decline-reason-modal')">✕</button>
+    <div id="dr-body"></div>
+  </div>
+</div>
+
 <div class="modal" id="territoire-ranking-modal">
   <div class="modal-box" style="max-width:480px">
     <button class="modal-close" onclick="closeModal('territoire-ranking-modal')">✕</button>
@@ -10183,9 +10192,13 @@ async function renderSocialFeed(){
       chrono=(_h>0)?(_h+':'+_pd(_m)+':'+_pd(_s)):(_m+':'+_pd(_s));
     }
     var dateStr=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-    var avatarHtml=p.avatar
-      ?'<img src="'+escapeHtml(p.avatar)+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid '+gc+'">'
-      :'<div style="width:36px;height:36px;border-radius:8px;border:2px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:'+gc+'">'+escapeHtml(p.username.charAt(0).toUpperCase())+'</div>';
+    // Avatar : cliquable en Premium (renvoie sur la PC du RP), fixe en Free.
+    var _avatarInner=p.avatar
+      ?'<img src="'+escapeHtml(p.avatar)+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid '+gc+';display:block'+(isPremium()?';pointer-events:none':'')+'">'
+      :'<div style="width:36px;height:36px;border-radius:8px;border:2px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:'+gc+';'+(isPremium()?'pointer-events:none;':'')+'">'+escapeHtml(p.username.charAt(0).toUpperCase())+'</div>';
+    var avatarHtml=isPremium()
+      ?'<div onclick="showPlayerCardByUuid(\''+r.player_id+'\')" style="cursor:pointer;display:inline-block;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'" title="Voir la Player Card">'+_avatarInner+'</div>'
+      :_avatarInner;
     var reacts=reactMap[r.id]||{like:[],heart:[],flash:[]};
     var myId=currentUser.id;
     function rBtn(type,emoji,arr){
@@ -16802,11 +16815,14 @@ async function renderChallenges(){
 
   grid.innerHTML=visibleList.map(buildCard).join('');
 
-  // Pagination sur la liste COMPLÈTE — 8 blasons par page, défilement ordonné de tous les défis
-  var totalPagesCh=Math.max(1,Math.ceil(list.length/_CHALLENGES_PER_PAGE));
+  // Pagination sur les badges RESTANTS uniquement (au-delà des 6 visibles).
+  // Avant : on paginait sur `list` complète → la 1ʳᵉ page de l'extra contenait
+  // les mêmes badges que visibleList → doublon visuel (cas remonté pour Natchaan
+  // et autres RP avec assez de badges pour déclencher la section extra).
+  var totalPagesCh=Math.max(1,Math.ceil(hiddenList.length/_CHALLENGES_PER_PAGE));
   if(_CHALLENGES_EXTRA_PAGE>=totalPagesCh) _CHALLENGES_EXTRA_PAGE=0;
-  var pagedAll=list.slice(_CHALLENGES_EXTRA_PAGE*_CHALLENGES_PER_PAGE,(_CHALLENGES_EXTRA_PAGE+1)*_CHALLENGES_PER_PAGE);
-  if(extra) extra.innerHTML=pagedAll.map(buildCard).join('');
+  var pagedHidden=hiddenList.slice(_CHALLENGES_EXTRA_PAGE*_CHALLENGES_PER_PAGE,(_CHALLENGES_EXTRA_PAGE+1)*_CHALLENGES_PER_PAGE);
+  if(extra) extra.innerHTML=pagedHidden.map(buildCard).join('');
 
   var pagEl=document.getElementById('challenges-pagination');
   if(pagEl){
@@ -17142,9 +17158,33 @@ async function renderCollabChallenges(){
     //    (à l'ouverture de l'onglet, on rafraîchit d'abord les compteurs).
     await _recomputeCollabProgressForPlayer(currentUser.id);
 
+    // 0bis. Auto-cleanup : on ne garde que les 5 participations finies les plus
+    //       récentes pour ce RP (les défis actifs proposed/in_progress ne sont
+    //       jamais touchés). Évite l'accumulation d'historique en base.
+    try {
+      var {data:_finishedRows}=await supabaseClient.from('collab_challenge_participants')
+        .select('id, declined, completed_at, collab_challenges(status,resolved_at,deadline)')
+        .eq('player_id',currentUser.id);
+      var _finishedToCheck=(_finishedRows||[]).filter(function(p){
+        var st=p.collab_challenges && p.collab_challenges.status;
+        return p.declined===true || ['success','failed','expired','cancelled'].indexOf(st)>=0;
+      });
+      if(_finishedToCheck.length>5){
+        _finishedToCheck.sort(function(a,b){
+          var aT=(a.collab_challenges && (a.collab_challenges.resolved_at || a.collab_challenges.deadline)) || a.completed_at || '';
+          var bT=(b.collab_challenges && (b.collab_challenges.resolved_at || b.collab_challenges.deadline)) || b.completed_at || '';
+          return (bT||'').localeCompare(aT||'');
+        });
+        var _toDelete=_finishedToCheck.slice(5).map(function(p){return p.id;});
+        if(_toDelete.length){
+          await supabaseClient.from('collab_challenge_participants').delete().in('id',_toDelete);
+        }
+      }
+    } catch(e){ console.warn('[collab cleanup] failed:', e); }
+
     // 1. Charger mes lignes participants + leur défi associé + l'autre participant
     var {data:myParts}=await supabaseClient.from('collab_challenge_participants')
-      .select('id,challenge_id,player_id,accepted_at,declined,progress,completed_individually,completed_at')
+      .select('id,challenge_id,player_id,accepted_at,declined,declined_reason,progress,completed_individually,completed_at')
       .eq('player_id',currentUser.id);
     if(!myParts || !myParts.length){
       var helpHeaderEmpty='<div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">'
@@ -17164,7 +17204,7 @@ async function renderCollabChallenges(){
     var chalById={}; (chals||[]).forEach(function(c){chalById[c.id]=c;});
     // 3. Charger les autres participants (= mon voisin) pour chaque défi
     var {data:allParts}=await supabaseClient.from('collab_challenge_participants')
-      .select('challenge_id,player_id,accepted_at,declined,progress,completed_individually')
+      .select('challenge_id,player_id,accepted_at,declined,declined_reason,progress,completed_individually')
       .in('challenge_id',chalIds).neq('player_id',currentUser.id);
     var neighborByChal={}; (allParts||[]).forEach(function(p){neighborByChal[p.challenge_id]=p;});
     // 4. Charger les usernames des voisins
@@ -17378,12 +17418,21 @@ async function renderCollabChallenges(){
         var subLine=[];
         if(rewardLine) subLine.push(rewardLine);
         if(resolvedTxt) subLine.push('le '+resolvedTxt);
+        // Affiche le mot du voisin (ou de soi-même) en cas de refus, sous forme de citation
+        var declineQuoteHtml='';
+        if(it.neighbor && it.neighbor.declined && it.neighbor.declined_reason){
+          var _whoNeigh=(it.neighborInfo && it.neighborInfo.username) ? it.neighborInfo.username : 'Ton voisin';
+          declineQuoteHtml='<div style="margin-top:.35rem;padding:.4rem .55rem;border-left:2px solid var(--muted2);background:rgba(255,255,255,.025);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4">💬 '+escapeHtml(_whoNeigh)+' : « '+escapeHtml(it.neighbor.declined_reason)+' »</div>';
+        } else if(it.part.declined && it.part.declined_reason){
+          declineQuoteHtml='<div style="margin-top:.35rem;padding:.4rem .55rem;border-left:2px solid var(--muted2);background:rgba(255,255,255,.025);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4">💬 Toi : « '+escapeHtml(it.part.declined_reason)+' »</div>';
+        }
         html+='<div style="padding:.55rem .65rem;border-radius:7px;border:1px solid var(--border2);background:rgba(255,255,255,.02);margin-bottom:.35rem">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">'
           +'<span style="font-size:.78rem;color:var(--text);line-height:1.4">'+titleNoVoisin+' avec '+_neighborChip(it.neighborInfo)+'</span>'
           +'<span style="font-size:.7rem;font-weight:700;color:'+color+';flex-shrink:0">'+label+'</span>'
           +'</div>'
           +(subLine.length?'<div style="font-size:.7rem;color:var(--muted2);margin-top:.25rem">'+subLine.join(' · ')+'</div>':'')
+          +declineQuoteHtml
           +'</div>';
       });
     }
@@ -17516,12 +17565,45 @@ async function acceptCollabChallenge(participantId){
   }
 }
 
+// Demande au RP de choisir une raison de refus (pour transmettre au voisin).
+// Retourne une Promise<string|null> — null si fermeture sans choix.
+function _chooseDeclineReason(){
+  return new Promise(function(resolve){
+    var modal=document.getElementById('decline-reason-modal');
+    var body=document.getElementById('dr-body');
+    if(!modal || !body){ resolve(null); return; }
+    var REASON_BUSY = 'Désolé j\'ai déjà plusieurs défis en cours, je ne peux plus en accepter d\'autre, j\'ai atteint ma limite autorisée.';
+    var REASON_AWAY = 'Désolé, indisponible en ce moment pour relever le défi. Peut-être une prochaine fois.';
+    body.innerHTML='<div style="text-align:center;padding:.4rem 0">'
+      +'<div style="font-size:2.2rem;margin-bottom:.4rem">🤔</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--text);margin-bottom:.4rem">REFUSER LE DÉFI ?</div>'
+      +'<div style="font-size:.78rem;color:var(--muted2);line-height:1.5;margin-bottom:1rem">Choisis l\'explication que ton voisin verra :</div>'
+      +'<div style="display:flex;flex-direction:column;gap:.5rem;max-width:340px;margin:0 auto">'
+        +'<button data-dr="busy" style="padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--text);font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'rgba(245,200,66,.4)\'">'+REASON_BUSY+'</button>'
+        +'<button data-dr="away" style="padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(74,144,255,.4);background:rgba(74,144,255,.08);color:var(--text);font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'rgba(74,144,255,.4)\'">'+REASON_AWAY+'</button>'
+        +'<button data-dr="cancel" style="margin-top:.3rem;padding:.4rem;border:none;background:transparent;color:var(--muted2);font-size:.72rem;cursor:pointer">Annuler</button>'
+      +'</div>'
+    +'</div>';
+    function pick(reason){
+      modal.classList.remove('open');
+      body.querySelectorAll('button').forEach(function(b){b.onclick=null;});
+      resolve(reason);
+    }
+    body.querySelector('[data-dr="busy"]').onclick=function(){pick(REASON_BUSY);};
+    body.querySelector('[data-dr="away"]').onclick=function(){pick(REASON_AWAY);};
+    body.querySelector('[data-dr="cancel"]').onclick=function(){pick(null);};
+    openModal('decline-reason-modal');
+  });
+}
+
 async function declineCollabChallenge(participantId){
   if(!currentUser) return;
-  if(!await askConfirm('Tu confirmes refuser ce défi ? Speedix te proposera un autre défi avec ce voisin dans 7 jours.',{title:'Refuser le défi ?',emoji:'🤔',okLabel:'Refuser',destructive:true})) return;
+  // Le RP choisit son explication parmi 2 options ; null = il a annulé.
+  var reason=await _chooseDeclineReason();
+  if(!reason) return;
   try {
     var {data:upd}=await supabaseClient.from('collab_challenge_participants')
-      .update({declined:true,accepted_at:null}).eq('id',participantId).select('challenge_id').maybeSingle();
+      .update({declined:true,accepted_at:null,declined_reason:reason}).eq('id',participantId).select('challenge_id').maybeSingle();
     if(upd){
       // Marquer le défi comme expired (pour libérer la paire et permettre re-proposition dans 7j)
       await supabaseClient.from('collab_challenges')
