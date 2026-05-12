@@ -10611,12 +10611,38 @@ async function shareRunCard(runId){
     cx.fillText('— Course sans tracé GPS —',300,TY+TH/2+4);
   }
 
-  // ── CTA bas : site + code parrainage ─────────────────────────────────
+  // ── CTA bas : site + slogan + logos sociaux ──────────────────────────
   cx.textAlign='center';
   cx.font='700 20px sans-serif';cx.fillStyle='#ffffff';
   cx.fillText('speedixleague.com',300,425);
-  cx.font='700 14px monospace';cx.fillStyle='#f5c842';
-  cx.fillText('Rejoins-moi : code SL-'+(player.rtw_id||'?????'),300,452);
+  // Slogan en doré
+  cx.font='600 13px sans-serif';cx.fillStyle='#f5c842';
+  cx.fillText('Compétition - Motivation - Gaming',300,448);
+
+  // Logos sociaux : Facebook + Instagram, centrés sous le slogan
+  var _iconSize=22, _iconGap=12, _iconY=462;
+  var _totalIconW=_iconSize*2+_iconGap;
+  var _fbX=300-_totalIconW/2;
+  var _igX=_fbX+_iconSize+_iconGap;
+  // Facebook : carré arrondi bleu + "f" blanc
+  cx.fillStyle='#1877F2';
+  cx.beginPath();cx.roundRect(_fbX,_iconY,_iconSize,_iconSize,5);cx.fill();
+  cx.font='900 17px sans-serif';cx.fillStyle='#ffffff';cx.textAlign='center';
+  cx.fillText('f',_fbX+_iconSize/2,_iconY+_iconSize-5);
+  // Instagram : carré arrondi avec gradient + lens + petit dot
+  var _igGrad=cx.createLinearGradient(_igX,_iconY,_igX+_iconSize,_iconY+_iconSize);
+  _igGrad.addColorStop(0,'#feda75');
+  _igGrad.addColorStop(0.3,'#fa7e1e');
+  _igGrad.addColorStop(0.6,'#d62976');
+  _igGrad.addColorStop(1,'#962fbf');
+  cx.fillStyle=_igGrad;
+  cx.beginPath();cx.roundRect(_igX,_iconY,_iconSize,_iconSize,5);cx.fill();
+  // Cercle blanc central (lens)
+  cx.strokeStyle='#ffffff';cx.lineWidth=1.6;
+  cx.beginPath();cx.arc(_igX+_iconSize/2,_iconY+_iconSize/2,5.5,0,Math.PI*2);cx.stroke();
+  // Petit point en haut à droite
+  cx.fillStyle='#ffffff';
+  cx.beginPath();cx.arc(_igX+_iconSize-5,_iconY+5,1.2,0,Math.PI*2);cx.fill();
 
   // ── Powered by Strava (compliance) — coin bas-droit ──────────────────
   cx.textAlign='right';
@@ -10627,7 +10653,7 @@ async function shareRunCard(runId){
   cv.toBlob(async function(blob){
     var file=new File([blob],'speedix-'+player.username+'-'+km+'km.png',{type:'image/png'});
     var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    var shareText=km+' km · '+pts+' pts · Rejoins-moi avec le code SL-'+(player.rtw_id||'?????')+' sur speedixleague.com';
+    var shareText=km+' km · '+pts+' pts · SPEEDIX League — Compétition · Motivation · Gaming · speedixleague.com';
     var shareTitle='SPEEDIX League — '+player.username;
 
     // Niveau 1 : Web Share API AVEC le fichier image (idéal — feuille de partage native + image)
@@ -17004,16 +17030,24 @@ async function _recomputeCollabProgressForPlayer(playerId){
     if(!chals || !chals.length) return;
     var chalById={}; chals.forEach(function(c){chalById[c.id]=c;});
 
-    // Tri FIFO + règle "1 course = 1 défi PAR TYPE DE CRITÈRE".
-    // Un même run peut valider 1 défi km + 1 défi D+ + 1 défi long_run, etc.
-    // (objectifs orthogonaux). Mais il ne peut PAS valider 2 défis km simultanés.
-    // Le défi accepté en premier consomme le run dans son type de critère.
+    // Tri FIFO + règle "1 course = 1 défi PAR CATÉGORIE de mesure".
+    // Catégories :
+    //   - 'km'    : km_each, km_total, runs_each, long_run_each, long_run_same_day, streak_each
+    //   - 'dplus' : dplus_each
+    // Un run consommé par un défi 'km' n'alimente PAS un autre défi 'km' plus jeune.
+    // En revanche il peut alimenter en parallèle un défi 'dplus' (objectif orthogonal).
+    // Le défi le plus ancien (FIFO) consomme en priorité les runs qu'il utilise réellement.
     myParts.sort(function(a,b){
       var da=a.accepted_at?new Date(a.accepted_at).getTime():0;
       var db=b.accepted_at?new Date(b.accepted_at).getTime():0;
       return da-db;
     });
-    var _consumedByType={}; // {'km_each':Set<runId>, 'dplus_each':Set<runId>, ...}
+    var _consumedByCategory={}; // { km:Set<runId>, dplus:Set<runId> }
+    function _critCategory(t){
+      if(t==='dplus_each') return 'dplus';
+      if(['km_each','km_total','runs_each','long_run_each','long_run_same_day','streak_each'].indexOf(t)>=0) return 'km';
+      return null; // explore_total / referrals_each : pas de run consommé
+    }
 
     for(var i=0;i<myParts.length;i++){
       var part=myParts[i];
@@ -17037,45 +17071,59 @@ async function _recomputeCollabProgressForPlayer(playerId){
           .gte('run_date',startedAt)
           .lte('run_date',deadline);
         runs=runs||[];
-        // Anti double-validation PAR TYPE DE CRITÈRE : on retire les runs
-        // déjà attribués à un défi plus ancien du MÊME type. Un défi km et
-        // un défi D+ peuvent partager les mêmes runs (objectifs différents).
-        var _typeKey=crit.type;
-        if(!_consumedByType[_typeKey]) _consumedByType[_typeKey]=new Set();
-        var _consumedSet=_consumedByType[_typeKey];
-        runs=runs.filter(function(r){return !_consumedSet.has(r.id);});
-        // Marquer ces runs comme "utilisés" par ce défi pour les itérations
-        // suivantes du même type (FIFO).
-        runs.forEach(function(r){if(r.id) _consumedSet.add(r.id);});
+        // Anti double-validation PAR CATÉGORIE (km vs dplus) : on retire les runs
+        // déjà attribués à un défi plus ancien de la MÊME catégorie. Catégories
+        // orthogonales (km ↔ dplus) peuvent partager les mêmes runs.
+        var _category=_critCategory(crit.type);
+        if(_category && !_consumedByCategory[_category]) _consumedByCategory[_category]=new Set();
+        var _consumedSet=_category?_consumedByCategory[_category]:null;
+        if(_consumedSet){
+          runs=runs.filter(function(r){return !_consumedSet.has(r.id);});
+        }
+
+        // Marquage des runs réellement consommés (selon le type). Évite de
+        // bloquer des petits runs inutiles à un long_run_each pour un défi
+        // km_each plus récent dans la même catégorie.
+        function _markConsumed(rs){
+          if(!_consumedSet) return;
+          (rs||[]).forEach(function(r){if(r&&r.id) _consumedSet.add(r.id);});
+        }
 
         if(crit.type==='km_each'){
           var totalKm=runs.reduce(function(s,r){return s+(r.distance||0);},0);
           newProgress.km_done=Math.round(totalKm*100)/100;
           completed=totalKm>=crit.value;
+          _markConsumed(runs); // tous les runs contribuent au cumul
         } else if(crit.type==='km_total'){
           // Progression individuelle (la combinaison se fait à la résolution)
           var totalKm=runs.reduce(function(s,r){return s+(r.distance||0);},0);
           newProgress.km_done=Math.round(totalKm*100)/100;
+          _markConsumed(runs);
         } else if(crit.type==='runs_each'){
           var minD=crit.min_distance||5;
           var validRuns=runs.filter(function(r){return (r.distance||0)>=minD;});
           newProgress.runs_done=validRuns.length;
           completed=validRuns.length>=crit.value;
+          _markConsumed(validRuns); // seuls les runs ≥ min_distance sont consommés
         } else if(crit.type==='dplus_each'){
           var totalElv=runs.reduce(function(s,r){return s+(r.elevation||0);},0);
           newProgress.dplus_done=Math.round(totalElv);
           completed=totalElv>=crit.value;
+          var withDplus=runs.filter(function(r){return (r.elevation||0)>0;});
+          _markConsumed(withDplus); // runs avec D+ uniquement
         } else if(crit.type==='long_run_each'){
-          var hasLong=runs.some(function(r){return (r.distance||0)>=crit.value;});
-          newProgress.long_run_done=hasLong;
-          completed=hasLong;
+          var qualifying=runs.filter(function(r){return (r.distance||0)>=crit.value;});
+          var maxKm=qualifying.reduce(function(m,r){return Math.max(m,r.distance||0);},0);
+          newProgress.long_run_done=qualifying.length>0;
+          newProgress.long_run_max_km=Math.round(maxKm*100)/100;
+          completed=qualifying.length>0;
+          _markConsumed(qualifying); // seul le run qui valide est consommé
         } else if(crit.type==='long_run_same_day'){
-          // Stocker les jours où on a fait ≥ value km (combiné à la résolution)
-          var validDays=[...new Set(runs
-            .filter(function(r){return (r.distance||0)>=crit.value && r.run_date;})
-            .map(function(r){return r.run_date.slice(0,10);}))];
+          var validRunsLrsd=runs.filter(function(r){return (r.distance||0)>=crit.value && r.run_date;});
+          var validDays=[...new Set(validRunsLrsd.map(function(r){return r.run_date.slice(0,10);}))];
           newProgress.long_run_days=validDays;
           newProgress.completed_individually=validDays.length>0;
+          _markConsumed(validRunsLrsd);
         } else if(crit.type==='streak_each'){
           var dates=[...new Set(runs.filter(function(r){return r.run_date;}).map(function(r){return r.run_date.slice(0,10);}))].sort();
           var longest=0,current=0,prev=null;
@@ -17090,6 +17138,7 @@ async function _recomputeCollabProgressForPlayer(playerId){
           var streakDays=Math.max(longest,current);
           newProgress.streak_days=streakDays;
           completed=streakDays>=crit.value;
+          _markConsumed(runs); // tous les runs participent à la chaîne
         }
       }
       // CC04 : explore_total — passages sur lands neuves
@@ -17334,7 +17383,13 @@ async function renderCollabChallenges(){
         } else if(crit.type==='dplus_each'){
           progLine='Toi : '+(myProg.dplus_done||0)+'/'+crit.value+' m D+ · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.dplus_done||0)+'/'+crit.value+' m D+';
         } else if(crit.type==='long_run_each'){
-          progLine='Toi : '+(myProg.completed_individually?'✓':'—')+' · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.completed_individually?'✓':'—');
+          // Affiche la distance max parcourue (long_run_max_km) + ✓ si validé
+          // (lit it.part.completed_individually qui est la source authoritaire).
+          var myMaxKm=(myProg.long_run_max_km||0).toFixed(1);
+          var nMaxKm=(neighProg.long_run_max_km||0).toFixed(1);
+          var myMark=it.part.completed_individually?' ✓':'';
+          var nMark=(it.neighbor&&it.neighbor.completed_individually)?' ✓':'';
+          progLine='Toi : '+myMaxKm+' km'+myMark+' · '+_neighborChip(it.neighborInfo)+' : '+nMaxKm+' km'+nMark;
         } else if(crit.type==='long_run_same_day'){
           progLine='Toi : '+(myProg.completed_individually?'✓':'—')+' · '+_neighborChip(it.neighborInfo)+' : '+(neighProg.completed_individually?'✓':'—')+' (même jour requis)';
         } else if(crit.type==='streak_each'){
