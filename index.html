@@ -3818,6 +3818,29 @@ async function onLoginSuccess(user, isNew){
     if(p._uuid===userUuid||p.id===1) PLAYERS.splice(i,1);
   }
   var {data:pd}=await supabaseClient.from('players').select('*').eq('id',user.id).maybeSingle();
+  // Compte en cours de suppression : proposer l'annulation pendant les 72h.
+  // Le RP peut soit annuler (on remet les champs à null et le flow reprend
+  // normalement), soit confirmer (déconnexion). Passé 72h sans annulation,
+  // l'Edge Function `finalize-account-deletions` aura déjà tout nettoyé et
+  // l'auth est verrouillé — il ne peut alors plus se connecter du tout.
+  if(pd && pd.deletion_requested_at && !pd.deleted_at){
+    var _delReq=new Date(pd.deletion_requested_at);
+    var _delDeadline=new Date(_delReq.getTime()+72*3600*1000);
+    var _hoursLeft=Math.max(0,Math.ceil((_delDeadline.getTime()-Date.now())/3600000));
+    if(_hoursLeft<=0){
+      // Délai dépassé mais Edge Function pas encore passée : filet de sécurité,
+      // on déconnecte sans laisser entrer dans l'app (l'Edge Function nettoiera).
+      showToast('⚠️ Délai de récupération dépassé. Suppression en cours.');
+      try{ await supabaseClient.auth.signOut(); }catch(e){}
+      setTimeout(function(){ window.location.href='/'; }, 1500);
+      return;
+    }
+    var _recovery=await _showAccountRecoveryModal(_hoursLeft, user.id);
+    if(_recovery==='continued') return; // déjà signOut + redirect dans la modal
+    // 'cancelled' : suppression annulée, on continue le flow normal
+    pd.deletion_requested_at=null;
+    pd.deleted_username=null;
+  }
   // Si pas de ligne dans players, la créer depuis les metadata auth
   if(!pd){
     var meta=user.user_metadata||{};
@@ -19218,6 +19241,15 @@ async function togglePushNotifs(){
 }
 
 // ────────────── Suppression de compte ──────────────
+// Flux à 2 temps :
+//   1. Le RP demande la suppression → on pose `deletion_requested_at`. Il est
+//      immédiatement invisible dans l'app (filtré par la RLS Supabase) et
+//      déconnecté, MAIS ses données restent intactes en base.
+//   2. Pendant 72h, s'il se reconnecte, on lui propose d'annuler (cf.
+//      `_showAccountRecoveryModal` appelée depuis onLoginSuccess).
+//   3. Passé 72h, l'Edge Function `finalize-account-deletions` (cron horaire)
+//      exécute l'anonymisation réelle (Lands libérées, profil vidé, auth
+//      écrasé, `deleted_at` posé).
 function openDeleteAccountModal(){
   var modal=document.getElementById('delete-account-modal');
   if(!modal){
@@ -19229,19 +19261,19 @@ function openDeleteAccountModal(){
       +'<div style="text-align:center">'
         +'<div style="font-size:2.5rem;margin-bottom:.4rem">⚠️</div>'
         +'<div class="modal-title" style="color:#ff6060">Supprimer mon compte</div>'
-        +'<div style="font-size:.78rem;color:var(--text);line-height:1.6;margin:.7rem 0">Cette action est <strong style="color:#ff6060">définitive</strong>. Tu vas perdre :</div>'
+        +'<div style="font-size:.78rem;color:var(--text);line-height:1.6;margin:.7rem 0">Tu vas demander la suppression de ton compte. Voici ce qui va se passer :</div>'
         +'<ul style="text-align:left;font-size:.74rem;color:var(--muted2);line-height:1.7;padding-left:1.2rem;margin:.4rem auto;max-width:300px">'
-          +'<li>L\'accès à ton compte (déconnexion immédiate)</li>'
-          +'<li>Tes Lands en location seront libérées</li>'
-          +'<li>Ton historique sera anonymisé (RP supprimé)</li>'
-          +'<li>Ton email, ton mot de passe et tes données perso seront effacés</li>'
+          +'<li>Tu es déconnecté immédiatement</li>'
+          +'<li>Ton compte devient invisible pour tous les autres RPs (classement, carte, fil social, défis…)</li>'
+          +'<li>Tu as <strong style="color:var(--gold)">72h pour annuler</strong> en te reconnectant — tout repart comme avant</li>'
+          +'<li>Passé ce délai, la suppression devient <strong style="color:#ff6060">définitive</strong> : Lands libérées, profil anonymisé, accès bloqué</li>'
         +'</ul>'
         +'<div style="font-size:.74rem;color:var(--text);margin:.8rem 0 .3rem">Pour confirmer, tape ton nom de RP :</div>'
         +'<div id="dam-target" style="font-family:Space Mono,monospace;font-size:.85rem;color:var(--gold);margin-bottom:.5rem">—</div>'
         +'<input id="dam-confirm" type="text" placeholder="Nom de RP" style="width:100%;padding:.55rem .7rem;border-radius:7px;border:1px solid rgba(255,68,68,.3);background:rgba(4,12,28,.5);color:var(--text);font-size:.85rem;outline:none;text-align:center;box-sizing:border-box;font-family:Space Mono,monospace">'
         +'<div style="display:flex;gap:.5rem;justify-content:center;margin-top:.9rem;flex-wrap:wrap">'
           +'<button onclick="closeModal(\'delete-account-modal\')" style="padding:.55rem 1rem;border-radius:7px;border:1.5px solid var(--gold);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">Annuler</button>'
-          +'<button onclick="confirmDeleteAccount()" style="padding:.55rem 1rem;border-radius:7px;border:1.5px solid #ff4444;background:rgba(255,68,68,.1);color:#ff6060;font-weight:700;font-size:.78rem;cursor:pointer">🔴 Supprimer définitivement</button>'
+          +'<button onclick="confirmDeleteAccount()" style="padding:.55rem 1rem;border-radius:7px;border:1.5px solid #ff4444;background:rgba(255,68,68,.1);color:#ff6060;font-weight:700;font-size:.78rem;cursor:pointer">🔴 Demander la suppression</button>'
         +'</div>'
       +'</div></div>';
     document.body.appendChild(modal);
@@ -19260,36 +19292,66 @@ async function confirmDeleteAccount(){
     return;
   }
   if(!currentUser){ showToast('⚠️ Pas connecté'); return; }
-  showToast('Suppression en cours…');
+  showToast('Demande en cours…');
   try{
-    // 1) Libérer toutes les lands en location
-    await supabaseClient.from('lands')
-      .update({tenant_id:null,status:'free',rented_at:null,rent_periods:null,rent_start_period:null,monthly_revenue:null})
-      .eq('tenant_id',currentUser.id).eq('status','rented');
-    // 2) Anonymiser le profil (on garde la ligne pour préserver les FK historiques)
-    var anonName='RP supprimé';
+    // On pose juste le drapeau "suppression demandée". La RLS filtre dès cet
+    // instant le RP de toutes les requêtes publiques. Ses données restent
+    // intactes : il peut annuler pendant 72h en se reconnectant. La
+    // finalisation est faite par l'Edge Function `finalize-account-deletions`.
+    var nowIso=new Date().toISOString();
     await supabaseClient.from('players').update({
-      username:anonName, avatar:null, avatar_personal:null, nat:null,
-      city:null, bio:null, weight_kg:null, birth_date:null, gender:null,
-      premium:false, premium_until:null, premium_trial:false,
-      is_visible:false, frozen:true, notif_push_enabled:false
+      deletion_requested_at:nowIso,
+      deleted_username:p.username||null
     }).eq('id',currentUser.id);
-    // 3) Supprimer les abonnements push
-    await supabaseClient.from('push_subscriptions').delete().eq('player_id',currentUser.id);
-    // 4) Verrouiller l'auth : on remplace email + mot de passe par des valeurs aléatoires
-    // pour bloquer toute reconnexion. La suppression définitive de la ligne auth.users
-    // nécessite une Edge Function admin (à brancher en V2).
-    var rand=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
-    var deletedEmail='deleted+'+currentUser.id.substring(0,8)+'@speedixleague.invalid';
-    try{ await supabaseClient.auth.updateUser({email:deletedEmail, password:'X9!'+rand}); }catch(e){}
     await supabaseClient.auth.signOut();
     closeModal('delete-account-modal');
-    showToast('✓ Compte supprimé. À bientôt peut-être.');
-    setTimeout(function(){ window.location.href='/'; }, 1500);
+    showToast('✓ Demande enregistrée. Tu peux annuler en te reconnectant dans les 72h.');
+    setTimeout(function(){ window.location.href='/'; }, 2000);
   }catch(e){
     console.warn('[delete-account]',e);
     showToast('⚠️ Erreur — contacte contact@speedixleague.com');
   }
+}
+
+// Modal de récupération : affichée à la reconnexion d'un RP qui avait demandé
+// la suppression de son compte. Résout 'cancelled' si l'utilisateur annule la
+// suppression (compte restauré), 'continued' s'il confirme et accepte la
+// finalisation à échéance.
+function _showAccountRecoveryModal(hoursLeft, playerId){
+  return new Promise(function(resolve){
+    var modal=document.createElement('div');
+    modal.className='modal open';
+    modal.style.zIndex=99999;
+    modal.innerHTML='<div class="modal-box" style="max-width:440px;border:1.5px solid rgba(245,200,66,.5)">'
+      +'<div style="text-align:center">'
+        +'<div style="font-size:2.8rem;margin-bottom:.4rem">⏳</div>'
+        +'<div class="modal-title" style="color:var(--gold)">Suppression en cours</div>'
+        +'<div style="font-size:.82rem;color:var(--text);line-height:1.55;margin:.8rem 0">Ton compte sera <strong style="color:#ff6060">définitivement supprimé dans '+hoursLeft+'h</strong>.</div>'
+        +'<div style="font-size:.76rem;color:var(--muted2);line-height:1.5;margin-bottom:1rem">Tu peux encore tout annuler maintenant — tes Lands, ton Premium et ton historique seront restaurés à l\'identique.</div>'
+        +'<div style="display:flex;flex-direction:column;gap:.5rem;max-width:300px;margin:0 auto">'
+          +'<button data-act="cancel" style="padding:.7rem 1rem;border-radius:8px;border:1.5px solid var(--green);background:linear-gradient(175deg,rgba(45,219,128,.22),rgba(20,160,80,.12));color:var(--green);font-weight:700;font-size:.88rem;cursor:pointer">↺ Annuler la suppression</button>'
+          +'<button data-act="continue" style="padding:.55rem 1rem;border-radius:7px;border:1px solid rgba(255,68,68,.3);background:transparent;color:#ff6060;font-size:.78rem;cursor:pointer">Continuer la suppression et se déconnecter</button>'
+        +'</div>'
+      +'</div></div>';
+    document.body.appendChild(modal);
+    modal.querySelector('[data-act="cancel"]').onclick=async function(){
+      try{
+        await supabaseClient.from('players').update({
+          deletion_requested_at:null,
+          deleted_username:null
+        }).eq('id',playerId);
+      }catch(e){console.warn('[recovery] cancel error',e);}
+      modal.remove();
+      showToast('✓ Suppression annulée. Bon retour parmi nous !');
+      resolve('cancelled');
+    };
+    modal.querySelector('[data-act="continue"]').onclick=async function(){
+      modal.remove();
+      try{ await supabaseClient.auth.signOut(); }catch(e){}
+      resolve('continued');
+      setTimeout(function(){ window.location.href='/'; }, 500);
+    };
+  });
 }
 
 </script>
@@ -19312,36 +19374,57 @@ async function confirmDeleteAccount(){
   </div>
 </div>
 
-<!-- Service Worker PWA — avec auto-update forcé -->
+<!-- Service Worker PWA — auto-update forcé (mobile-friendly) -->
 <script>
 if ('serviceWorker' in navigator) {
+  // Reload propre quand le nouveau SW prend la main (une seule fois).
+  var _refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (_refreshing) return;
+    _refreshing = true;
+    window.location.reload();
+  });
+
+  // Active un SW qui serait déjà en attente (cas typique : l'app a tourné
+  // pendant qu'une nouvelle version s'installait → reg.waiting non vide).
+  function _activateWaiting(reg){
+    if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  }
+
+  // Surveille un SW en installation, et le promeut dès qu'il est prêt.
+  function _watchInstalling(sw){
+    if (!sw) return;
+    sw.addEventListener('statechange', function(){
+      if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+        sw.postMessage({ type: 'SKIP_WAITING' });
+      }
+    });
+  }
+
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/service-worker.js').then(function(reg){
-      // Check for new version every 60 seconds
+      // 1. Si un SW est déjà en attente (mis en pause sur une session précédente),
+      //    on l'active immédiatement — sinon l'utilisateur reste bloqué.
+      _activateWaiting(reg);
+      // 2. Surveiller un SW déjà en cours d'installation au moment du load.
+      _watchInstalling(reg.installing);
+      // 3. Et tous les futurs updatefound.
+      reg.addEventListener('updatefound', function(){ _watchInstalling(reg.installing); });
+      // 4. Vérification immédiate au démarrage (au lieu d'attendre 60 s).
+      reg.update().catch(function(){});
+      // 5. Re-check périodique pour les sessions longues.
       setInterval(function(){ reg.update().catch(function(){}); }, 60000);
-      // Détection d'une nouvelle version installée → on demande au nouveau SW
-      // de prendre le contrôle immédiatement, puis le reload est déclenché
-      // par l'événement controllerchange ci-dessous.
-      reg.addEventListener('updatefound', function(){
-        var newSW = reg.installing;
-        if (!newSW) return;
-        newSW.addEventListener('statechange', function(){
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // Un SW est déjà actif (ancien) + nouveau prêt → transition
-            newSW.postMessage({ type: 'SKIP_WAITING' });
-          }
-        });
+      // 6. Re-check à chaque retour au premier plan (réveil du tel, retour
+      //    dans l'app après un changement d'app). C'est CE point qui débloque
+      //    le scénario mobile où l'app reste ouverte des jours.
+      document.addEventListener('visibilitychange', function(){
+        if (document.visibilityState === 'visible') {
+          reg.update().catch(function(){});
+          _activateWaiting(reg);
+        }
       });
     }).catch(function(err){
       console.warn('[SW] registration failed:', err);
-    });
-    // Quand le nouveau SW prend le contrôle, on recharge la page pour que
-    // l'utilisateur voie la nouvelle version sans manipulation manuelle.
-    var _refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if (_refreshing) return;
-      _refreshing = true;
-      window.location.reload();
     });
   });
 }
