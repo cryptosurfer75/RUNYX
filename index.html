@@ -10235,18 +10235,24 @@ async function renderSocialFeed(){
   feed.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:.82rem">Chargement…</div>';
   // Charger les follows
   await loadMyFollowing();
-  // Charger les 30 dernières courses de tous les joueurs (période en cours)
-  var {data:runs}=await supabaseClient.from('runs')
+  // Stratégie de fetch selon le mode :
+  //  · me      → mur perso : toutes les courses du RP, toutes périodes, limit haute (1000)
+  //  · friends → fenêtre 7 jours, période en cours, filtre player_id côté serveur
+  //  · all     → fenêtre 7 jours, période en cours, jusqu'à 500 courses
+  var query=supabaseClient.from('runs')
     .select('id,player_id,points,distance,time,elevation,run_date,description,photo,period,polyline')
-    .eq('period',0)
-    .order('run_date',{ascending:false})
-    .limit(50);
-  // Filtrer selon le mode : me = uniquement mes courses · friends = mes amis (+ moi) · all = tout le monde
-  if(_feedMode==='me'&&runs){
-    runs=runs.filter(function(r){return r.player_id===currentUser.id;});
-  } else if(_feedMode==='friends'&&runs){
-    runs=runs.filter(function(r){return r.player_id===currentUser.id||_myFollowing.indexOf(r.player_id)>=0;});
+    .order('run_date',{ascending:false});
+  if(_feedMode==='me'){
+    query=query.eq('player_id',currentUser.id).limit(1000);
+  } else {
+    var since=new Date(); since.setDate(since.getDate()-7);
+    query=query.eq('period',0).gte('run_date',since.toISOString()).limit(500);
+    if(_feedMode==='friends'){
+      var friendIds=[currentUser.id].concat(_myFollowing||[]);
+      query=query.in('player_id',friendIds);
+    }
   }
+  var {data:runs}=await query;
   if(!runs||!runs.length){
     var emptyMsg;
     if(_feedMode==='me'){
