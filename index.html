@@ -5412,7 +5412,7 @@ function renderDashboard(){
     skinColor:['fdbcb4','edb98a','d08b5b','ae5d29','614335','f8d25c'],
     top:['noHair','shortFlat','shortCurly','shortRound','shortWaved','longButNotTooLong','bigHair','bob','bun','curly','curvy','dreads','fro','froBand','miaWallace','straight01','straight02','shaggy','shaggyMullet','shavedSides','frizzle'],
     hairColor:['a55728','2c1b18','b58143','d6b370','724133','4a312c','c93305','e8e1e1','f59797'],
-    hatColor:['none','hat','winterHat1','winterHat04','hijab','turban'],
+    hatColor:['none','hat','winterHat1','winterHat04','hijab','turban','capRP'],
     accessories:['blank','kurt','prescription01','prescription02','round','sunglasses','wayfarers'],
     clothing:['blazerAndShirt','blazerAndSweater','collarAndSweater','graphicShirt','hoodie','overall','shirtCrewNeck','shirtScoopNeck','shirtVNeck'],
     clothesColor:['3c4f5c','65c9ff','5199e4','25557c','e6e6e6','929598','a7ffc4','ffdeb5','ffafb9','ff488e','262e33','ff5c5c'],
@@ -5426,13 +5426,50 @@ function renderDashboard(){
   var _avatarLabels={skinColor:'Peau',top:'Cheveux',hairColor:'Couleur cheveux',hatColor:'Chapeau',accessories:'Lunettes',accessoriesColor:'Couleur lunettes',clothing:'Vêtement',clothesColor:'Couleur vêtement',eyes:'Yeux',eyebrows:'Sourcils',mouth:'Bouche',facialHair:'Barbe',facialHairColor:'Couleur barbe'};
   var _avatarCurrent={skinColor:0,top:0,hairColor:0,hatColor:0,accessories:0,accessoriesColor:0,clothing:0,clothesColor:0,eyes:0,eyebrows:0,mouth:0,facialHair:0,facialHairColor:0};
 
+  // Casquette SPEEDIX (jaune SPEEDIX + "RP" noir) — superposée sur DiceBear
+  // car DiceBear avataaars n'offre pas de casquette. Calée sur viewBox 0 0 280 280 (tête centrée x=140).
+  // Visière volontairement courte (s'arrête vers y=138) pour ne pas masquer les yeux (~y=145+).
+  var SPEEDIX_CAP_SVG = '<g style="pointer-events:none">'
+    + '<path d="M78 102 C78 98 80 94 84 90 Q84 20 140 20 Q196 20 196 90 C200 94 202 98 202 102 Q140 46 78 102 Z" fill="#f5c842" stroke="#0a0e1a" stroke-width="2" stroke-linejoin="round"/>'
+    + '<circle cx="140" cy="22" r="3.2" fill="#c69826" stroke="#0a0e1a" stroke-width="1.5"/>'
+    + '<text x="141" y="63" font-family="Impact, Arial Black, sans-serif" font-style="italic" font-weight="900" font-size="26" fill="#ffffff" text-anchor="middle" letter-spacing="-1" opacity="0.35">RP</text>'
+    + '<text x="140" y="62" font-family="Impact, Arial Black, sans-serif" font-style="italic" font-weight="900" font-size="26" fill="#0a0e1a" text-anchor="middle" letter-spacing="-1">RP</text>'
+    + '<g stroke="#c69826" stroke-width="1.8" stroke-linecap="round" opacity="0.9">'
+    + '<line x1="122" y1="70" x2="132" y2="70"/>'
+    + '<line x1="135" y1="70" x2="146" y2="70"/>'
+    + '<line x1="149" y1="70" x2="155" y2="70"/>'
+    + '</g>'
+    + '<g fill="none" stroke="#c69826" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M112 45 L118 52 L112 59"/>'
+    + '<path d="M168 45 L162 52 L168 59"/>'
+    + '</g>'
+    + '</g>';
+
+  // Fetch le SVG DiceBear puis y injecte la casquette + un marqueur d'options pour relecture future.
+  async function composeAvatarWithCap(dicebearUrl, optsJson){
+    try{
+      var resp=await fetch(dicebearUrl);
+      var svgText=await resp.text();
+      var marker='<!--speedixOpts:'+optsJson+'-->';
+      svgText=svgText.replace('</svg>', SPEEDIX_CAP_SVG+marker+'</svg>');
+      return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgText);
+    }catch(e){
+      console.warn('[avatar] compose cap RP failed', e);
+      return dicebearUrl;
+    }
+  }
+
   function buildAvatarUrl(){
     var url='https://api.dicebear.com/9.x/avataaars/svg?seed=custom';
     var hatVal=_avatarOpts.hatColor[_avatarCurrent.hatColor];
-    var useHat=(hatVal&&hatVal!=='none');
+    var useCapRP=(hatVal==='capRP');
+    var useHat=(hatVal&&hatVal!=='none'&&!useCapRP);
     // Cheveux ou chapeau (option spéciale 'noHair' = crâne nu via topProbability=0)
+    // Pour la casquette RP : crâne nu côté DiceBear, la casquette est posée par-dessus au compose.
     if(useHat){
       url+='&top='+hatVal;
+    } else if(useCapRP){
+      url+='&topProbability=0';
     } else {
       var topVal=_avatarOpts.top[_avatarCurrent.top];
       if(topVal==='noHair'){
@@ -5459,9 +5496,25 @@ function renderDashboard(){
     return url;
   }
 
+  // Token incrémenté à chaque appel pour annuler les composes obsolètes
+  // (sinon l'utilisateur peut voir un preview d'un choix précédent qui arrive en retard).
+  var _avatarPreviewToken=0;
   function updateAvatarPreview(){
     var img=document.getElementById('avatar-builder-preview');
-    if(img) img.src=buildAvatarUrl();
+    if(!img) return;
+    var url=buildAvatarUrl();
+    var hatVal=_avatarOpts.hatColor[_avatarCurrent.hatColor];
+    if(hatVal==='capRP'){
+      var myToken=++_avatarPreviewToken;
+      var optsJson=JSON.stringify(_avatarCurrent);
+      composeAvatarWithCap(url, optsJson).then(function(composed){
+        if(myToken!==_avatarPreviewToken) return;
+        img.src=composed;
+      });
+    } else {
+      _avatarPreviewToken++;
+      img.src=url;
+    }
   }
 
   window.openAvatarPicker=function(mode){
@@ -5469,7 +5522,21 @@ function renderDashboard(){
     // Essayer de charger l'avatar actuel
     var currentUrl=window.__myPlayer?window.__myPlayer.avatar:null;
     var parsed=false;
-    if(currentUrl&&currentUrl.indexOf('api.dicebear.com')>=0){
+    // Cas casquette RP : avatar stocké comme SVG composite avec marqueur d'options inline.
+    if(currentUrl&&currentUrl.indexOf('data:image/svg+xml')===0){
+      try{
+        var decoded=decodeURIComponent(currentUrl.split(',')[1]||'');
+        var m=decoded.match(/speedixOpts:(\{[^}]+\})/);
+        if(m){
+          var opts=JSON.parse(m[1]);
+          for(var ko in opts){
+            if(_avatarCurrent[ko]!==undefined) _avatarCurrent[ko]=opts[ko];
+          }
+          parsed=true;
+        }
+      }catch(eSvg){}
+    }
+    if(!parsed&&currentUrl&&currentUrl.indexOf('api.dicebear.com')>=0){
       // Parser l'URL pour récupérer les paramètres
       try{
         var params=new URLSearchParams(currentUrl.split('?')[1]);
@@ -5557,8 +5624,13 @@ function renderDashboard(){
     updateAvatarPreview();
   };
 
-  window.validateAvatarBuilder=function(){
+  window.validateAvatarBuilder=async function(){
     var url=buildAvatarUrl();
+    var hatVal=_avatarOpts.hatColor[_avatarCurrent.hatColor];
+    if(hatVal==='capRP'){
+      var optsJson=JSON.stringify(_avatarCurrent);
+      url=await composeAvatarWithCap(url, optsJson);
+    }
     if(window._avatarPickerMode==='register'){
       window._regAvatar=url;
       closeModal('avatar-picker-modal');
