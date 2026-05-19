@@ -5611,6 +5611,14 @@ function renderDashboard(){
     _avatarCurrent[key]=(_avatarCurrent[key]+dir+len)%len;
     var lbl=document.getElementById('av-'+key+'-label');
     if(lbl) lbl.textContent=(_avatarCurrent[key]+1)+'/'+len;
+    // Cheveux et Chapeau se disputent le sommet de la tête. Choisir une coiffure
+    // (y compris « sans cheveux ») retire le chapeau/la casquette, sinon le
+    // chapeau resterait prioritaire et masquerait le choix de cheveux.
+    if(key==='top' && _avatarCurrent.hatColor!==0){
+      _avatarCurrent.hatColor=0;
+      var hlbl=document.getElementById('av-hatColor-label');
+      if(hlbl) hlbl.textContent='1/'+_avatarOpts.hatColor.length;
+    }
     updateAvatarPreview();
   };
 
