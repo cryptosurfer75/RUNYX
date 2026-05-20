@@ -4135,11 +4135,13 @@ async function loadPlayersFromSupabase(){
     return;
   }
 
-  // 2. Charger tous les runs
-  const { data: runsData, error: runsErr } = await supabaseClient
-    .from('runs')
-    .select('player_id,points')
-    .eq('period',0);
+  // 2. Points + nombre de courses agrégés par joueur (période courante).
+  //    Agrégation côté base via points_by_player : un SELECT brut sur runs est
+  //    plafonné à 1000 lignes par PostgREST, ce qui faisait disparaître les
+  //    courses des derniers joueurs (un RP pouvait s'afficher à 0 pt alors
+  //    qu'il avait couru). Fonction créée dans Supabase (dashboard SQL).
+  const { data: aggData, error: runsErr } = await supabaseClient
+    .rpc('points_by_player', { p_period: 0 });
 
   if(runsErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur runs : ' + runsErr.message + '</div>';
@@ -4148,13 +4150,12 @@ async function loadPlayersFromSupabase(){
   }
 
 
-  // 3. Agréger les points par player_id
+  // 3. Indexer par player_id (une ligne = un joueur, déjà sommé)
   const ptsByPlayer = {};
   const runsByPlayer = {};
-  (runsData || []).forEach(r => {
-    const pid = r.player_id;
-    ptsByPlayer[pid]  = (ptsByPlayer[pid]  || 0) + (r.points || 0);
-    runsByPlayer[pid] = (runsByPlayer[pid]  || 0) + 1;
+  (aggData || []).forEach(r => {
+    ptsByPlayer[r.player_id]  = r.total_points || 0;
+    runsByPlayer[r.player_id] = r.runs_count || 0;
   });
 
   // 4. Construire les objets joueurs
@@ -9536,11 +9537,13 @@ async function _processEndOfPeriodInner(){
 
   // 1. Charger tous les joueurs avec leurs points
   var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period');
-  var {data:allRuns}=await supabaseClient.from('runs').select('player_id,points').eq('period',0);
+  // Agrégation côté base (fonction points_by_player) — un SELECT brut sur runs
+  // serait plafonné à 1000 lignes et fausserait gains + montées/descentes.
+  var {data:allRuns}=await supabaseClient.rpc('points_by_player',{p_period:0});
   if(!allPlayers||!allRuns){return;}
 
   var ptsByPlayer={};
-  allRuns.forEach(function(r){ptsByPlayer[r.player_id]=(ptsByPlayer[r.player_id]||0)+(r.points||0);});
+  allRuns.forEach(function(r){ptsByPlayer[r.player_id]=r.total_points||0;});
 
   // 2. Classement global (tous les RP)
   var ranked=allPlayers.map(function(p){return {id:p.id,username:p.username,league:p.league,competitive:p.competitive||false,buyin_debt:p.buyin_debt||false,frozen:p.frozen||false,pts:ptsByPlayer[p.id]||0};})
@@ -9984,11 +9987,12 @@ async function renderPeriodRecap(player, closedPeriod, opts){
     elv+=(r.elevation||0); nb++;
   });
   // 2. Classement global (tous les RP ayant participé à cette période)
-  var {data:allRuns}=await supabaseClient.from('runs')
-    .select('player_id,points').eq('period',closedPeriod);
+  // Agrégation côté base (fonction points_by_player) pour ne pas tronquer à
+  // 1000 courses le classement de la période close.
+  var {data:allRuns}=await supabaseClient.rpc('points_by_player',{p_period:closedPeriod});
   var ptsByPlayer={};
   (allRuns||[]).forEach(function(r){
-    ptsByPlayer[r.player_id]=(ptsByPlayer[r.player_id]||0)+(r.points||0);
+    ptsByPlayer[r.player_id]=r.total_points||0;
   });
   var ranked=Object.keys(ptsByPlayer)
     .map(function(pid){return {id:pid,pts:ptsByPlayer[pid]};})
@@ -15997,11 +16001,23 @@ async function renderTeams(){
     // 3. Charger les runs de la PÉRIODE COURANTE (period=0) pour calculer
     //    les pts par joueur. Sans ce filtre, on cumulait les pts lifetime →
     //    après rotation les scores teams ne se reset pas.
-    var {data:allRuns,error:errR}=await supabaseClient
-      .from('runs')
-      .select('player_id, points, run_date')
-      .eq('period', 0);
-    if(errR) throw errR;
+    // Ici on a besoin de la DATE de chaque course (membres arrivés en cours de
+    // période), donc pas d'agrégat côté base — on lit toutes les courses par
+    // paquets de 1000 pour ne jamais en couper (plafond 1000 lignes PostgREST).
+    var allRuns=[]; var _rFrom=0; var _rStep=1000;
+    while(true){
+      var {data:_rChunk,error:errR}=await supabaseClient
+        .from('runs')
+        .select('player_id, points, run_date')
+        .eq('period', 0)
+        .order('id',{ascending:true})
+        .range(_rFrom,_rFrom+_rStep-1);
+      if(errR) throw errR;
+      if(!_rChunk||!_rChunk.length) break;
+      allRuns=allRuns.concat(_rChunk);
+      if(_rChunk.length<_rStep) break;
+      _rFrom+=_rStep;
+    }
 
     var ptsByPlayer={};
     (allRuns||[]).forEach(function(r){
@@ -18707,7 +18723,23 @@ async function loadTeamMembers(teamId, teamName){
   // (cohérent avec renderTeams). run_date pour calculer ptsBeforeJoin (cas RP zéro pts).
   var [membRes, runsRes, medalRes]=await Promise.all([
     supabaseClient.from('team_members').select('player_id, role, joined_at, players(username, grade, nat, avatar)').eq('team_id',teamId),
-    supabaseClient.from('runs').select('player_id, points, run_date').eq('period',0),
+    (async function(){
+      // run_date nécessaire (cas RP arrivé en cours de période) → pas d'agrégat
+      // côté base : on lit toutes les courses par paquets de 1000 pour ne jamais
+      // en couper (plafond 1000 lignes PostgREST).
+      var acc=[]; var _f=0; var _s=1000;
+      while(true){
+        var {data:_c,error:_e}=await supabaseClient.from('runs')
+          .select('player_id, points, run_date').eq('period',0)
+          .order('id',{ascending:true}).range(_f,_f+_s-1);
+        if(_e) return {data:[],error:_e};
+        if(!_c||!_c.length) break;
+        acc=acc.concat(_c);
+        if(_c.length<_s) break;
+        _f+=_s;
+      }
+      return {data:acc};
+    })(),
     supabaseClient.from('palmares').select('rank').eq('team_id',teamId)
   ]);
   // Compter les médailles
