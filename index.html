@@ -2834,7 +2834,7 @@ function askConfirm(message, opts){
 <div id="page-admin" class="page">
   <div style="max-width:600px;margin:0 auto">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;margin-bottom:1.25rem;color:var(--cyan,#20d0e0)">
-      ⚙ Admin <span style="color:var(--muted2);font-size:1rem">Panel</span>
+      ⚙ Admin <span style="color:var(--muted2);font-size:1rem">Panel</span> <span id="admin-sw-version" title="Version réellement active sur cet appareil (lue dans le service worker)" style="font-size:1rem;font-family:'Space Mono',monospace;color:var(--muted2)">…</span>
     </div>
 
     <!-- Compteur RP en ligne -->
@@ -11223,6 +11223,43 @@ function adminSetupCollapsibleBlocks(){
   });
 }
 
+// Affiche dans l'en-tête du panel admin la version RÉELLEMENT active sur cet
+// appareil. On ne lit PAS un numéro écrit en dur (il refléterait le code du
+// fichier, pas ce que le navigateur sert vraiment) : on interroge le service
+// worker actif, qui est seul juge des fichiers servis. Si une nouvelle version
+// est déjà téléchargée mais pas encore activée, on signale "maj dispo".
+async function showAdminVersion(){
+  var el=document.getElementById('admin-sw-version');
+  if(!el) return;
+  if(!('serviceWorker' in navigator) || !navigator.serviceWorker.controller){
+    el.textContent='(hors-ligne SW)';
+    el.style.color='var(--muted2)';
+    return;
+  }
+  // Demande sa version au SW actif via un canal de message éphémère
+  var version=await new Promise(function(resolve){
+    var done=false;
+    var ch=new MessageChannel();
+    ch.port1.onmessage=function(e){ done=true; resolve(e.data); };
+    try{ navigator.serviceWorker.controller.postMessage({type:'GET_VERSION'},[ch.port2]); }
+    catch(e){ resolve(null); }
+    setTimeout(function(){ if(!done) resolve(null); }, 1500);
+  });
+  // Une nouvelle version est-elle téléchargée et en attente d'activation ?
+  var majEnAttente=false;
+  try{
+    var reg=await navigator.serviceWorker.getRegistration();
+    if(reg && reg.waiting) majEnAttente=true;
+  }catch(e){}
+  var label=version ? String(version).replace('speedix-','').toUpperCase() : '?';
+  if(majEnAttente){
+    el.innerHTML=label+' <span style="color:#ff6060">⚠️ maj dispo — recharge</span>';
+  } else {
+    el.innerHTML=label+' <span style="color:var(--green)">✅</span>';
+    el.style.color='var(--muted2)';
+  }
+}
+
 async function initAdminPanel(){
   // Afficher l'onglet admin (desktop) + bouton admin mobile si c'est l'admin
   var tabEl=document.getElementById('nav-tab-admin');
@@ -12663,6 +12700,9 @@ function nav(page){
   const pages=['league','dashboard','teams','lands','points','social','economy','access','grades','rules','legal','admin','settings'];
   if(page==='settings'){
     if(typeof renderSettingsPage==='function') renderSettingsPage();
+  }
+  if(page==='admin'){
+    if(typeof showAdminVersion==='function') showAdminVersion();
   }
   document.querySelectorAll('.nav-tab')[pages.indexOf(page)]?.classList.add('active');
   // Initialiser la carte Lands quand on y navigue
