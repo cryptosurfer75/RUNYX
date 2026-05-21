@@ -6656,15 +6656,15 @@ function getParrainageTitre(count){
 async function shareReferralCode(code){
   // URL avec ?ref= → l'app pré-remplit le code parrain à l'inscription (cf. _autoFillReferralFromUrl).
   var url='https://speedixleague.com?ref='+encodeURIComponent(code);
-  var text='🏃 Salut ! Je joue à SPEEDIX League — un championnat de running gamifié : tu cours, tu marques des points, tu progresses dans la league et gagnes des récompenses chaque mois. De nombreux défis sympas à accomplir. Fonctionne avec Strava.\n\n'
-    +'Rejoins-moi et click sur le lien en dessous 👇\n\n'
-    +'Ça se passe ici alors viens vite, je t\'attends dans la league !\n\n'
-    +'👉 '+url;
+  var text='Salut ! Je participe à SPEEDIX League — un championnat de running gamifié : tu cours, tu marques des points, tu progresses dans la league et gagnes des récompenses. De nombreux défis sympas à accomplir. Fonctionne avec Strava.\n\n'
+    +'Si tu souhaites découvrir : c\'est fun, 100% motivant — 100% gratuit.\n\n'
+    +'Click sur le lien en dessous si tu aimes te challenger 💪\n\n'
+    +url+'\n\n'
+    +'Sportivement';
   // 1. Web Share API (mobile principalement)
   if(navigator.share){
     try{
       await navigator.share({
-        title:'SPEEDIX League — code parrain '+code,
         text:text
       });
       return;
@@ -13958,31 +13958,6 @@ var STRAVA_REDIRECT='https://speedixleague.com';
 // sync des activités, traitement des Lands traversées.
 // ████████████████████████████████████████████████████████████████████████████
 
-// Inscrit "XX Pts gagnés avec speedixleague.com 🏆🎉" à la SUITE de la description
-// existante de la course Strava — JAMAIS d'écrasement du commentaire du RP.
-// Best-effort : toute erreur (token sans droit d'écriture, course supprimée…) est
-// avalée pour ne JAMAIS bloquer l'import d'une course. Idempotent : si la mention y
-// est déjà, on ne réécrit pas (utile si la course repasse par ici).
-async function stravaWritePoints(activityId, pts, token){
-  try{
-    if(!activityId || !token) return;
-    var getR=await window.fetch('https://www.strava.com/api/v3/activities/'+activityId,{
-      headers:{'Authorization':'Bearer '+token}
-    });
-    if(!getR.ok) return; // lecture refusée / course absente → on abandonne en silence
-    var act=await getR.json();
-    var existing=(act && typeof act.description==='string') ? act.description : '';
-    if(existing.indexOf('speedixleague.com')>=0) return; // mention déjà présente
-    var line=pts+' Pts gagnés avec speedixleague.com 🏆🎉';
-    var newDesc=existing.trim() ? (existing.trim()+'\n\n'+line) : line;
-    await window.fetch('https://www.strava.com/api/v3/activities/'+activityId,{
-      method:'PUT',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({description:newDesc})
-    });
-  }catch(e){ console.warn('[stravaWritePoints] échec (sans impact sur la course)',e); }
-}
-
 function connectStrava(){
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
   // Vérifier si déjà connecté
@@ -14372,8 +14347,6 @@ async function syncStravaActivities(silent){
         resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — déjà importée (race condition webhook)</div>';
         continue;
       }
-      // Inscrire les points à la suite de la description Strava (best-effort, non bloquant)
-      if(a.id) await stravaWritePoints(a.id, pts, window.__stravaToken);
       // Créditer les RPC de course (6 RPC par point gagné)
       await walletCredit(pts * 6, 0, 'Course ' + (a.name || 'Strava') + ' · ' + pts + ' pts');
       // Décoder GPS en hexagones
