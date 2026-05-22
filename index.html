@@ -949,7 +949,7 @@ select option{background:#040c1c}
           <input id="reg-code" type="text" placeholder="SL-XXXXX" maxlength="10" style="flex:1;padding:9px 12px;border-radius:8px;background:rgba(4,12,28,.8);border:1.5px solid rgba(74,144,255,.5);color:#f5c842;font-family:'Space Mono',monospace;font-size:.78rem;outline:none;letter-spacing:2px" onfocus="this.style.borderColor='#f5c842'" onblur="this.style.borderColor='rgba(74,144,255,.5)'">
           <button onclick="checkCode()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,200,66,.35);background:rgba(245,200,66,.07);color:#f5c842;cursor:pointer;font-size:.7rem;font-weight:700">OK</button>
         </div>
-        <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 2 💎 NYX</div>
+        <div id="code-msg" style="font-size:.56rem;color:#8aaccc;margin-top:3px">Ton parrain reçoit 2 000 RPC + 5 💎 NYX</div>
       </div>
     </div>
     <!-- Barre d'actions sticky : toujours accessible même sur petits écrans -->
@@ -2043,7 +2043,7 @@ select option{background:#040c1c}
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
         Free <span style="color:var(--gold)">vs</span> Premium
       </div>
-      <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">5,99€ / mois · ou 60€ / an</div>
+      <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">5,99€ / mois · ou 59,99€ / an</div>
     </div>
     <button id="premium-btn" class="btn btn-gold" style="margin-left:auto" onclick="handlePremiumClick()">⭐ Passer Premium</button>
   </div>
@@ -2061,7 +2061,7 @@ select option{background:#040c1c}
       <div class="block-header" style="border-color:rgba(245,200,66,.2)"><div class="block-title">⭐ <span class="hl">Premium</span></div></div>
       <div class="block-body">
         <div style="font-size:1.4rem;font-weight:700;margin-bottom:.1rem">5,99€ <span style="font-size:.8rem;color:var(--muted2)">/ mois</span></div>
-        <div style="font-size:.78rem;color:var(--muted2);margin-bottom:.5rem">ou <strong style="color:var(--gold)">60€ / an</strong> — économisez 12€</div>
+        <div style="font-size:.78rem;color:var(--muted2);margin-bottom:.5rem">ou <strong style="color:var(--gold)">59,99€ / an</strong> — économisez 12€</div>
         <div style="font-size:.75rem;color:var(--muted2)">Inclus : 20 NYX + 15 000 RPC + 5 Boosts offerts / mois</div>
       </div>
     </div>
@@ -2731,7 +2731,7 @@ function askConfirm(message, opts){
     <div style="font-size:3.5rem;margin-bottom:.5rem;animation:blasonPop .5s cubic-bezier(.22,.68,0,1.2) both">🤝</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;color:var(--gold);margin-bottom:.25rem">Bravo !</div>
     <div id="ref-notif-text" style="font-size:.85rem;color:var(--text);margin-bottom:.5rem;line-height:1.5"></div>
-    <div style="font-family:'Space Mono',monospace;font-size:1.3rem;color:var(--green);font-weight:700;margin-bottom:.5rem;text-shadow:0 0 12px rgba(45,219,128,.4)">+2 💎 NYX</div>
+    <div style="font-family:'Space Mono',monospace;font-size:1.3rem;color:var(--green);font-weight:700;margin-bottom:.5rem;text-shadow:0 0 12px rgba(45,219,128,.4)">+5 💎 NYX</div>
     <div style="font-size:.7rem;color:var(--muted2);margin-bottom:1rem">Motive tes filleuls à progresser dans SPEEDIX</div>
     <button id="ref-notif-btn" onclick="closeModal('referral-notif-modal')" style="padding:.5rem 2rem;border-radius:8px;border:1.5px solid var(--green);background:linear-gradient(135deg,rgba(45,219,128,.15),rgba(32,180,100,.08));color:var(--green);font-weight:700;font-size:.85rem;cursor:pointer;letter-spacing:.5px">OK</button>
   </div>
@@ -3198,7 +3198,7 @@ function askConfirm(message, opts){
       <div class="block-header" style="border-color:rgba(74,144,255,.2)"><div class="block-title">⚡ Bonus & <span class="hl">Connexion</span></div></div>
       <div class="block-body-sm" style="font-size:.8rem;color:var(--muted2);line-height:1.9">
         <strong style="color:var(--text)">Chaîne de connexion</strong> — connecte-toi chaque jour pour maintenir ta chaîne et réclamer un bonus RPC. Un jour raté remet la chaîne à zéro avec une baisse des récompenses.<br><br>
-        <strong style="color:var(--text)">Boost</strong> — <strong style="color:var(--green)">+10%</strong> de points sur les 24h suivantes. Max 10 par période.
+        <strong style="color:var(--text)">Boost</strong> — <strong style="color:var(--green)">+10%</strong> de points sur les 24h suivantes.
       </div>
     </div>
 
@@ -3305,7 +3305,7 @@ function askConfirm(message, opts){
       <div class="block-header"><div class="block-title">💳 Conditions Générales de <span class="hl">Vente</span></div></div>
       <div class="block-body-sm" style="font-size:.78rem;color:var(--muted2);line-height:1.8">
         <strong style="color:var(--text)">1. Services proposés</strong><br>
-        SPEEDIX League propose un abonnement Premium optionnel à 5,99€/mois ou 60€/an. Le jeu de base est gratuit.<br><br>
+        SPEEDIX League propose un abonnement Premium optionnel à 5,99€/mois ou 59,99€/an. Le jeu de base est gratuit.<br><br>
 
         <strong style="color:var(--text)">2. Abonnement Premium</strong><br>
         L'abonnement Premium donne accès à : la consultation de tous les classements et Player Cards, le chat de team, le feed des amis, la recherche de RP, 5 boosts offerts par mois, 20 NYX et 15 000 RPC offerts par mois, la création de team privée offerte.<br><br>
@@ -3903,6 +3903,7 @@ async function onLoginSuccess(user, isNew){
       trend:pd.trend||0, avatar:pd.avatar||null, parrain:null,
       rtwId:rtwId, competitive:pd.competitive||false,
       premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:pd.premium_trial||false,
+      boostActiveUntil:pd?(pd.boost_active_until||null):null,
       shareLivePosition:!!pd.share_live_position
     };
     var exi=PLAYERS.findIndex(function(p){return p.id===1;});
@@ -4127,7 +4128,7 @@ async function loadPlayersFromSupabase(){
   // 1. Charger tous les joueurs
   const { data: playersData, error: playersErr } = await supabaseClient
     .from('players')
-    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods,pts_cumulated');
+    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods,pts_cumulated,boost_active_until');
 
   if(playersErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur players : ' + playersErr.message + '</div>';
@@ -4203,6 +4204,7 @@ async function loadPlayersFromSupabase(){
       infirmerie_until: p.infirmerie_until || null,
       is_visible: p.is_visible !== false,
       consecutive_zero_periods: p.consecutive_zero_periods || 0,
+      boostActiveUntil: p.boost_active_until || null,
     };
   });
 
@@ -4677,7 +4679,7 @@ if(document.readyState==='loading'){
 async function checkCode(){
   var v=document.getElementById('reg-code').value.toUpperCase().trim();
   var m=document.getElementById('code-msg');
-  if(!v){m.style.color='#8aaccc';m.textContent='Ton parrain reçoit 2 000 RPC + 2 💎 NYX';m.dataset.parrainUuid='';return;}
+  if(!v){m.style.color='#8aaccc';m.textContent='Ton parrain reçoit 2 000 RPC + 5 💎 NYX';m.dataset.parrainUuid='';return;}
   if(!v.startsWith('SL-')||v.length<7){m.style.color='#ff4444';m.textContent='Code invalide. Format : SL-XXXXX';m.dataset.parrainUuid='';return;}
   var rtwCode=v.replace('SL-','');
   m.style.color='#f0c040';m.textContent='Vérification…';
@@ -5124,19 +5126,11 @@ function calcPts(){
   const spd=parseFloat(document.getElementById('c-spd').value)||0;
   const elv=parseFloat(document.getElementById('c-elv').value)||0;
   const boost=document.getElementById('c-boost').checked;
-  const d=Math.max(km,0.01);
-  // A — Points distance
-  const coeffD=6+3*(d/(d+30));
-  const A=d*coeffD;
-  // B — Points vitesse
-  const bonusV=Math.pow(spd/8,2);
-  const B=(A/10)*(spd*bonusV);
-  // C — Points dénivelé
-  const divD=12+4*(elv/(elv+1000));
-  const C=(elv/d)*(A/divD);
-  let res=A+B+C;
-  if(boost)res*=1.1;
-  const rpc=Math.round(res)*8;
+  // Source unique : on réutilise computePts (le vrai calcul d'une course),
+  // qui applique le boost ET le malus marche (<7 km/h). Évite toute divergence
+  // entre l'aperçu prévisionnel et le score réellement crédité.
+  const res=computePts(km,spd,elv,boost);
+  const rpc=Math.round(res)*6; // 1 point = 6 RPC
   document.getElementById('r-pts').textContent=Math.round(res).toLocaleString('fr');
   document.getElementById('r-rpc').innerHTML=`→ <strong>+${rpc.toLocaleString('fr')} RPC</strong>`;
 }
@@ -5973,6 +5967,11 @@ function renderLeaguePanel(){
     } else if(isCalib){
       calibBadge='<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:rgba(74,144,255,.12);border:1px solid rgba(74,144,255,.3);font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:var(--blue);margin-left:.3rem;flex-shrink:0;line-height:1" title="Période de calibrage — hors podium et prize pool">C</span>';
     }
+    // Éclair = boost actif. On compare à l'heure courante au rendu, donc il
+    // disparaît tout seul dès que la fenêtre de boost est terminée.
+    var boostBadge=(p.boostActiveUntil && new Date(p.boostActiveUntil)>new Date())
+      ?'<span title="Boost actif" style="margin-left:.3rem;font-size:.82rem;flex-shrink:0;line-height:1">⚡</span>'
+      :'';
     var debtBadge=p.buyin_debt?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Buy-in impayé — exclu des récompenses">DETTE</span>':'';
     // Badge infirmerie 🏥 si le RP est en pause médicale en cours
     var infBadge=(p.infirmerie_until && new Date(p.infirmerie_until)>new Date())
@@ -6000,7 +5999,7 @@ function renderLeaguePanel(){
       +'<td><div style="display:flex;align-items:center;gap:.55rem">'
       +natFlagHtml(p.nat)
       +'<div onclick="'+(p.id===1?'window.__viewedPlayer=null;renderDashboard();renderTeams();nav(\'dashboard\')':'showPlayerCard('+p.id+')')+'" style="width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'\'" title="'+p.name+'"><canvas id="'+avId+'" width="28" height="28" style="display:block"></canvas></div>'
-      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+infBadge+calibBadge+debtBadge+parrainBadge+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+infBadge+calibBadge+boostBadge+debtBadge+parrainBadge+'</div>'
       +'</div></td>'
       +'<td style="font-family:monospace;font-size:.82rem">'
       +'<span style="display:inline-flex;align-items:center;justify-content:flex-end;gap:.45rem;width:100%">'
@@ -13975,12 +13974,6 @@ async function buyBoosts(qty, cost){
   var w=window.__wallet||{rpc:0,nyx:0};
   if(w.nyx<cost){showToast('⚠️ Solde insuffisant en NYX');return;}
   var b=window.__boost||{stock:0};
-  var places=10-b.stock;
-  if(places<=0){showToast('⚠️ Stock max atteint (10)');return;}
-  if(qty>places){
-    showToast('⚠️ Plus que '+places+' place'+(places>1?'s':'')+' disponible'+(places>1?'s':'')+' ('+b.stock+'/10)');
-    return;
-  }
   var ok=await walletDebitNyx(cost,'Achat '+qty+' boosts');
   if(!ok) return;
   var newStock=b.stock+qty;
@@ -13991,7 +13984,7 @@ async function buyBoosts(qty, cost){
   window.__boost.stock=newStock;
   renderBoostRow();
   closeModal('boost-shop-modal');
-  showToast('✓ '+actualQty+' boost'+(actualQty>1?'s':'')+' ajouté'+(actualQty>1?'s':'')+' — stock : '+newStock);
+  showToast('✓ '+qty+' boost'+(qty>1?'s':'')+' ajouté'+(qty>1?'s':'')+' — stock : '+newStock);
 }
 // ══════════════════════════════════════════════════════════════════════
 //  STRAVA — Intégration OAuth + Import activités + GPS → Lands
