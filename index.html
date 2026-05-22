@@ -3150,7 +3150,8 @@ function askConfirm(message, opts){
         • Aucune course ne peut être enregistrée<br>
         • Ta league est <strong style="color:var(--text)">figée</strong> (pas de relégation)<br>
         • Tes loyers : <strong style="color:var(--text)">15j</strong> plein tarif · <strong style="color:var(--text)">30j</strong> demi-tarif · <strong style="color:var(--text)">45/60j</strong> suspendus<br>
-        • Tu gardes tes récompenses et ta chaîne de connexion<br><br>
+        • Tu gardes tes récompenses<br>
+        • Ta chaîne de connexion <strong style="color:var(--text)">n'est pas gelée</strong> : continue à te connecter chaque jour (même blessé) pour la garder, sinon elle se casse<br><br>
         <strong style="color:var(--gold)">Reprise :</strong> tu reprends en statut <strong>R</strong> (Reprise) jusqu'à la fin de la période en cours. Si tes points sont supérieurs au seuil de ta league, tu redeviens compétitif. Sinon tu restes une période supplémentaire en reprise.<br><br>
         <strong style="color:var(--gold)">Plafond :</strong> 2 activations par période de 12 mois.
       </div>
@@ -3211,7 +3212,7 @@ function askConfirm(message, opts){
         <strong style="color:var(--text)">Ambassadeur</strong> — 10 parrainages<br>
         <strong style="color:var(--text)">Gouverneur</strong> — 20 parrainages<br>
         <strong style="color:var(--text)">Empereur</strong> — 30 parrainages et +<br>
-        <strong style="color:var(--green)">Fondateur</strong> — + de 40 parrainages dans la <strong style="color:var(--text)">même ville</strong> · Limité à <strong style="color:var(--text)">3 Fondateurs</strong> par ville.
+        <strong style="color:var(--green)">Fondateur</strong> — 40 parrainages et +
       </div>
     </div>
 
@@ -6908,7 +6909,7 @@ async function showParrainageInfo(){
       +'<span style="color:#2ddb80">Ambassadeur</span> — 10 · '
       +'<span style="color:#ff6020">Gouverneur</span> — 20 · '
       +'<span style="color:#9060f0">Empereur</span> — 30+ · '
-      +'<span style="color:var(--gold)">Fondateur</span> — 40+ / ville (max 3)'
+      +'<span style="color:var(--gold)">Fondateur</span> — 40+'
     +'</div>'
     +filleulHtml;
   openModal('land-modal');
@@ -13779,7 +13780,7 @@ function openInfirmerieModal(){
   document.getElementById('lm-title').textContent='🏥 Infirmerie';
   document.getElementById('lm-sub').textContent='Pause sportive volontaire';
   document.getElementById('lm-body').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, chaîne conservée, récompenses normales.</div>'
+    '<div style="font-size:.78rem;color:var(--text);line-height:1.5;margin-bottom:.85rem">Choisis ta durée. Pendant l\'infirmerie : <strong>aucune course</strong>, league figée, récompenses normales. Ta chaîne de connexion <strong>n\'est pas gelée</strong> : connecte-toi chaque jour (même blessé) pour la garder.</div>'
     +btn(15)+btn(30)+btn(45)+btn(60);
   openModal('land-modal');
 }
@@ -16916,7 +16917,7 @@ function _parisDate(iso){return new Date(iso).toLocaleDateString('sv-SE',{timeZo
 function _longestStreak(runs){
   var dates=new Set();
   runs.forEach(function(r){if(r.run_date)dates.add(_parisDate(r.run_date));});
-  var sorted=[].slice.call(dates).sort();
+  var sorted=Array.from(dates).sort();
   var longest=0,current=0,prev=null;
   sorted.forEach(function(d){
     if(prev){
@@ -16927,6 +16928,28 @@ function _longestStreak(runs){
     prev=d;
   });
   return Math.max(longest,current);
+}
+// Série EN COURS (jours consécutifs jusqu'à aujourd'hui), pas le record historique.
+// Monte à chaque jour couru, retombe à 0 dès qu'un jour est sauté. Utilisée par
+// la barre de progression du badge "X jours consécutifs" pour qu'elle reflète la
+// série active du joueur (comme un cumul qui se vide quand la chaîne casse).
+function _currentStreak(runs){
+  var dates=new Set();
+  runs.forEach(function(r){if(r.run_date)dates.add(_parisDate(r.run_date));});
+  if(!dates.size) return 0;
+  var sorted=Array.from(dates).sort();
+  var last=sorted[sorted.length-1];
+  // La série n'est vivante que si le dernier jour couru est aujourd'hui ou hier
+  // (heure de Paris). Au-delà d'un jour d'écart, la chaîne est cassée → 0.
+  var today=_parisDate(new Date().toISOString());
+  if(Math.round((new Date(today)-new Date(last))/86400000)>1) return 0;
+  // On remonte les jours consécutifs depuis le dernier jour couru.
+  var streak=1;
+  for(var i=sorted.length-1;i>0;i--){
+    if(Math.round((new Date(sorted[i])-new Date(sorted[i-1]))/86400000)===1) streak++;
+    else break;
+  }
+  return streak;
 }
 function _countCapitals(runs,caps){
   var visited=new Set();
@@ -17087,7 +17110,7 @@ async function renderChallenges(){
     cumul_km:valid.reduce(function(s,r){return s+(r.distance||0);},0),
     cumul_elv_m:valid.reduce(function(s,r){return s+(r.elevation||0);},0),
     speed_over_5km:valid.filter(function(r){return (r.distance||0)>=5&&r.time>0;}).reduce(function(m,r){return Math.max(m,r.distance/(r.time/60));},0),
-    streak_days:_longestStreak(valid),
+    streak_days:_currentStreak(valid),
     simultaneous_lands:simultaneousLands,
     capitals_fr:_countCapitals(valid,FR_CAPITALS_CLIENT),
     capitals_eu:_countCapitals(valid,EU_CAPITALS_CLIENT),
@@ -18509,7 +18532,7 @@ function _badgeChallengeDescription(b){
     case 'speed_over_5km':    return 'Atteindre <strong style="color:'+(b.color||'#f5c842')+'">'+v+' km/h</strong> de moyenne sur ≥ 5 km';
     case 'streak_days':       return 'Courir <strong style="color:'+(b.color||'#f5c842')+'">'+v+' jours</strong> consécutifs';
     case 'simultaneous_lands':return 'Posséder <strong style="color:'+(b.color||'#f5c842')+'">'+v+' Lands</strong> simultanément (loc/prop) en moins de 60 min';
-    case 'capitals_fr':       return 'Courir au départ de <strong style="color:'+(b.color||'#f5c842')+'">'+v+' préfectures</strong> françaises différentes';
+    case 'capitals_fr':       return 'Courir au départ de <strong style="color:'+(b.color||'#f5c842')+'">'+v+' grandes villes</strong> françaises différentes';
     case 'capitals_eu':       return 'Courir au départ de <strong style="color:'+(b.color||'#f5c842')+'">'+v+' capitales</strong> européennes différentes';
     case 'night_runs':        return 'Faire <strong style="color:'+(b.color||'#f5c842')+'">'+v+' courses</strong> entre 22h et 4h';
     case 'morning_runs':      return 'Faire <strong style="color:'+(b.color||'#f5c842')+'">'+v+' courses</strong> entre 4h et 7h';
