@@ -1368,6 +1368,22 @@ select option{background:#040c1c}
       </div>
     </div>
 
+    <!-- Gel : sur ma PC affiche mon stock, sur la PC d'un autre RP devient le bouton "Geler" -->
+    <div class="block" id="gel-block">
+      <div class="block-header">
+        <div class="block-title"><span class="hl" style="color:#7090c0">Gel</span> <span id="gel-status-label" style="font-size:.7rem;color:var(--muted2)">-5% · 24h · anonyme</span></div>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <div id="gel-timer" style="font-family:'Space Mono',monospace;font-size:.65rem;color:#7090c0;display:none"></div>
+          <button onclick="openModal('gel-shop-modal')" style="font-size:.6rem;padding:.15rem .45rem;border-radius:4px;border:1px solid rgba(120,160,200,.4);background:rgba(120,160,200,.08);color:#7090c0;font-weight:700;cursor:pointer">+ Acheter</button>
+        </div>
+      </div>
+      <div class="block-body-sm">
+        <div class="boost-row" id="gel-row" style="flex-wrap:nowrap;gap:.28rem;overflow-x:auto"></div>
+        <div id="gel-info" style="margin-top:.4rem;font-size:.62rem;color:var(--muted2)"></div>
+        <div id="gel-action" style="margin-top:.5rem;display:flex;justify-content:center"></div>
+      </div>
+    </div>
+
 
     <!-- Mes Challenges validés -->
     <div id="dash-challenges-block" class="block" style="display:none;border-color:rgba(245,200,66,.35);box-shadow:0 0 18px rgba(245,200,66,.08)">
@@ -1990,6 +2006,24 @@ select option{background:#040c1c}
         </div>
       </div>
     </div>
+
+  </div>
+
+  <!-- Ligne 2 bis : Gel (achetable, offensif) -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+
+    <div class="block">
+      <div class="block-header"><div class="block-title">🥶 Gel</div></div>
+      <div class="block-body-sm">
+        <div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>5 Gels</span><button onclick="buyGels(5,10)" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(120,160,200,.4);background:linear-gradient(175deg,rgba(120,160,200,.14),rgba(120,160,200,.04));color:#7090c0;font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(120,160,200,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(120,160,200,.28),rgba(120,160,200,.1))'" onmouseout="this.style.background='linear-gradient(175deg,rgba(120,160,200,.14),rgba(120,160,200,.04))'">10 NYX</button></div>
+        <div class="eco-row" style="display:flex;align-items:center;justify-content:space-between"><span>10 Gels</span><button onclick="buyGels(10,18)" style="padding:.25rem .6rem;border-radius:20px;border:1px solid rgba(120,160,200,.4);background:linear-gradient(175deg,rgba(120,160,200,.14),rgba(120,160,200,.04));color:#7090c0;font-size:.65rem;font-weight:800;letter-spacing:.5px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(120,160,200,.15);transition:all .15s" onmouseover="this.style.background='linear-gradient(175deg,rgba(120,160,200,.28),rgba(120,160,200,.1))'" onmouseout="this.style.background='linear-gradient(175deg,rgba(120,160,200,.14),rgba(120,160,200,.04))'">18 NYX</button></div>
+        <div style="font-size:.62rem;color:var(--muted2);margin-top:.5rem">
+          Pose un Gel sur un autre RP : <strong style="color:#7090c0">-5%</strong> sur ses courses · 24h · anonyme
+        </div>
+      </div>
+    </div>
+
+    <div></div>
 
   </div>
 
@@ -2722,6 +2756,26 @@ function askConfirm(message, opts){
       </button>
     </div>
     <div id="boost-shop-stock" style="font-size:.7rem;color:var(--muted2)"></div>
+  </div>
+</div>
+
+<!-- Modal Boutique Gel -->
+<div class="modal" id="gel-shop-modal">
+  <div class="modal-box" style="max-width:360px;text-align:center;padding:1.5rem">
+    <button class="modal-close" onclick="closeModal('gel-shop-modal')">✕</button>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:3px;color:#7090c0;margin-bottom:.25rem">🥶 Acheter des Gels</div>
+    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:1rem">Pose un Gel sur un autre RP : -5% sur ses courses pendant 24h (anonyme)</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+      <button onclick="buyGels(5,10)" style="display:flex;align-items:center;justify-content:space-between;padding:.55rem .85rem;border-radius:8px;border:1.5px solid rgba(120,160,200,.35);background:rgba(120,160,200,.06);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='rgba(120,160,200,.7)';this.style.background='rgba(120,160,200,.12)'" onmouseout="this.style.borderColor='rgba(120,160,200,.35)';this.style.background='rgba(120,160,200,.06)'">
+        <span style="font-size:.85rem;color:var(--text);font-weight:700">5 Gels</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.82rem;color:#7090c0;font-weight:700">10 💎 NYX</span>
+      </button>
+      <button onclick="buyGels(10,18)" style="display:flex;align-items:center;justify-content:space-between;padding:.55rem .85rem;border-radius:8px;border:1.5px solid rgba(120,160,200,.35);background:rgba(120,160,200,.06);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='rgba(120,160,200,.7)';this.style.background='rgba(120,160,200,.12)'" onmouseout="this.style.borderColor='rgba(120,160,200,.35)';this.style.background='rgba(120,160,200,.06)'">
+        <span style="font-size:.85rem;color:var(--text);font-weight:700">10 Gels</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.82rem;color:#7090c0;font-weight:700">18 💎 NYX</span>
+      </button>
+    </div>
+    <div id="gel-shop-stock" style="font-size:.7rem;color:var(--muted2)"></div>
   </div>
 </div>
 
@@ -3905,6 +3959,7 @@ async function onLoginSuccess(user, isNew){
       rtwId:rtwId, competitive:pd.competitive||false,
       premium:pd.premium||false, premiumUntil:pd.premium_until||null, premiumTrial:pd.premium_trial||false,
       boostActiveUntil:pd?(pd.boost_active_until||null):null,
+      gelActiveUntil:pd?(pd.gel_active_until||null):null,
       shareLivePosition:!!pd.share_live_position
     };
     var exi=PLAYERS.findIndex(function(p){return p.id===1;});
@@ -4129,7 +4184,7 @@ async function loadPlayersFromSupabase(){
   // 1. Charger tous les joueurs
   const { data: playersData, error: playersErr } = await supabaseClient
     .from('players')
-    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods,pts_cumulated,boost_active_until');
+    .select('id,username,league,nat,grade,trend,avatar,competitive,buyin_debt,frozen,rtw_id,premium,premium_until,premium_trial,infirmerie_until,is_visible,consecutive_zero_periods,pts_cumulated,boost_active_until,gel_active_until');
 
   if(playersErr){
     if(panel) panel.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--red);font-size:.8rem">⚠️ Erreur players : ' + playersErr.message + '</div>';
@@ -4206,6 +4261,7 @@ async function loadPlayersFromSupabase(){
       is_visible: p.is_visible !== false,
       consecutive_zero_periods: p.consecutive_zero_periods || 0,
       boostActiveUntil: p.boost_active_until || null,
+      gelActiveUntil: p.gel_active_until || null,
     };
   });
 
@@ -5100,7 +5156,7 @@ const FP_DATA=[
 // Calcul de points (computePts) + rendu de la page Dashboard.
 // ████████████████████████████████████████████████████████████████████████████
 
-function computePts(km,spd,elv,boost){
+function computePts(km,spd,elv,boost,gel){
   const d=Math.max(km,0.01);
   // A — Points distance
   const coeffD=6+3*(d/(d+30));
@@ -5115,7 +5171,11 @@ function computePts(km,spd,elv,boost){
   // Malus marche : en dessous de 7 km/h, facteur progressif (spd/7)²
   // Ex : 3 km/h → 18% · 5 km/h → 51% · 6 km/h → 73% · 6.9 km/h → 97% · ≥7 km/h → 100%
   if(spd<7) res*=Math.pow(spd/7,2);
-  return boost?res*1.1:res;
+  // Boost +10%, Gel -5%, les deux ensemble = +5% net (règle simple).
+  if(boost && gel) return res*1.05;
+  if(boost) return res*1.10;
+  if(gel) return res*0.95;
+  return res;
 }
 
 function calcPts(){
@@ -5123,10 +5183,13 @@ function calcPts(){
   const spd=parseFloat(document.getElementById('c-spd').value)||0;
   const elv=parseFloat(document.getElementById('c-elv').value)||0;
   const boost=document.getElementById('c-boost').checked;
+  // Le gel est subi (pas d'option à cocher) : si je suis actuellement gelée,
+  // le calculateur reflète automatiquement le malus.
+  const gel=(typeof isGelActive==='function') && isGelActive();
   // Source unique : on réutilise computePts (le vrai calcul d'une course),
-  // qui applique le boost ET le malus marche (<7 km/h). Évite toute divergence
-  // entre l'aperçu prévisionnel et le score réellement crédité.
-  const res=computePts(km,spd,elv,boost);
+  // qui applique le boost, le gel ET le malus marche (<7 km/h). Évite toute
+  // divergence entre l'aperçu prévisionnel et le score réellement crédité.
+  const res=computePts(km,spd,elv,boost,gel);
   const rpc=Math.round(res)*6; // 1 point = 6 RPC
   document.getElementById('r-pts').textContent=Math.round(res).toLocaleString('fr');
   document.getElementById('r-rpc').innerHTML=`→ <strong>+${rpc.toLocaleString('fr')} RPC</strong>`;
@@ -5749,8 +5812,9 @@ function renderDashboard(){
   // Streak — initialisé vide, mis à jour par checkAndClaimStreak
   var _streakEl=document.getElementById('streak-dots');
   if(_streakEl) _streakEl.innerHTML='<div class="streak-dot streak-todo" title="Jour 1">1</div>';
-  // Boosts — chargé depuis la DB
+  // Boosts + Gel — chargés depuis la DB
   if(typeof loadBoostData==='function') loadBoostData();
+  if(typeof loadGelData==='function') loadGelData();
   // Activities
   const tb=document.getElementById('dash-activities');
   const head=`<thead><tr><th>Date</th><th>Distance</th><th>Vitesse</th><th>Pts</th><th>RPC</th></tr></thead>`;
@@ -5969,6 +6033,11 @@ function renderLeaguePanel(){
     var boostBadge=(p.boostActiveUntil && new Date(p.boostActiveUntil)>new Date())
       ?'<span title="Boost actif" style="margin-left:.3rem;font-size:.82rem;flex-shrink:0;line-height:1">⚡</span>'
       :'';
+    // Flocon = gel actif (RP ralenti -5%). Affichage anonyme : aucun nom
+    // d'acteur n'est révélé, juste le statut. Disparaît seul à expiration.
+    var gelBadge=(p.gelActiveUntil && new Date(p.gelActiveUntil)>new Date())
+      ?'<span title="Gelé — -5% sur les courses" style="margin-left:.3rem;font-size:.82rem;flex-shrink:0;line-height:1">🥶</span>'
+      :'';
     var debtBadge=p.buyin_debt?'<span style="font-size:.48rem;font-weight:700;padding:.06rem .25rem;border-radius:3px;background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);margin-left:.3rem;vertical-align:middle;letter-spacing:.3px" title="Buy-in impayé — exclu des récompenses">DETTE</span>':'';
     // Badge infirmerie 🏥 si le RP est en pause médicale en cours
     var infBadge=(p.infirmerie_until && new Date(p.infirmerie_until)>new Date())
@@ -5996,7 +6065,7 @@ function renderLeaguePanel(){
       +'<td><div style="display:flex;align-items:center;gap:.55rem">'
       +natFlagHtml(p.nat)
       +'<div onclick="'+(p.id===1?'window.__viewedPlayer=null;renderDashboard();renderTeams();nav(\'dashboard\')':'showPlayerCard('+p.id+')')+'" style="width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'\'" title="'+p.name+'"><canvas id="'+avId+'" width="28" height="28" style="display:block"></canvas></div>'
-      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+infBadge+calibBadge+boostBadge+debtBadge+parrainBadge+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+infBadge+calibBadge+boostBadge+gelBadge+debtBadge+parrainBadge+'</div>'
       +'</div></td>'
       +'<td style="font-family:monospace;font-size:.82rem">'
       +'<span style="display:inline-flex;align-items:center;justify-content:flex-end;gap:.45rem;width:100%">'
@@ -6510,12 +6579,13 @@ async function renderHistory(page){
     var spd=timeMin>0?Math.round(km/(timeMin/60)*100)/100:0;
     var elv=r.elevation||0;
     var pts=r.points||0;
-    // Détection boost : on recalcule avec la vitesse EXACTE (pas arrondie) pour
-    // éviter les faux positifs dus aux écarts de rounding entre client et serveur.
-    // Tolérance de 5% pour absorber les arrondis de time (stocké à 0.1 min près).
+    // Détection boost / gel par ratio pts/ptsBase (cf. note ci-dessous).
+    // Bandes : ratio ≈1.10 → boost · ≈0.95 → gel · ≈1.05 → boost+gel · ≈1.00 → rien.
     var _spdExact=timeMin>0?km/(timeMin/60):0;
-    var ptsBase=km>0?Math.round(computePts(km,_spdExact,elv,false)):pts;
-    var hadBoost=pts>=Math.round(ptsBase*1.05)&&ptsBase>0;
+    var ptsBase=km>0?Math.round(computePts(km,_spdExact,elv,false,false)):pts;
+    var _ratio=ptsBase>0?pts/ptsBase:1;
+    var hadBoost=_ratio>=1.025;
+    var hadGel=_ratio<=0.975 || (_ratio>=1.025 && _ratio<1.075);
     var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'}):'-';
     var boostCell=hadBoost
       ?'<span style="color:var(--gold);font-family:Space Mono,monospace;font-size:.72rem;font-weight:700">⚡ +10%</span>'
@@ -6574,10 +6644,12 @@ function showRunDetails(runId){
   var pace=paceTotal>0?paceMin+':'+(paceSec<10?'0':'')+paceSec:null;
   var elv=r.elevation||0;
   var pts=r.points||0;
-  // Détection boost : vitesse EXACTE + tolérance 5 % (cf. note ci-dessus)
+  // Détection boost / gel par ratio (cf. tableau de bandes dans renderHistory).
   var _spdExact=timeMin>0?km/(timeMin/60):0;
-  var ptsBase=km>0?Math.round(computePts(km,_spdExact,elv,false)):pts;
-  var hadBoost=pts>=Math.round(ptsBase*1.05)&&ptsBase>0;
+  var ptsBase=km>0?Math.round(computePts(km,_spdExact,elv,false,false)):pts;
+  var _ratio=ptsBase>0?pts/ptsBase:1;
+  var hadBoost=_ratio>=1.025;
+  var hadGel=_ratio<=0.975 || (_ratio>=1.025 && _ratio<1.075);
   var date=r.run_date?new Date(r.run_date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
   // Formate la durée : < 1h → "MM:SS" · >= 1h → "H:MM:SS"
   var durationStr;
@@ -6613,6 +6685,7 @@ function showRunDetails(runId){
     +row('🔥','Calories',r.calories?r.calories+' kcal':null,'#ff8040')
     +row('👟','Cadence',r.avg_cadence?Math.round(r.avg_cadence*2)+' pas/min':null,'var(--text)')
     +row('⚡','Boost',hadBoost?'+10% appliqué':'—',hadBoost?'#f5c842':'var(--muted2)')
+    +row('🥶','Gel',hadGel?'-5% appliqué':'—',hadGel?'#7090c0':'var(--muted2)')
     +row('🏆','Points',pts.toLocaleString('fr'),'#f5c842')
     +'</div>'
     +(r.strava_activity_id
@@ -11615,12 +11688,13 @@ async function adminAddRun(){
   var msg=document.getElementById('admin-run-msg');
   if(!playerId){msg.style.color='var(--red)';msg.textContent='Choisis un joueur';return;}
   if(km<=0){msg.style.color='var(--red)';msg.textContent='Distance invalide';return;}
-  // Vérifier si le joueur a un boost actif AU MOMENT DE LA COURSE (now pour
-  // les courses admin, qui sont créées en temps réel sans date passée).
-  var {data:pBoost}=await supabaseClient.from('players').select('boost_active_until,boost_activated_at').eq('id',playerId).single();
+  // Vérifier si le joueur a un boost / gel actif AU MOMENT DE LA COURSE (now
+  // pour les courses admin, qui sont créées en temps réel sans date passée).
+  var {data:pBoost}=await supabaseClient.from('players').select('boost_active_until,boost_activated_at,gel_active_until,gel_activated_at').eq('id',playerId).single();
   var nowIso=new Date().toISOString();
   var hasBoost=pBoost?wasBoostActiveAt(nowIso,pBoost.boost_activated_at,pBoost.boost_active_until):false;
-  var pts=Math.round(computePts(km,spd,elv,hasBoost));
+  var hasGel=pBoost?wasGelActiveAt(nowIso,pBoost.gel_activated_at,pBoost.gel_active_until):false;
+  var pts=Math.round(computePts(km,spd,elv,hasBoost,hasGel));
   var timeMin=spd>0?Math.round(km/spd*60):0;
   // Insérer dans runs
   var {error}=await supabaseClient.from('runs').insert({
@@ -14018,6 +14092,191 @@ async function buyBoosts(qty, cost){
   closeModal('boost-shop-modal');
   showToast('✓ '+qty+' boost'+(qty>1?'s':'')+' ajouté'+(qty>1?'s':'')+' — stock : '+newStock);
 }
+
+// ══════════════════════════════════════════════════════════════════════
+//  GEL — -5% pendant 24h, posé par un autre RP (anonyme)
+// ══════════════════════════════════════════════════════════════════════
+// Miroir du Boost mais offensif : un RP utilise un Gel de SA réserve pour
+// figer un autre RP. La cible subit -5% sur toutes ses courses pendant 24h.
+// Aucune trace de l'acteur n'est conservée (anonyme).
+var _gelTimer=null;
+
+async function loadGelData(){
+  if(!currentUser) return;
+  var {data}=await supabaseClient.from('players').select('gel_stock,gel_active_until,gel_activated_at').eq('id',currentUser.id).single();
+  if(data){
+    window.__gel={stock:data.gel_stock||0,activeUntil:data.gel_active_until||null,activatedAt:data.gel_activated_at||null};
+    renderGelRow();
+  }
+}
+
+function isGelActive(){
+  var g=window.__gel;
+  if(!g||!g.activeUntil) return false;
+  return new Date(g.activeUntil)>new Date();
+}
+
+// Symétrique de wasBoostActiveAt : une course est gelée si son DÉPART tombe
+// dans la fenêtre [gel_activated_at, gel_active_until]. Couvre les imports
+// décalés (Strava sync J+2) et les courses commencées juste avant l'expiration.
+function wasGelActiveAt(runStartDate, gelActivatedAt, gelActiveUntil){
+  if(!gelActiveUntil) return false;
+  var runDate=new Date(runStartDate);
+  if(isNaN(runDate.getTime())) return false;
+  var until=new Date(gelActiveUntil);
+  var activated=gelActivatedAt ? new Date(gelActivatedAt) : new Date(until.getTime()-24*3600*1000);
+  return runDate>=activated && runDate<=until;
+}
+
+function getGelTimeLeft(){
+  var g=window.__gel;
+  if(!g||!g.activeUntil) return '';
+  var diff=new Date(g.activeUntil)-new Date();
+  if(diff<=0) return '';
+  var h=Math.floor(diff/3600000);
+  var m=Math.floor((diff%3600000)/60000);
+  return h+'h'+String(m).padStart(2,'0');
+}
+
+async function renderGelRow(){
+  var br=document.getElementById('gel-row');
+  if(!br) return;
+  // Si on consulte un autre RP, la rangée devient un bouton "Geler ce RP".
+  var _viewP=window.__viewedPlayer;
+  br.innerHTML='';
+  if(_viewP&&_viewP._uuid){
+    // Statut Gel de la cible (lecture seule)
+    var {data:vpG}=await supabaseClient.from('players').select('gel_active_until').eq('id',_viewP._uuid).single();
+    var targetGelActive=!!(vpG&&vpG.gel_active_until&&new Date(vpG.gel_active_until)>new Date());
+    var myStock=(window.__gel&&window.__gel.stock)||0;
+    var infoEl=document.getElementById('gel-info');
+    var actionEl=document.getElementById('gel-action');
+    if(targetGelActive){
+      // Déjà gelé — on ne peut rien faire, affichage anonyme
+      var until=new Date(vpG.gel_active_until);
+      var diff=until-new Date();
+      var hLeft=Math.floor(diff/3600000);
+      var mLeft=Math.floor((diff%3600000)/60000);
+      if(infoEl) infoEl.innerHTML='<span style="color:#7090c0">🥶 Ce RP est déjà gelé · '+hLeft+'h'+String(mLeft).padStart(2,'0')+' restant'+(hLeft>0?'s':'')+'</span>';
+      if(actionEl) actionEl.innerHTML='<button disabled style="padding:.4rem 1rem;border-radius:6px;border:1px solid rgba(120,160,200,.2);background:rgba(120,160,200,.06);color:var(--muted);font-size:.75rem;font-weight:700;cursor:not-allowed">Déjà gelé</button>';
+    } else if(myStock<=0){
+      if(infoEl) infoEl.innerHTML='Aucun Gel en réserve · <span style="cursor:pointer;color:#7090c0;text-decoration:underline" onclick="openModal(\'gel-shop-modal\')">Acheter</span>';
+      if(actionEl) actionEl.innerHTML='<button onclick="openModal(\'gel-shop-modal\')" style="padding:.4rem 1rem;border-radius:6px;border:1.5px solid rgba(120,160,200,.4);background:rgba(120,160,200,.08);color:#7090c0;font-size:.75rem;font-weight:700;cursor:pointer">+ Acheter un Gel</button>';
+    } else {
+      if(infoEl) infoEl.innerHTML='Tu as <strong style="color:#7090c0">'+myStock+'</strong> Gel'+(myStock>1?'s':'')+' en réserve';
+      if(actionEl) actionEl.innerHTML='<button onclick="activateGelOnTarget()" style="padding:.45rem 1.1rem;border-radius:6px;border:1.5px solid rgba(120,160,200,.5);background:linear-gradient(175deg,rgba(120,160,200,.18),rgba(120,160,200,.06));color:#7090c0;font-size:.78rem;font-weight:800;letter-spacing:.5px;cursor:pointer">🥶 Geler ce RP</button>';
+    }
+    return;
+  }
+  // Sur ma propre PC : affichage du stock + état du gel subi si actif
+  var g=window.__gel||{stock:0,activeUntil:null};
+  var active=isGelActive();
+  var stock=g.stock||0;
+  for(var i=0;i<10;i++){
+    var cls,lbl,title;
+    if(i<stock){
+      cls='borb-avail';lbl='🥶';title='Gel disponible — utilisable sur la PC d\'un autre RP';
+    } else {
+      cls='borb-used';lbl='·';title='Slot vide';
+    }
+    br.innerHTML+='<div class="borb '+cls+'" title="'+title+'" style="cursor:default">'+lbl+'</div>';
+  }
+  var timerEl=document.getElementById('gel-timer');
+  if(timerEl){
+    if(active){
+      timerEl.style.display='inline';
+      timerEl.textContent='🥶 '+getGelTimeLeft();
+      startGelTimer();
+    } else {
+      timerEl.style.display='none';
+    }
+  }
+  var infoEl=document.getElementById('gel-info');
+  if(infoEl){
+    if(active) infoEl.innerHTML='<span style="color:#7090c0">🥶 Tu es gelé : <strong>-5%</strong> sur tes courses · '+getGelTimeLeft()+' restant</span> · '+stock+' en réserve';
+    else if(stock>0) infoEl.innerHTML=stock+' Gel'+(stock>1?'s':'')+' en réserve · va sur la PC d\'un autre RP pour l\'utiliser';
+    else infoEl.innerHTML='Aucun Gel en réserve · <span style="cursor:pointer;color:#7090c0;text-decoration:underline" onclick="openModal(\'gel-shop-modal\')">Acheter</span>';
+  }
+  var shopStock=document.getElementById('gel-shop-stock');
+  if(shopStock) shopStock.textContent='En réserve : '+stock+' / 10';
+  var actionEl=document.getElementById('gel-action');
+  if(actionEl) actionEl.innerHTML='';
+}
+
+function startGelTimer(){
+  if(_gelTimer) clearInterval(_gelTimer);
+  _gelTimer=setInterval(function(){
+    if(!isGelActive()){
+      clearInterval(_gelTimer);_gelTimer=null;
+      renderGelRow();
+      return;
+    }
+    var timerEl=document.getElementById('gel-timer');
+    if(timerEl) timerEl.textContent='🥶 '+getGelTimeLeft();
+  },60000);
+}
+
+// Pose un Gel sur le RP actuellement consulté. Le Gel reste anonyme :
+// on ne stocke nulle part l'acteur, juste les timestamps sur la victime.
+async function activateGelOnTarget(){
+  if(!currentUser) return;
+  var vp=window.__viewedPlayer;
+  if(!vp||!vp._uuid){showToast('⚠️ Aucun RP cible');return;}
+  if(vp._uuid===currentUser.id){showToast('⚠️ Tu ne peux pas te geler toi-même');return;}
+  var g=window.__gel||{stock:0};
+  if(g.stock<=0){showToast('⚠️ Aucun Gel en réserve');openModal('gel-shop-modal');return;}
+  // Re-check côté DB que la cible n'est pas déjà gelée (anti-race condition).
+  var {data:vpG}=await supabaseClient.from('players').select('gel_active_until').eq('id',vp._uuid).single();
+  if(vpG&&vpG.gel_active_until&&new Date(vpG.gel_active_until)>new Date()){
+    showToast('⚠️ Ce RP est déjà gelé');
+    renderGelRow();
+    return;
+  }
+  var ok=await askConfirm(
+    'Tu vas geler <strong style="color:#7090c0">'+(vp.name||'ce RP')+'</strong> pendant <strong style="color:#7090c0">24h</strong>.<br><br>'
+    +'Toutes ses courses pendant ce temps seront ralenties de <strong>-5%</strong>.<br><br>'
+    +'<em style="color:var(--muted2);font-size:.75rem">Action anonyme — la cible ne saura pas qui l\'a gelée.</em>',
+    {title:'Geler ce RP ?',emoji:'🥶',okLabel:'Geler'}
+  );
+  if(!ok) return;
+  var nowIso=new Date().toISOString();
+  var until=new Date(Date.now()+24*3600*1000).toISOString();
+  var newStock=g.stock-1;
+  // 1. PATCH cible : pose le Gel
+  var r1=await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(vp._uuid),{
+    method:'PATCH',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({gel_active_until:until,gel_activated_at:nowIso})
+  });
+  if(!r1.ok){showToast('⚠️ Erreur lors du gel');return;}
+  // 2. PATCH moi : décrémente mon stock
+  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+    method:'PATCH',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({gel_stock:newStock})
+  });
+  window.__gel.stock=newStock;
+  renderGelRow();
+  showToast('🥶 '+vp.name+' est gelé pour 24h');
+}
+
+async function buyGels(qty, cost){
+  if(!currentUser) return;
+  if(!await askConfirm('Prix : <strong style="color:var(--gold)">'+cost+' NYX</strong>',{title:'Acheter '+qty+' Gel'+(qty>1?'s':''),emoji:'🥶',okLabel:'Acheter ('+cost+' NYX)'})) return;
+  var w=window.__wallet||{rpc:0,nyx:0};
+  if(w.nyx<cost){showToast('⚠️ Solde insuffisant en NYX');return;}
+  var g=window.__gel||{stock:0};
+  var ok=await walletDebitNyx(cost,'Achat '+qty+' Gels');
+  if(!ok) return;
+  var newStock=Math.min(10,g.stock+qty);
+  await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(currentUser.id),{
+    method:'PATCH',headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
+    body:JSON.stringify({gel_stock:newStock})
+  });
+  window.__gel.stock=newStock;
+  renderGelRow();
+  closeModal('gel-shop-modal');
+  showToast('✓ '+qty+' Gel'+(qty>1?'s':'')+' ajouté'+(qty>1?'s':'')+' — stock : '+newStock);
+}
+
 // ══════════════════════════════════════════════════════════════════════
 //  STRAVA — Intégration OAuth + Import activités + GPS → Lands
 // ══════════════════════════════════════════════════════════════════════
@@ -14225,6 +14484,10 @@ async function syncStravaActivities(silent){
   var tokenOk=await refreshStravaToken();
   if(!tokenOk&&!window.__stravaToken){if(!silent)showToast('⚠️ Token expiré, reconnecte Strava');return;}
   if(!silent)showToast('🔄 Import des activités…');
+  // Rafraîchir le cache Boost + Gel avant la boucle : quelqu'un a pu me geler
+  // pendant que j'étais sur l'appli sans bouger (window.__gel serait périmé).
+  if(typeof loadBoostData==='function') await loadBoostData();
+  if(typeof loadGelData==='function') await loadGelData();
   // Récupérer les activités depuis MAX(début de période, date d'inscription).
   // Anti-triche : un nouveau RP ne peut JAMAIS importer des courses faites
   // avant son inscription, même si la période avait commencé bien avant.
@@ -14417,11 +14680,13 @@ async function syncStravaActivities(silent){
         resultsHtml+='<div style="padding:.35rem .3rem;font-size:.72rem;color:var(--muted2);border-bottom:1px solid rgba(30,37,53,.6)">⏭️ '+a.name+' — doublon avec « '+dupName+' » ('+dupReason+')</div>';
         continue;
       }
-      // Calculer les points : boost basé sur la DATE DE DÉPART de la course
-      // (et non sur NOW()) pour gérer correctement les imports décalés.
+      // Calculer les points : boost/gel basés sur la DATE DE DÉPART de la
+      // course (et non NOW()) pour gérer correctement les imports décalés.
       var _b=window.__boost||{};
+      var _g=window.__gel||{};
       var hasBoost=wasBoostActiveAt(runDateFull, _b.activatedAt, _b.activeUntil);
-      var pts=Math.round(computePts(km,spd,elv,hasBoost));
+      var hasGel=(typeof wasGelActiveAt==='function')?wasGelActiveAt(runDateFull, _g.activatedAt, _g.activeUntil):false;
+      var pts=Math.round(computePts(km,spd,elv,hasBoost,hasGel));
       // Insérer la course
       var _insertResp=await window.fetch(supabaseUrl+'/rest/v1/runs',{
         method:'POST',
@@ -15057,13 +15322,20 @@ async function saveCapturedRun(captured, runName){
   if(elv>100) elv=100;
   var spd=timeMin>0?(km/(timeMin/60)):0;
   var runDate=new Date(captured.startedAt||Date.now()).toISOString();
-  // Boost basé sur la DATE DE DÉPART de la course (pas NOW()) : une course
-  // commencée juste avant l'expiration garde son boost même si elle finit après.
+  // Rafraîchir le cache Gel : quelqu'un a pu me geler pendant ma course
+  // (cache local périmé si l'appli est restée ouverte sans rechargement).
+  if(typeof loadGelData==='function') await loadGelData();
+  // Boost / Gel basés sur la DATE DE DÉPART de la course (pas NOW()) :
+  // une course commencée juste avant l'expiration garde son effet.
   var _b=window.__boost||{};
+  var _g=window.__gel||{};
   var hasBoost=(typeof wasBoostActiveAt==='function')
     ? wasBoostActiveAt(runDate, _b.activatedAt, _b.activeUntil)
     : false;
-  var pts=Math.round(computePts(km,spd,elv,hasBoost));
+  var hasGel=(typeof wasGelActiveAt==='function')
+    ? wasGelActiveAt(runDate, _g.activatedAt, _g.activeUntil)
+    : false;
+  var pts=Math.round(computePts(km,spd,elv,hasBoost,hasGel));
 
   // 1. Insert run (return=representation pour récupérer le run_id)
   var runResp=await fetch(supabaseUrl+'/rest/v1/runs',{
