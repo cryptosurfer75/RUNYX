@@ -14001,7 +14001,9 @@ async function renderBoostRow(){
     } else {
       cls='borb-used';lbl='·';title='Slot vide';
     }
-    br.innerHTML+='<div class="borb '+cls+'" title="'+title+'"'+onclick+' style="'+(_viewP?'cursor:default;opacity:.85':'')+'">'+lbl+'</div>';
+    // ⚡ agrandi pour harmoniser avec le 🥶 du Gel.
+    var _extra=(lbl==='⚡')?'font-size:0.9rem;line-height:1;':'';
+    br.innerHTML+='<div class="borb '+cls+'" title="'+title+'"'+onclick+' style="'+_extra+(_viewP?'cursor:default;opacity:.85':'')+'">'+lbl+'</div>';
   }
   // Timer
   var timerEl=document.getElementById('boost-timer');
