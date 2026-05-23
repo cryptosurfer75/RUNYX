@@ -387,6 +387,15 @@ body::before{
 .pp-pct{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold);width:35px;text-align:right;flex-shrink:0}
 .pp-rpc{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted2);width:65px;text-align:right;flex-shrink:0}
 
+/* Mobile : éclaircir le nom de league, le label et le compteur dans le
+   dropdown — sur petits écrans les niveaux de gris par défaut étaient
+   quasi-illisibles. On ne touche pas la ligne "active" (couleur league). */
+@media (max-width:640px){
+  #league-picker-dropdown .lp-name:not(.lp-active){color:#cfd6ea !important}
+  #league-picker-dropdown .lp-label:not(.lp-active){color:#a8b2cc !important}
+  #league-picker-dropdown .lp-count{color:#dfe4f0 !important;background:rgba(255,255,255,.14) !important;font-weight:700}
+}
+
 /* ============================================================
    BOOST ORBS
 ============================================================ */
@@ -5886,10 +5895,10 @@ function buildLeaguePicker(){
       <div style="display:flex;align-items:center;gap:.5rem">
         ${isMyLeague?'<span style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span>':'<span style="width:6px"></span>'}
         <span style="font-size:.9rem">${l.emoji}</span>
-        <span style="font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:.9rem;color:${isActive?l.color:'var(--muted2)'}">${l.name}</span>
-        <span style="font-size:.65rem;color:${isActive?l.color:'var(--muted)'}">— ${l.label}</span>
+        <span class="lp-name${isActive?' lp-active':''}" style="font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:.9rem;color:${isActive?l.color:'var(--muted2)'}">${l.name}</span>
+        <span class="lp-label${isActive?' lp-active':''}" style="font-size:.65rem;color:${isActive?l.color:'var(--muted)'}">— ${l.label}</span>
       </div>
-      ${counts[l.key]?`<span style="font-size:.65rem;color:var(--muted);background:rgba(255,255,255,.07);border-radius:10px;padding:.1rem .45rem">${counts[l.key]}</span>`:''}
+      ${counts[l.key]?`<span class="lp-count" style="font-size:.65rem;color:var(--muted);background:rgba(255,255,255,.07);border-radius:10px;padding:.1rem .45rem">${counts[l.key]}</span>`:''}
     </div>`;
   }).join('');
 }
