@@ -6601,7 +6601,7 @@ async function renderHistory(page){
       ?'<span style="color:var(--gold);font-family:Space Mono,monospace;font-size:.72rem;font-weight:700">⚡ +10%</span>'
       :'<span style="color:var(--muted);font-size:.75rem">—</span>';
     return '<tr>'
-      +'<td onclick="showRunDetails(\''+r.id+'\')" style="cursor:pointer;color:var(--blue);text-decoration:underline;text-decoration-color:rgba(74,144,255,.35);text-underline-offset:2px;font-family:Space Mono,monospace;font-size:.68rem;white-space:nowrap" title="Voir le détail de la course">'+date+'</td>'
+      +'<td style="padding:.3rem .2rem"><span onclick="showRunDetails(\''+r.id+'\')" title="Voir le détail de la course" style="display:inline-flex;align-items:center;gap:.25rem;cursor:pointer;color:var(--blue);background:rgba(74,144,255,.1);border:1px solid rgba(74,144,255,.35);border-radius:6px;padding:.2rem .4rem;font-family:Space Mono,monospace;font-size:.68rem;font-weight:600;white-space:nowrap;line-height:1">'+date+'<span style="opacity:.7;font-size:.85rem;line-height:.7">›</span></span></td>'
       +'<td style="font-weight:600">'+(km>0?km.toFixed(2):'—')+'</td>'
       +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(spd>0?spd.toFixed(2):'—')+'</td>'
       +'<td style="font-family:Space Mono,monospace;font-size:.78rem">'+(elv>0?'↑ '+elv:'—')+'</td>'
