@@ -2096,7 +2096,7 @@ select option{background:#040c1c}
       <div class="block-body">
         <div style="font-size:1.4rem;font-weight:700;margin-bottom:.1rem">5,99€ <span style="font-size:.8rem;color:var(--muted2)">/ mois</span></div>
         <div style="font-size:.78rem;color:var(--muted2);margin-bottom:.5rem">ou <strong style="color:var(--gold)">59,99€ / an</strong> — économisez 12€</div>
-        <div style="font-size:.75rem;color:var(--muted2)">Inclus : 20 NYX + 15 000 RPC + 5 Boosts offerts / mois</div>
+        <div style="font-size:.75rem;color:var(--muted2)">Inclus : 20 NYX + 15 000 RPC + 5 Boosts + 2 Gels offerts / mois</div>
       </div>
     </div>
   </div>
@@ -3363,7 +3363,7 @@ function askConfirm(message, opts){
         SPEEDIX League propose un abonnement Premium optionnel à 5,99€/mois ou 59,99€/an. Le jeu de base est gratuit.<br><br>
 
         <strong style="color:var(--text)">2. Abonnement Premium</strong><br>
-        L'abonnement Premium donne accès à : la consultation de tous les classements et Player Cards, le chat de team, le feed des amis, la recherche de RP, 5 boosts offerts par mois, 20 NYX et 15 000 RPC offerts par mois, la création de team privée offerte.<br><br>
+        L'abonnement Premium donne accès à : la consultation de tous les classements et Player Cards, le chat de team, le feed des amis, la recherche de RP, 5 boosts et 2 gels offerts par mois, 20 NYX et 15 000 RPC offerts par mois, la création de team privée offerte.<br><br>
 
         <strong style="color:var(--text)">3. Essai gratuit</strong><br>
         Un essai gratuit de 15 jours est proposé une seule fois par utilisateur. L'essai donne accès aux fonctionnalités de visualisation Premium mais pas aux récompenses mensuelles. L'essai ne se transforme pas automatiquement en abonnement payant.<br><br>
@@ -5144,6 +5144,7 @@ const FP_DATA=[
   {f:'Trésors cachés & bonus spéciaux',free:false,prem:true},
   {f:'Challenges illimités',           free:false, prem:true},
   {f:'5 Boosts offerts / mois',       free:false,prem:true},
+  {f:'2 Gels offerts / mois',         free:false,prem:true},
   {f:'20 NYX offerts / mois',         free:false,prem:true},
   {f:'15 000 RPC offerts / mois',     free:false,prem:true},
 ];
@@ -9952,14 +9953,15 @@ async function _processEndOfPeriodInner(){
     }
   }
 
-  // 9. Boost mensuel gratuit + récompenses Premium
+  // 9. Boost & Gel mensuels gratuits + récompenses Premium
   for(var bi2=0;bi2<allPlayers.length;bi2++){
     var _bp=allPlayers[bi2];
     var _bpPrem=_bp.premium&&!_bp.premium_trial&&_bp.premium_until&&new Date(_bp.premium_until)>new Date();
     var boostQty=_bpPrem?5:1;
     var patchData2={boost_stock:boostQty,boost_active_until:null};
-    // Récompenses mensuelles Full Premium
+    // Récompenses mensuelles Full Premium (Free non touché côté Gel)
     if(_bpPrem){
+      patchData2.gel_stock=2;
       patchData2.rpc_balance=(_bp.rpc_balance||0)+15000;
       patchData2.nyx_balance=(_bp.nyx_balance||0)+20;
     }
@@ -12601,7 +12603,7 @@ function showTrialOffer(){
     +'<div style="font-size:.85rem;color:var(--text);line-height:1.7;margin-bottom:.3rem">Profite de <strong style="color:var(--gold)">15 jours d\'essai gratuit</strong></div>'
     +'<div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:1rem">'
     +'Accès à tous les classements · Toutes les Player Cards<br>'
-    +'5 Boosts + 20 NYX + 15 000 RPC offerts / mois<br>'
+    +'5 Boosts + 2 Gels + 20 NYX + 15 000 RPC offerts / mois<br>'
     +'Création de Team privée offerte · Pas de publicités'
     +'</div>'
     +'<div style="display:flex;flex-direction:column;gap:.5rem;max-width:250px;margin:0 auto">'
