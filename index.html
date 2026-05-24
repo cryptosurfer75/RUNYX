@@ -1349,7 +1349,7 @@ select option{background:#040c1c}
     </div><!-- /grid principal -->
 
     <!-- Bandeau drapeau (largeur stats, sous grade/league) -->
-    <div id="pc-flag" style="height:46px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:.85rem;filter:drop-shadow(0 0 5px rgba(255,255,255,.15))"></div>
+    <div id="pc-flag" style="height:54px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:.85rem;filter:drop-shadow(0 0 5px rgba(255,255,255,.15))"></div>
 
     <!-- Séparateur -->
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(74,144,255,.3),transparent);margin-bottom:.85rem"></div>
@@ -5578,12 +5578,15 @@ function renderDashboard(){
     if(flagEl){
       var _f=natFlag(p.nat);
       var _sq=SQUARE_FLAGS.indexOf(_f)>=0;
-      // Android rend les drapeaux comme un rectangle plat plus gros qu'iOS/Mac
-      // (qui les rendent en mode fanion ondulé) → on réduit la taille sur Android
-      // pour garder une proportion cohérente entre plateformes.
+      // Android rend les drapeaux comme un rectangle plat (sans ondulation)
+      // alors qu'iOS/Mac affichent un joli fanion ondulé. Le scale qui rend
+      // bien sur Apple aplatit moche le rectangle Android → 2 rendus distincts.
       var _isAndroid=/Android/i.test(navigator.userAgent);
-      var _fs=_isAndroid?'1.9rem':'2.4rem';
-      flagEl.innerHTML='<span style="font-size:'+_fs+';line-height:1;display:inline-block;transform-origin:center center;transform:translateY(3px)'+(_sq?' scale(1.2)':'')+'">'+_f+'</span>';
+      if(_isAndroid){
+        flagEl.innerHTML='<span style="font-size:2rem;line-height:1;display:inline-block;transform:translateY(2px)'+(_sq?' scale(1.15)':'')+'">'+_f+'</span>';
+      } else {
+        flagEl.innerHTML='<span style="font-size:3rem;line-height:1;display:inline-block;transform-origin:center center;transform:translateY(5px) scale(1.5,1.45)'+(_sq?' scale(1.3)':'')+'">'+_f+'</span>';
+      }
     }
     // Badge grade — charger le vrai grade depuis la DB pour le joueur affiché
     var _gradeUid=p._uuid||(isOwn&&currentUser?currentUser.id:null);
