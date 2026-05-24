@@ -1142,25 +1142,17 @@ select option{background:#040c1c}
 =========================================== -->
 <div id="page-dashboard" class="page active">
 
-  <!-- Top bar : titre à gauche, boutons à droite. flex-wrap:wrap permet aux
-       boutons de passer à la ligne sur mobile si pas assez de place. Le
-       margin-left:auto sur la colonne boutons garantit qu'ils restent alignés
-       à droite même quand ils wrappent (sinon space-between les colle à gauche
-       quand seuls sur leur ligne). -->
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
+  <!-- Top bar : titre à gauche, bouton Strava à droite. flex-wrap:wrap garde le
+       layout propre si l'écran est très étroit (le bouton passe sous le titre
+       sans tout désaligner). -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
     <div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
         <span style="color:var(--text)">PLAYER</span> <span style="color:var(--gold)">CARD</span>
       </div>
       <div id="pc-period-info" style="font-size:.78rem;color:var(--muted2);margin-top:.1rem"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:.3rem;align-items:stretch;margin-left:auto">
-      <button data-tuto-target="strava" onclick="openModal('sync-modal')" title="Connecter ton compte Strava" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer">⚡ POWERED BY STRAVA</button>
-      <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;box-shadow:0 2px 6px rgba(45,138,50,.35)">🏃 NOUVELLE COURSE</button>
-      <button onclick="openModal('sync-modal')" title="Garmin — en attente d'approbation API" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;border:none;background:#007cc3;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;opacity:.55">⚡ POWERED BY GARMIN</button>
-      <!-- Bouton infirmerie discret (visible uniquement sur sa propre PC) -->
-      <button id="infirmerie-btn" onclick="openInfirmerieModal()" title="Te déclarer en infirmerie en cas de blessure" style="display:none;align-items:center;gap:.25rem;padding:.18rem .5rem;border-radius:4px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.58rem;font-weight:600;letter-spacing:.5px;cursor:pointer">🏥 <span id="infirmerie-btn-label">Infirmerie</span></button>
-    </div>
+    <button data-tuto-target="strava" onclick="openModal('sync-modal')" title="Connecter ton compte Strava" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.2rem .55rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.6px;cursor:pointer;white-space:nowrap;margin-left:auto">⚡ POWERED BY STRAVA</button>
   </div>
 
   <!-- ── PLAYER CARD ─────────────────────────────────────────── -->
@@ -1586,11 +1578,14 @@ select option{background:#040c1c}
 =========================================== -->
 <div id="page-points" class="page">
 
-  <div style="margin-bottom:1.25rem">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
-      Mes <span style="color:var(--gold)">Courses</span>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap">
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
+        Mes <span style="color:var(--gold)">Courses</span>
+      </div>
+      <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Historique & simulateur</div>
     </div>
-    <div style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Historique & simulateur</div>
+    <button onclick="startLiveRun()" title="Démarrer une course en direct (GPS)" style="display:inline-flex;align-items:center;justify-content:center;gap:.3rem;padding:.45rem .85rem;border-radius:6px;border:none;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.6px;cursor:pointer;box-shadow:0 2px 6px rgba(45,138,50,.35);white-space:nowrap;margin-left:auto">🏃 NOUVELLE COURSE</button>
   </div>
 
   <!-- Historique -->
@@ -3623,6 +3618,12 @@ function askConfirm(message, opts){
       <div class="block-body-sm" id="settings-subscription"></div>
     </div>
 
+    <!-- ── Disponibilité (infirmerie) ───────────────────── -->
+    <div class="block" style="margin-bottom:1rem">
+      <div class="block-header"><div class="block-title">🏥 <span class="hl">Disponibilité</span></div></div>
+      <div class="block-body-sm" id="settings-availability"></div>
+    </div>
+
     <!-- ── Préférences ───────────────────────────────────── -->
     <div class="block" style="margin-bottom:1rem">
       <div class="block-header"><div class="block-title">🔔 <span class="hl">Préférences</span></div></div>
@@ -5635,29 +5636,6 @@ function renderDashboard(){
     set('stat-lands-loc','0');set('stat-lands-prop','0');
     set('stat-badges','—');set('stat-best-rank','—');
     set('stat-cagnotte-rpc','—');set('stat-cagnotte-nyx','—');
-    // Bouton Infirmerie discret : visible uniquement sur SA propre PC
-    var _infBtn=document.getElementById('infirmerie-btn');
-    if(_infBtn){
-      if(isOwn){
-        _infBtn.style.display='inline-flex';
-        var _infLabel=document.getElementById('infirmerie-btn-label');
-        if(typeof isInInfirmerie==='function' && isInInfirmerie()){
-          var _i=window.__infirmerie;
-          var _daysLeft=Math.ceil((new Date(_i.until)-new Date())/(24*3600*1000));
-          if(_infLabel) _infLabel.textContent='Infirmerie · '+_daysLeft+'j';
-          _infBtn.style.background='rgba(245,200,66,.12)';
-          _infBtn.style.borderColor='rgba(245,200,66,.35)';
-          _infBtn.style.color='var(--gold)';
-        } else {
-          if(_infLabel) _infLabel.textContent='Infirmerie';
-          _infBtn.style.background='rgba(255,255,255,.04)';
-          _infBtn.style.borderColor='rgba(255,255,255,.12)';
-          _infBtn.style.color='var(--muted2)';
-        }
-      } else {
-        _infBtn.style.display='none';
-      }
-    }
     if(_statUid){
       (async function(){
         // Charger runs de la période en cours + cumulés historiques
@@ -19861,10 +19839,29 @@ async function renderSettingsPage(){
   _renderSettingsAccount(p);
   // Abonnement
   _renderSettingsSubscription(p);
+  // Disponibilité (infirmerie)
+  _renderSettingsAvailability(p);
   // Mes Skins
   _renderSettingsSkins(p);
   // Préférences
   _renderSettingsPrefs(p);
+}
+
+function _renderSettingsAvailability(p){
+  var el=document.getElementById('settings-availability'); if(!el) return;
+  var until=p.infirmerie_until?new Date(p.infirmerie_until):null;
+  var inInf=until && until>new Date();
+  if(inInf){
+    var daysLeft=Math.ceil((until-new Date())/(24*3600*1000));
+    el.innerHTML=''
+      +'<div style="font-size:.75rem;color:var(--gold);font-weight:700;margin-bottom:.4rem">🏥 En infirmerie · '+daysLeft+'j restant'+(daysLeft>1?'s':'')+'</div>'
+      +'<div style="font-size:.7rem;color:var(--muted2);margin-bottom:.7rem;line-height:1.5">Tu es invisible aux autres joueurs et ta league est figée jusqu\'à la fin de l\'infirmerie.</div>'
+      +'<button onclick="openInfirmerieModal()" style="width:100%;padding:.55rem;border-radius:6px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--gold);font-weight:700;font-size:.78rem;cursor:pointer">Gérer mon infirmerie</button>';
+  } else {
+    el.innerHTML=''
+      +'<div style="font-size:.72rem;color:var(--muted2);margin-bottom:.7rem;line-height:1.5">En cas de blessure ou indisponibilité, déclare-toi en infirmerie. Ta league reste figée et tu n\'apparais plus dans les classements pendant la durée choisie.</div>'
+      +'<button onclick="openInfirmerieModal()" style="width:100%;padding:.55rem;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--text);font-weight:700;font-size:.78rem;cursor:pointer">🏥 Me déclarer en infirmerie</button>';
+  }
 }
 
 // Catalogue des skins disponibles (à enrichir quand on ajoute de nouveaux skins).
