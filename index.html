@@ -4890,8 +4890,9 @@ function _openStravaModalSoftLock(crossDelayMs, onClose){
   });
   observer.observe(modal,{attributes:true,attributeFilter:['class']});
 }
-// Mur J+1 : croix supprimée, lien « Se déconnecter » injecté en bas.
-// Persistant — si fermée d'une autre manière, on la rouvre toutes les secondes.
+// Mur J+1 : croix supprimée, lien « Mon profil » injecté en bas (échappatoire pour
+// laisser le RP supprimer son compte). Persistant — si fermée d'une autre manière,
+// on la rouvre toutes les secondes SAUF tant qu'on est sur la page Mon profil.
 function _openStravaModalWall(){
   var modal=document.getElementById('sync-modal');
   if(!modal) return;
@@ -4904,7 +4905,7 @@ function _openStravaModalWall(){
     var logoutWrap=document.createElement('div');
     logoutWrap.id='strava-wall-logout';
     logoutWrap.style.cssText='text-align:center;margin-top:.8rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.08)';
-    logoutWrap.innerHTML='<a href="#" onclick="event.preventDefault();_stravaWallLogout()" style="font-size:.66rem;color:#8aaccc;text-decoration:underline;font-family:\'Space Mono\',monospace;letter-spacing:.5px">Se déconnecter</a>';
+    logoutWrap.innerHTML='<a href="#" onclick="event.preventDefault();_stravaWallGoToProfile()" style="font-size:.66rem;color:#8aaccc;text-decoration:underline;font-family:\'Space Mono\',monospace;letter-spacing:.5px">Mon profil</a>';
     box.appendChild(logoutWrap);
   }
   if(window.__stravaWallGuard) clearInterval(window.__stravaWallGuard);
@@ -4914,20 +4915,22 @@ function _openStravaModalWall(){
       window.__stravaWallGuard=null;
       return;
     }
+    // Échappatoire : si le RP est sur sa page Mon profil, on le laisse tranquille
+    // (pour pouvoir supprimer son compte). La modale se rouvrira dès qu'il en sortira.
+    var settingsPage=document.getElementById('page-settings');
+    if(settingsPage && settingsPage.classList.contains('active')){
+      if(modal.classList.contains('open')) closeModal('sync-modal');
+      return;
+    }
     if(!modal.classList.contains('open')) openModal('sync-modal');
   }, 1000);
 }
-function _stravaWallLogout(){
-  if(window.__stravaWallGuard){ clearInterval(window.__stravaWallGuard); window.__stravaWallGuard=null; }
+function _stravaWallGoToProfile(){
+  // On NE tue PAS le guard : il restera muet tant qu'on est sur page-settings
+  // et rouvrira la modale dès que le RP en sortira via le menu déroulant.
   closeModal('sync-modal');
-  // Restaurer la croix pour la prochaine ouverture manuelle de sync-modal
-  var modal=document.getElementById('sync-modal');
-  if(modal){
-    var cb=modal.querySelector('.modal-close'); if(cb){ cb.style.display=''; cb.style.visibility=''; }
-    var wrap=modal.querySelector('#strava-wall-logout'); if(wrap) wrap.remove();
-  }
-  window.__stravaPromptScheduled=false;
-  if(typeof disconnectApp==='function') disconnectApp();
+  if(typeof navMenu==='function') navMenu('settings');
+  else if(typeof nav==='function') nav('settings');
 }
 
 // Auto-fill du code parrain depuis l'URL `?ref=SL-XXXXX` (lien partagé via SMS/WhatsApp).
