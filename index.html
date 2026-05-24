@@ -4868,10 +4868,14 @@ function _stravaWaitForCalmThen(cb){
     if(!_stravaAnyBlockerOpen()){ clearInterval(iv); cb(); }
   }, 500);
 }
+// Comptes test exclus du tunnel Strava (J1 + mur J+1) — sinon impossible de
+// les utiliser pour faire des essais sans avoir à reconnecter Strava.
+var _STRAVA_PROMPT_BYPASS_USERNAMES=['lauraqrunner','jordansmith','nakamoto-75'];
 function _maybeShowStravaPrompt(pd){
   if(!pd) return;
   if(pd.strava_access_token) return; // déjà lié → on n'embête pas
   if(typeof isAdmin==='function' && isAdmin()) return; // admin bypass
+  if(pd.username && _STRAVA_PROMPT_BYPASS_USERNAMES.indexOf(String(pd.username).toLowerCase())!==-1) return;
   if(window.__stravaPromptScheduled) return; // double-call protection (même session)
   window.__stravaPromptScheduled=true;
   var createdAt=pd.created_at?new Date(pd.created_at):new Date();
