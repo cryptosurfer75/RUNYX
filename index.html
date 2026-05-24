@@ -5578,15 +5578,15 @@ function renderDashboard(){
     if(flagEl){
       var _f=natFlag(p.nat);
       var _sq=SQUARE_FLAGS.indexOf(_f)>=0;
-      // Android rend les drapeaux comme un rectangle plat (sans ondulation)
-      // alors qu'iOS/Mac affichent un joli fanion ondulé. Le scale qui rend
-      // bien sur Apple aplatit moche le rectangle Android → 2 rendus distincts.
-      var _isAndroid=/Android/i.test(navigator.userAgent);
-      if(_isAndroid){
-        flagEl.innerHTML='<span style="font-size:2.5rem;line-height:1;display:inline-block;transform:translateY(2px)'+(_sq?' scale(1.15)':'')+'">'+_f+'</span>';
-      } else {
-        flagEl.innerHTML='<span style="font-size:3rem;line-height:1;display:inline-block;transform-origin:center center;transform:translateY(5px) scale(1.5,1.45)'+(_sq?' scale(1.3)':'')+'">'+_f+'</span>';
-      }
+      // DEBUG : on affiche le user-agent court + la taille appliquée
+      // (à retirer une fois le pb compris)
+      var _ua=navigator.userAgent;
+      var _isAndroid=/Android/i.test(_ua);
+      var _fs=_isAndroid?'2.5rem':'3rem';
+      var _scale=_isAndroid?'translateY(2px)'+(_sq?' scale(1.15)':''):'translateY(5px) scale(1.5,1.45)'+(_sq?' scale(1.3)':'');
+      flagEl.innerHTML='<span style="font-size:'+_fs+';line-height:1;display:inline-block;transform-origin:center center;transform:'+_scale+'">'+_f+'</span>'
+        +'<span style="position:absolute;bottom:1px;right:4px;font-size:.45rem;color:'+(_isAndroid?'#5ecb62':'#ff6b6b')+';font-family:monospace;line-height:1">'+(_isAndroid?'AND ':'NOT ')+_fs+'</span>';
+      flagEl.style.position='relative';
     }
     // Badge grade — charger le vrai grade depuis la DB pour le joueur affiché
     var _gradeUid=p._uuid||(isOwn&&currentUser?currentUser.id:null);
