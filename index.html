@@ -1345,15 +1345,17 @@ select option{background:#040c1c}
 
     <!-- Ligne : carré gauche (réservé) | drapeau (rectangle réduit) | carré droite (QUIZZ) -->
     <div style="display:grid;grid-template-columns:68px 1fr 64px;gap:.6rem;align-items:center;margin-bottom:.85rem">
-      <!-- Carré gauche — emplacement réservé (équilibrage visuel sous médailles) -->
-      <div title="Emplacement réservé" style="
+      <!-- Carré gauche — accès rapide à la page Règles (en attendant qu'on lui donne une autre fonction) -->
+      <button onclick="nav('rules')" title="Règles du jeu" style="
         width:54px;height:54px;border-radius:10px;
-        background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);
+        background:rgba(255,140,42,.1);border:1.5px solid rgba(255,140,42,.5);
         display:flex;align-items:center;justify-content:center;
-        margin:0 auto;
-      ">
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:3px;color:var(--muted2);line-height:1">···</span>
-      </div>
+        cursor:pointer;transition:all .18s;
+        margin:0 auto;padding:0;
+      " onmouseover="this.style.background='rgba(255,140,42,.22)';this.style.borderColor='rgba(255,140,42,.95)'"
+         onmouseout="this.style.background='rgba(255,140,42,.1)';this.style.borderColor='rgba(255,140,42,.5)'">
+        <span style="font-size:1.5rem;line-height:1">📝</span>
+      </button>
       <!-- Drapeau (rectangle, contenu dynamique inchangé) -->
       <div id="pc-flag" style="height:54px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;filter:drop-shadow(0 0 5px rgba(255,255,255,.15))"></div>
       <!-- Carré droite — bouton QUIZZ (page complète à venir : question du jour) -->
@@ -1365,7 +1367,7 @@ select option{background:#040c1c}
         margin:0 auto;padding:0;
       " onmouseover="this.style.background='rgba(74,200,255,.22)';this.style.borderColor='rgba(74,200,255,.95)'"
          onmouseout="this.style.background='rgba(74,200,255,.1)';this.style.borderColor='rgba(74,200,255,.5)'">
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:1px;line-height:1;color:#4ac8ff;font-weight:700">Q</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:2px;line-height:1;color:#4ac8ff;font-weight:900;text-shadow:0 0 8px rgba(74,200,255,.55)">?!</span>
       </button>
     </div>
 
