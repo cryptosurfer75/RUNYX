@@ -4121,6 +4121,7 @@ async function onLoginSuccess(user, isNew){
     currentUser.quizz_correct_count=pd.quizz_correct_count||0;
     currentUser.quizz_total_time_ms=pd.quizz_total_time_ms||0;
     currentUser.quizz_locked_at=pd.quizz_locked_at||0;
+    currentUser.quizz_jokers_used=pd.quizz_jokers_used||0;
   }
   var {data:runs}=await supabaseClient.from('runs').select('points').eq('player_id',user.id).eq('period',0);
   if(window.__myPlayer){
@@ -21006,7 +21007,7 @@ async function loadQuizzPlayerData(){
   try{
     var {data:pd}=await supabaseClient
       .from('players')
-      .select('username,quizz_streak,quizz_best_streak,quizz_last_answer_date,quizz_last_correct,quizz_total_rpc,quizz_correct_count,quizz_total_time_ms,quizz_locked_at')
+      .select('username,quizz_streak,quizz_best_streak,quizz_last_answer_date,quizz_last_correct,quizz_total_rpc,quizz_correct_count,quizz_total_time_ms,quizz_locked_at,quizz_jokers_used')
       .eq('id',currentUser.id)
       .maybeSingle();
     if(!pd) return;
@@ -21019,6 +21020,7 @@ async function loadQuizzPlayerData(){
     currentUser.quizz_correct_count=pd.quizz_correct_count||0;
     currentUser.quizz_total_time_ms=pd.quizz_total_time_ms||0;
     currentUser.quizz_locked_at=pd.quizz_locked_at||0;
+    currentUser.quizz_jokers_used=pd.quizz_jokers_used||0;
   }catch(e){console.warn('loadQuizzPlayerData fail',e);}
 }
 
@@ -21234,6 +21236,8 @@ async function submitQuizzAnswer(dispIdx){
     newCorrectCount=newCorrectCount+1;
     newTotalTimeMs=newTotalTimeMs+elapsedMs;
   }
+  // Compteur jokers : on incrémente que si 50/50 effectivement utilisé sur cette question
+  var newJokersUsed=(currentUser.quizz_jokers_used||0)+(s.fiftyUsed?1:0);
 
   try{
     await supabaseClient.from('players').update({
@@ -21243,7 +21247,8 @@ async function submitQuizzAnswer(dispIdx){
       quizz_last_correct:correct,
       quizz_total_rpc:totalRpc,
       quizz_correct_count:newCorrectCount,
-      quizz_total_time_ms:newTotalTimeMs
+      quizz_total_time_ms:newTotalTimeMs,
+      quizz_jokers_used:newJokersUsed
     }).eq('id',currentUser.id);
 
     currentUser.quizz_streak=newStreak;
@@ -21253,6 +21258,7 @@ async function submitQuizzAnswer(dispIdx){
     currentUser.quizz_total_rpc=totalRpc;
     currentUser.quizz_correct_count=newCorrectCount;
     currentUser.quizz_total_time_ms=newTotalTimeMs;
+    currentUser.quizz_jokers_used=newJokersUsed;
 
     if(rpcGained>0){
       await supabaseClient.from('wallet_tx').insert({
@@ -21388,7 +21394,7 @@ async function loadQuizzRanking(){
   try{
     var res=await supabaseClient
       .from('players')
-      .select('id,username,quizz_streak')
+      .select('id,username,quizz_streak,quizz_jokers_used')
       .gt('quizz_streak',0)
       .eq('is_visible',true)
       .order('quizz_streak',{ascending:false})
@@ -21404,10 +21410,14 @@ async function loadQuizzRanking(){
       var border=isMe?'1.5px solid var(--gold)':'1px solid rgba(255,255,255,.08)';
       var nameColor=isMe?'var(--gold)':'var(--text)';
       var nameWeight=isMe?'700':'500';
+      var jokers=p.quizz_jokers_used||0;
       return '<div style="display:flex;align-items:center;gap:.7rem;background:'+bg+';border:'+border+';border-radius:8px;padding:.55rem .75rem;margin-bottom:.4rem">'
         +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:1px;color:var(--text);min-width:38px;text-align:center">'+rankDisplay+'</div>'
         +'<div style="flex:1;color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.username||'RP')+'</div>'
-        +'<div style="font-family:Space Mono,monospace;font-size:.92rem;font-weight:700;color:#4ac8ff">🔥 '+p.quizz_streak+'</div>'
+        +'<div style="font-family:Space Mono,monospace;font-size:.92rem;font-weight:700;color:#4ac8ff;display:flex;align-items:center;gap:.55rem">'
+        +  '<span>🔥 '+p.quizz_streak+'</span>'
+        +  '<span style="color:#ffb84a;font-size:.78rem">'+jokers+'☎️</span>'
+        +'</div>'
       +'</div>';
     }
 
@@ -21432,7 +21442,7 @@ async function loadQuizzRanking(){
             .eq('is_visible',true);
           var myRank=(cnt.count||0)+1;
           html+='<div style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;margin:.3rem 0">···</div>';
-          html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak},myRank);
+          html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0},myRank);
         }catch(e){console.warn('quizz rank count fail',e);}
       }
     }
