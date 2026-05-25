@@ -21121,7 +21121,7 @@ function renderQuizzIntro(){
     +   '<li>Ta série augmente → la valeur des gains aussi.</li>'
     +   '<li>Joker <strong>50/50</strong> → élimine 2 mauvaises réponses = gain divisé par 2.</li>'
     +   '<li>Une seule tentative par jour → pas de seconde chance.</li>'
-    +   '<li>Possibilité de verrouiller ta série en NYX à chaque palier (J10, J25, J50…) → si tu rates, tu retombes au palier locké au lieu de zéro.</li>'
+    +   '<li>Possibilité de verrouiller ta série à certains paliers.</li>'
     + '</ul>'
     +'</div>'
     +'<button onclick="renderQuizzQuestion()" style="display:block;width:100%;padding:.9rem;border-radius:10px;border:1.5px solid rgba(45,219,128,.6);background:rgba(45,219,128,.15);color:#2ddb80;font-family:Bebas Neue,sans-serif;font-size:1.25rem;letter-spacing:3px;cursor:pointer">Lancer le quizz →</button>';
@@ -21364,7 +21364,7 @@ function renderQuizzResult(correct,rpcGained,currentStreak,isReopen){
     + '</div>'
     +'</div>'
     +'<div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.45);border-radius:12px;padding:1rem;margin-bottom:1rem">'
-    + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.6rem;text-align:center">Mes stats Quizz</div>'
+    + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.6rem;text-align:center">Statistiques</div>'
     + ((currentUser.quizz_locked_at||0)>0
         ? '<div style="text-align:center;color:#ff8c2a;font-size:.78rem;margin-bottom:.7rem;font-weight:600">🔒 Série verrouillée à J'+(currentUser.quizz_locked_at)+'</div>'
         : '')
@@ -21406,14 +21406,14 @@ async function loadQuizzRanking(){
       var nameWeight=isMe?'700':'500';
       return '<div style="display:flex;align-items:center;gap:.7rem;background:'+bg+';border:'+border+';border-radius:8px;padding:.55rem .75rem;margin-bottom:.4rem">'
         +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:1px;color:var(--text);min-width:38px;text-align:center">'+rankDisplay+'</div>'
-        +'<div style="flex:1;color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.username||'RP')+(isMe?' <span style="font-size:.65rem;color:var(--muted2)">(toi)</span>':'')+'</div>'
+        +'<div style="flex:1;color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.username||'RP')+'</div>'
         +'<div style="font-family:Space Mono,monospace;font-size:.92rem;font-weight:700;color:#4ac8ff">🔥 '+p.quizz_streak+'</div>'
       +'</div>';
     }
 
     var html=''
       +'<div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.45);border-radius:12px;padding:1rem;margin-bottom:1rem">'
-      + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.7rem;text-align:center">Classement des Séries</div>';
+      + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.7rem;text-align:center">Classement Quizz</div>';
 
     if(data.length===0){
       html+='<div style="text-align:center;color:var(--muted2);font-size:.78rem;padding:.5rem 0">Personne n\'a encore lancé sa série. À toi de jouer !</div>';
