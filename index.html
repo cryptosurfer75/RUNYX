@@ -3605,6 +3605,7 @@ function askConfirm(message, opts){
         <div style="display:inline-block;position:relative">
           <div id="settings-photo-frame" style="width:120px;height:120px;border-radius:50%;border:2px solid var(--gold);background:rgba(245,200,66,.06);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:2.5rem;color:var(--muted2)">👤</div>
           <div onclick="openPersonalPhotoPicker()" style="position:absolute;bottom:4px;right:4px;width:28px;height:28px;border-radius:50%;background:rgba(4,12,28,.85);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.75rem" title="Changer la photo">✏️</div>
+          <div id="settings-app-version" title="Version de l'app" style="position:absolute;top:100%;right:0;margin-top:4px;color:#fff;font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.5px;opacity:.85"></div>
         </div>
         <input type="file" id="settings-photo-input" accept="image/*" style="display:none" onchange="uploadPersonalPhoto(this)">
       </div>
@@ -19916,6 +19917,20 @@ function _editBtn(fn){
 // Edge Function de suppression auth.users + VAPID push à finaliser.
 // ████████████████████████████████████████████████████████████████████████████
 
+// Lit la version du service worker (CACHE_VERSION) pour l'afficher dans la
+// page Settings. Permet de demander "tu es en quelle version ?" à un RP qui
+// remonte un bug et de filtrer les faux positifs liés à un cache obsolète.
+async function _loadAppVersion(){
+  if(window.__appVersion) return window.__appVersion;
+  try{
+    var resp=await fetch('/service-worker.js?nb='+Date.now(),{cache:'no-store'});
+    var txt=await resp.text();
+    var m=txt.match(/CACHE_VERSION\s*=\s*['"]speedix-(v\d+)['"]/);
+    if(m){ window.__appVersion=m[1]; return m[1]; }
+  }catch(e){}
+  return null;
+}
+
 async function renderSettingsPage(){
   if(!currentUser){ return; }
   // Charger le RP courant depuis Supabase (toutes les colonnes nouvelles incluses)
@@ -19925,6 +19940,12 @@ async function renderSettingsPage(){
 
   // Photo perso
   _refreshSettingsPhoto(p.avatar_personal);
+
+  // Affiche la version de l'app sous l'avatar (bas-droite)
+  _loadAppVersion().then(function(v){
+    var el=document.getElementById('settings-app-version');
+    if(el && v) el.textContent=v;
+  });
 
   // Identité
   _renderSettingsIdentity(p);
