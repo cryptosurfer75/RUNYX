@@ -21414,8 +21414,10 @@ function renderQuizzResult(correct,rpcGained,currentStreak,isReopen){
   loadQuizzRanking();
 }
 
-// Charge et affiche le classement des meilleures séries EN COURS (top 10 + toi si hors top).
-// Tri sur quizz_streak desc. Exclut les RP invisibles (infirmerie) et les comptes en suppression (RLS).
+// Charge et affiche le classement des meilleures séries EN COURS (top 50 + toi si hors top).
+// Tri : 1) quizz_streak desc · 2) quizz_jokers_used asc (moins de jokers = mieux)
+//       · 3) quizz_total_time_ms asc (plus rapide = mieux, total cumulé sur bonnes réponses).
+// Exclut les RP invisibles (infirmerie) et les comptes en suppression (RLS).
 async function loadQuizzRanking(){
   var container=document.getElementById('quizz-ranking');
   if(!container) return;
@@ -21423,11 +21425,13 @@ async function loadQuizzRanking(){
   try{
     var res=await supabaseClient
       .from('players')
-      .select('id,username,quizz_streak,quizz_jokers_used')
+      .select('id,username,quizz_streak,quizz_jokers_used,quizz_total_time_ms')
       .gt('quizz_streak',0)
       .eq('is_visible',true)
       .order('quizz_streak',{ascending:false})
-      .limit(10);
+      .order('quizz_jokers_used',{ascending:true,nullsFirst:true})
+      .order('quizz_total_time_ms',{ascending:true,nullsFirst:true})
+      .limit(50);
     if(res.error) throw res.error;
     var data=res.data||[];
 
@@ -21457,9 +21461,11 @@ async function loadQuizzRanking(){
     if(data.length===0){
       html+='<div style="text-align:center;color:var(--muted2);font-size:.78rem;padding:.5rem 0">Personne n\'a encore lancé sa série. À toi de jouer !</div>';
     } else {
+      // Liste scrollable : au-delà de ~10 lignes (limit 50), on évite que le panneau pousse toute la page.
+      html+='<div style="max-height:60vh;overflow-y:auto;padding-right:.25rem">';
       data.forEach(function(p,i){ html+=rowHtml(p,i+1); });
 
-      // Si moi pas dans le top 10 mais j'ai une série en cours → ligne séparée avec mon rang
+      // Si moi pas dans le top 50 mais j'ai une série en cours → ligne séparée avec mon rang
       var meInTop=data.some(function(p){return p.id===currentUser.id;});
       var myStreak=currentUser.quizz_streak||0;
       if(!meInTop && myStreak>0){
@@ -21474,6 +21480,7 @@ async function loadQuizzRanking(){
           html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0},myRank);
         }catch(e){console.warn('quizz rank count fail',e);}
       }
+      html+='</div>';
     }
 
     html+='</div>';
