@@ -4134,34 +4134,30 @@ async function onLoginSuccess(user, isNew){
     window.__myPlayer.pts=_isStarterMe?(_myPtsCumDb+pts):pts;
     window.__myPlayer.ptsCum=_myPtsCumDb+pts;
     window.__myPlayer.km=Math.round(pts/8); window.__myPlayer.courses=(runs||[]).length;
-    // Montée libre en calibrage : si Starter et ≥ 500 pts cumulés (toutes périodes
-    // confondues), promotion. Les pts Starter ne se remettent JAMAIS à zéro pour
-    // la sortie de zone — sinon un petit coureur qui fait < 500 pts/mois reste
-    // bloqué à vie. Hors Starter (calibrage actif), on utilise les pts de la
-    // période courante pour la libre montée entre leagues.
+    // Sortie de Starter et montée libre en calibrage.
+    // - Cas Starter : règle UNIQUE côté base (fonction try_promote_starter) — somme
+    //   lifetime des runs ≥ 501 → on monte dans la ligue qui correspond au total.
+    //   Une seule source de vérité partagée avec le webhook Strava et la sync manuelle.
+    // - Cas non-Starter (calibrage entre ligues) : on garde la libre montée
+    //   L10→L9→… selon les pts de la période courante tant qu'elle n'est pas finie.
     if(!window.__myPlayer.competitive){
       var curLk=(window.__myPlayer.leagueKey||'starter').toLowerCase();
-      var refPts=pts;
       if(curLk==='starter'){
-        var {data:allRunsPts}=await supabaseClient.from('runs').select('points').eq('player_id',user.id);
-        refPts=(allRunsPts||[]).reduce(function(s,r){return s+(r.points||0);},0);
-      }
-      var targetLg=LEAGUES.slice().reverse().find(function(l){return refPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
-      if(targetLg){
-        var curIdx=LEAGUES.findIndex(function(l){return l.key===curLk;});
-        var tgtIdx=LEAGUES.findIndex(function(l){return l.key===targetLg.key;});
-        if(tgtIdx>curIdx){
-          // Promotion auto en cours de période : on enregistre calibration_period
-          // = période SUIVANTE UNIQUEMENT si on sort de Starter (= 1ère entrée
-          // en calibrage). La période suivante sera leur 1ère période complète
-          // de calibrage. Sinon c'est juste un changement de league interne au
-          // calibrage, on ne touche pas (sinon on prolonge artificiellement).
-          var _patchData={league:targetLg.key};
-          if(curLk==='starter' && _periodData && _periodData.period){
-            _patchData.calibration_period=_periodData.period+1;
+        try{
+          var {data:_promo}=await supabaseClient.rpc('try_promote_starter',{p_player_id:user.id});
+          if(_promo && _promo.changed){
+            window.__myPlayer.leagueKey=_promo.to;
           }
-          await supabaseClient.from('players').update(_patchData).eq('id',user.id);
-          window.__myPlayer.leagueKey=targetLg.key;
+        }catch(e){ console.warn('try_promote_starter (login) fail',e); }
+      } else {
+        var targetLg=LEAGUES.slice().reverse().find(function(l){return pts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
+        if(targetLg){
+          var curIdx=LEAGUES.findIndex(function(l){return l.key===curLk;});
+          var tgtIdx=LEAGUES.findIndex(function(l){return l.key===targetLg.key;});
+          if(tgtIdx>curIdx){
+            await supabaseClient.from('players').update({league:targetLg.key}).eq('id',user.id);
+            window.__myPlayer.leagueKey=targetLg.key;
+          }
         }
       }
     }
@@ -12117,28 +12113,31 @@ async function adminCheckStarterPromotion(playerId, playerName){
   var {data:player}=await supabaseClient.from('players').select('league,competitive').eq('id',playerId).single();
   if(!player) return;
   var currentLk=(player.league||'starter').toLowerCase();
-  // Calculer le total de points
-  var {data:runs}=await supabaseClient.from('runs').select('points').eq('player_id',playerId).eq('period',0);
-  var totalPts=(runs||[]).reduce(function(s,r){return s+(r.points||0);},0);
   var msg=document.getElementById('admin-run-msg');
 
-  // Cas 1 : en Starter et ≥ 500 pts → sort de Starter
-  if(currentLk==='starter'&&totalPts>=500){
-    var targetLg=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
-    if(!targetLg) return;
-    await supabaseClient.from('players').update({league:targetLg.key}).eq('id',playerId);
-    if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">🚀 '+escapeHtml(playerName)+' sort de Starter → '+targetLg.name+' '+targetLg.label+' ('+totalPts+' pts)</span>';
+  // Cas 1 : Starter → règle UNIQUE côté base (try_promote_starter).
+  // Source de vérité partagée avec le login et le webhook Strava.
+  if(currentLk==='starter'){
+    try{
+      var {data:_promo}=await supabaseClient.rpc('try_promote_starter',{p_player_id:playerId});
+      if(_promo && _promo.changed){
+        var _lg=LEAGUES.find(function(l){return l.key===_promo.to;})||{};
+        if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">🚀 '+escapeHtml(playerName)+' sort de Starter → '+(_lg.name||_promo.to)+' '+(_lg.label||'')+' ('+_promo.total+' pts)</span>';
+      }
+    }catch(e){ console.warn('try_promote_starter (admin) fail',e); }
     return;
   }
 
-  // Cas 2 : en league mais pas compétitif (montée libre / calibrage)
-  if(currentLk!=='starter'&&!player.competitive){
+  // Cas 2 : déjà sorti de Starter, en calibrage (non-compétitif) → libre
+  // montée entre ligues sur les pts de la période courante. Inchangé.
+  if(!player.competitive){
+    var {data:runs}=await supabaseClient.from('runs').select('points').eq('player_id',playerId).eq('period',0);
+    var totalPts=(runs||[]).reduce(function(s,r){return s+(r.points||0);},0);
     var targetLg2=LEAGUES.slice().reverse().find(function(l){return totalPts>=l.min&&l.key!=='starter'&&l.key!=='lelite';});
     if(!targetLg2||targetLg2.key===currentLk) return;
-    // Vérifier qu'il monte (pas descente en calibrage)
     var currentIdx=LEAGUES.findIndex(function(l){return l.key===currentLk;});
     var targetIdx=LEAGUES.findIndex(function(l){return l.key===targetLg2.key;});
-    if(targetIdx<=currentIdx) return; // Pas de descente en calibrage
+    if(targetIdx<=currentIdx) return;
     await supabaseClient.from('players').update({league:targetLg2.key}).eq('id',playerId);
     if(msg) msg.innerHTML+='<br><span style="color:var(--cyan)">📈 '+escapeHtml(playerName)+' monte en calibrage → '+targetLg2.name+' '+targetLg2.label+' ('+totalPts+' pts)</span>';
   }
