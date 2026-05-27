@@ -19985,8 +19985,8 @@ var SKIN_CATALOG = {
 };
 
 // Section "Mes Skins" : liste tous les skins du RP (achetés + en cours d'éligibilité).
-// - Phase gratuite (J0→J+7) : juste le nom + sélecteur on/off, AUCUN prix affiché.
-// - Phase achat (J+7→J+9) : nom + prix + bouton "Acheter · 10 000 RPC".
+// - Phase gratuite (J0→J+5) : juste le nom + sélecteur on/off, AUCUN prix affiché.
+// - Phase achat (J+5→J+7) : nom + prix + bouton "Acheter · 10 000 RPC".
 // - Acheté : nom seul, pas de prix, plus de bouton.
 // - Expiré sans achat : le skin disparait définitivement de la liste.
 // L'éligibilité (liste des skins) vient de player_badges (donc indépendante du
@@ -20096,13 +20096,13 @@ async function selectMySkin(skinId){
 }
 
 // Acheter le skin : toute la logique est en base (purchase_skin).
-// Possible à tout moment pendant la fenêtre gratuite (J0→J+7) et la fenêtre
-// d'achat (J+7→J+9). Au-delà, le skin disparait définitivement.
+// Possible à tout moment pendant la fenêtre gratuite (J0→J+5) et la fenêtre
+// d'achat (J+5→J+7). Au-delà, le skin disparait définitivement.
 async function buyMySkin(skinId){
   if(!currentUser) return;
   var meta=SKIN_CATALOG[skinId]||{name:skinId.toUpperCase()};
   var ok=await askConfirm(
-    'Tu as gagné ce skin, il est gratuit pendant 7 jours. À la fin, si tu souhaites le conserver tu peux l\'acheter pour <strong style="color:var(--gold)">10 000 RPC</strong> (achat disponible seulement pendant 48h).<br><br>Veux-tu l\'acheter de suite ?',
+    'Tu as gagné ce skin, il est gratuit pendant 5 jours. À la fin, si tu souhaites le conserver tu peux l\'acheter pour <strong style="color:var(--gold)">10 000 RPC</strong> (achat disponible seulement pendant 48h).<br><br>Veux-tu l\'acheter de suite ?',
     {title:escapeHtml(meta.name),emoji:'🎁',okLabel:'Valider',success:true}
   );
   if(!ok) return;
