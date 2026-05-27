@@ -8122,7 +8122,7 @@ async function showLandDetail(landId){
       +'Passages ce mois : <strong onclick="showLandPassersList(\''+landId+'\')" style="color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
       +'Rendement ce mois : <strong style="color:var(--gold)">'+revenuePassages.toLocaleString('fr')+' RPC</strong>'
       +((land.tenant_id||land.owner_id)
-        ? '<br>Passages au total : <strong>'+nbPassagesTotal+'</strong>'
+        ? '<br>Passages au total : <strong style="color:var(--green)">'+nbPassagesTotal+'</strong>'
           +'<br>Rendement total : <strong style="color:var(--gold)">'+revenueTotal.toLocaleString('fr')+' RPC</strong>'
         : '')
     +'</div>';
