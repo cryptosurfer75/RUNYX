@@ -8119,10 +8119,10 @@ async function showLandDetail(landId){
       +'Étoiles : <strong style="color:#ffe050">'+starsTxt+'</strong><br>'
       +'RPC / passage : <strong style="color:var(--gold)">'+rpcPerPassage+' RPC</strong><br>'
       +(land.status==='rented'?'Périodes louées : <strong style="color:var(--text)">'+_computeRentPeriods(land)+'</strong><br>':'')
-      +'Passages ce mois : <strong onclick="showLandPassersList(\''+landId+'\')" style="color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassages+'</strong> '+(nbPassages>1?'RPs':'RP')+'<br>'
+      +'Passages ce mois : <strong onclick="showLandPassersList(\''+landId+'\')" style="color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassages+'</strong><br>'
       +'Rendement ce mois : <strong style="color:var(--gold)">'+revenuePassages.toLocaleString('fr')+' RPC</strong>'
       +((land.tenant_id||land.owner_id)
-        ? '<br>Passages au total : <strong style="color:var(--green)">'+nbPassagesTotal+'</strong>'
+        ? '<br>Passages au total : <strong onclick="showLandPassersList(\''+landId+'\',\'total\')" style="color:var(--green);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">'+nbPassagesTotal+'</strong>'
           +'<br>Rendement total : <strong style="color:var(--gold)">'+revenueTotal.toLocaleString('fr')+' RPC</strong>'
         : '')
     +'</div>';
@@ -8205,33 +8205,44 @@ async function showLandDetail(landId){
 
 // Affiche la liste des RPs qui sont passés sur une Land ce mois-ci,
 // triée par nombre de passages décroissant. Cliquable depuis le détail Land.
-async function showLandPassersList(landId){
+async function showLandPassersList(landId, mode){
   // Restriction Premium : voir le détail des RPs qui sont passés sur ses lands
   // est une fonctionnalité d'observation avancée → réservée aux Premium.
   if(typeof isPremium==='function' && !isPremium()){
     askConfirm('Voir la liste détaillée des RPs qui passent sur tes Lands est une fonctionnalité <strong style="color:var(--gold)">Premium</strong>.<br><br>Le compteur reste visible pour tous, mais le détail des passages est réservé aux abonnés Premium.',{title:'🔒 Fonctionnalité Premium',emoji:'⭐',okLabel:'OK',singleAction:true});
     return;
   }
+  var _isTotal=(mode==='total');
   try{
-    // Cohérent avec showLandDetail : on filtre depuis MAX(1er du mois, rented_at)
-    // pour ne montrer que les passages "comptables" pour le tenant courant.
-    var _now=new Date();
-    var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1);
-    var _cutoff=_firstOfMonth;
+    // Deux modes :
+    // - 'month' (défaut) : depuis MAX(1er du mois, rented_at) — passages
+    //   "comptables" pour le tenant courant sur le mois en cours.
+    // - 'total' : depuis rented_at — cumul depuis l'acquisition.
+    var _cutoff;
+    var landRow=null;
     try{
-      var {data:landRow}=await supabaseClient.from('lands').select('rented_at').eq('id',landId).maybeSingle();
+      var resLR=await supabaseClient.from('lands').select('rented_at').eq('id',landId).maybeSingle();
+      landRow=resLR.data;
+    }catch(e){}
+    if(_isTotal){
+      _cutoff=(landRow && landRow.rented_at) ? new Date(landRow.rented_at) : new Date('2000-01-01');
+    } else {
+      var _now=new Date();
+      var _firstOfMonth=new Date(_now.getFullYear(), _now.getMonth(), 1);
+      _cutoff=_firstOfMonth;
       if(landRow && landRow.rented_at){
         var _rentedDate=new Date(landRow.rented_at);
         if(_rentedDate>_firstOfMonth) _cutoff=_rentedDate;
       }
-    }catch(e){}
+    }
     var _cutoffStr=_cutoff.toISOString().slice(0,10);
     var _resp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_cutoffStr+'&select=player_id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
     });
     var _list=await _resp.json();
+    var _title=_isTotal?'Passages au total':'Passages ce mois';
     if(!Array.isArray(_list)||_list.length===0){
-      askConfirm('Aucun RP n\'est encore passé ce mois-ci.',{title:'Passages ce mois',emoji:'🚶',okLabel:'OK',singleAction:true});
+      askConfirm(_isTotal?'Aucun passage enregistré depuis l\'acquisition.':'Aucun RP n\'est encore passé ce mois-ci.',{title:_title,emoji:'🚶',okLabel:'OK',singleAction:true});
       return;
     }
     var counts={};
@@ -8243,15 +8254,16 @@ async function showLandPassersList(landId){
       var p=byId[id]||{username:'(inconnu)',nat:''};
       return {username:p.username, nat:p.nat||'', count:counts[id]};
     }).sort(function(a,b){ return b.count-a.count; });
+    var _countColor=_isTotal?'var(--green)':'var(--cyan)';
     var html='<div style="display:flex;flex-direction:column;gap:.4rem;max-height:320px;overflow-y:auto;text-align:left">';
     rows.forEach(function(r){
       html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .65rem;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid var(--border2)">'
         +'<span style="font-size:.82rem;color:var(--text)">'+natFlag(r.nat)+' '+r.username+'</span>'
-        +'<strong style="color:var(--cyan);font-family:Space Mono,monospace;font-size:.85rem">'+r.count+'×</strong>'
+        +'<strong style="color:'+_countColor+';font-family:Space Mono,monospace;font-size:.85rem">'+r.count+'×</strong>'
         +'</div>';
     });
     html+='</div>';
-    askConfirm(html,{title:'Passages ce mois',emoji:'🚶',okLabel:'Fermer',singleAction:true});
+    askConfirm(html,{title:_title,emoji:'🚶',okLabel:'Fermer',singleAction:true});
   }catch(e){
     showToast('⚠️ Erreur chargement');
   }
