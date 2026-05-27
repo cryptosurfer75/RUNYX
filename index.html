@@ -21514,7 +21514,7 @@ function renderQuizzResult(correct,rpcGained,currentStreak,isReopen){
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">'
     +   '<div style="background:rgba(74,200,255,.08);border-radius:8px;padding:.6rem"><div style="font-family:Space Mono,monospace;font-size:1.1rem;font-weight:700;color:#4ac8ff">'+(currentUser.quizz_streak||0)+'</div><div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Série en cours</div></div>'
     +   '<div style="background:rgba(45,219,128,.08);border-radius:8px;padding:.6rem"><div style="font-family:Space Mono,monospace;font-size:1.1rem;font-weight:700;color:#2ddb80">'+best+'</div><div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Meilleure série</div></div>'
-    +   '<div style="background:rgba(255,107,157,.08);border-radius:8px;padding:.6rem"><div style="font-family:Space Mono,monospace;font-size:1.1rem;font-weight:700;color:#ff6b9d">⚡ '+avgTime+'</div><div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Temps moyen</div></div>'
+    +   '<div style="background:rgba(169,109,255,.08);border-radius:8px;padding:.6rem"><div style="font-family:Space Mono,monospace;font-size:1.1rem;font-weight:700;color:#a96dff">⚡ '+avgTime+'</div><div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Temps moyen</div></div>'
     +   '<div style="background:rgba(255,201,71,.08);border-radius:8px;padding:.6rem"><div style="font-family:Space Mono,monospace;font-size:1.1rem;font-weight:700;color:var(--gold)">+'+total.toLocaleString('fr-FR')+' RPC</div><div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Total gagné</div></div>'
     + '</div>'
     +'</div>'
@@ -21535,7 +21535,7 @@ async function loadQuizzRanking(){
   try{
     var res=await supabaseClient
       .from('players')
-      .select('id,username,quizz_streak,quizz_jokers_used,quizz_total_time_ms,quizz_last_answer_date')
+      .select('id,username,quizz_streak,quizz_jokers_used,quizz_total_time_ms,quizz_correct_count,quizz_last_answer_date')
       .not('quizz_last_answer_date','is',null)
       .eq('is_visible',true)
       .order('quizz_streak',{ascending:false})
@@ -21545,7 +21545,7 @@ async function loadQuizzRanking(){
     if(res.error) throw res.error;
     var data=res.data||[];
 
-    // Rendu d'une ligne de classement
+    // Rendu d'une ligne du tableau de classement
     function rowHtml(p,rank){
       var rankDisplay=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'#'+rank;
       var isMe=p.id===currentUser.id;
@@ -21554,25 +21554,47 @@ async function loadQuizzRanking(){
       var nameColor=isMe?'var(--gold)':'var(--text)';
       var nameWeight=isMe?'700':'500';
       var jokers=p.quizz_jokers_used||0;
-      return '<div style="display:flex;align-items:center;gap:.7rem;background:'+bg+';border:'+border+';border-radius:8px;padding:.55rem .75rem;margin-bottom:.4rem">'
-        +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:1px;color:var(--text);min-width:38px;text-align:center">'+rankDisplay+'</div>'
-        +'<div style="flex:1;color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.username||'RP')+'</div>'
-        +'<div style="font-family:Space Mono,monospace;font-size:.92rem;font-weight:700;color:#4ac8ff;display:flex;align-items:center;gap:.55rem">'
-        +  '<span>🔥 '+p.quizz_streak+'</span>'
-        +  '<span style="color:#ffb84a;font-size:.78rem">☎️ '+jokers+'</span>'
-        +'</div>'
-      +'</div>';
+      var correctCount=p.quizz_correct_count||0;
+      var totalMs=p.quizz_total_time_ms||0;
+      var avgSec=(correctCount>0 && totalMs>0)?(totalMs/correctCount/1000).toFixed(1)+'s':'—';
+      var cellCore='background:'+bg+';border-top:'+border+';border-bottom:'+border+';padding:.5rem .4rem';
+      var first=cellCore+';border-left:'+border+';border-top-left-radius:8px;border-bottom-left-radius:8px';
+      var last=cellCore+';border-right:'+border+';border-top-right-radius:8px;border-bottom-right-radius:8px';
+      return '<tr>'
+        +'<td style="'+first+';font-family:Bebas Neue,sans-serif;font-size:1.02rem;letter-spacing:1px;color:var(--text);text-align:center">'+rankDisplay+'</td>'
+        +'<td style="'+cellCore+';color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">'+escapeHtml(p.username||'RP')+'</td>'
+        +'<td style="'+cellCore+';font-family:Space Mono,monospace;font-size:.85rem;font-weight:700;color:#4ac8ff;text-align:center">'+p.quizz_streak+'</td>'
+        +'<td style="'+cellCore+';font-family:Space Mono,monospace;font-size:.8rem;font-weight:700;color:#ffb84a;text-align:center">'+jokers+'</td>'
+        +'<td style="'+last+';font-family:Space Mono,monospace;font-size:.78rem;font-weight:700;color:#a96dff;text-align:center">'+avgSec+'</td>'
+      +'</tr>';
     }
 
     var html=''
-      +'<div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.45);border-radius:12px;padding:1rem;margin-bottom:1rem">'
+      +'<div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.45);border-radius:12px;padding:1rem .6rem;margin-bottom:1rem">'
       + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.7rem;text-align:center">Classement Quizz</div>';
 
     if(data.length===0){
       html+='<div style="text-align:center;color:var(--muted2);font-size:.78rem;padding:.5rem 0">Personne n\'a encore répondu au quizz. À toi de jouer !</div>';
     } else {
-      // Liste scrollable : au-delà de ~10 lignes (limit 50), on évite que le panneau pousse toute la page.
-      html+='<div style="max-height:60vh;overflow-y:auto;padding-right:.25rem">';
+      // Container scrollable + tableau avec entête sticky (au-delà de ~10 lignes le panneau ne pousse pas la page)
+      html+='<div style="max-height:60vh;overflow-y:auto;padding-right:.2rem">';
+      html+='<table style="width:100%;border-collapse:separate;border-spacing:0 .35rem;table-layout:fixed">';
+      html+='<colgroup>'
+        + '<col style="width:42px">'
+        + '<col>'
+        + '<col style="width:42px">'
+        + '<col style="width:42px">'
+        + '<col style="width:52px">'
+      +'</colgroup>';
+      var thBase='position:sticky;top:0;background:#0a1432;color:var(--muted2);font-family:Bebas Neue,sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:500;padding:.45rem .3rem;z-index:1;border-bottom:1px solid rgba(74,144,255,.3)';
+      html+='<thead><tr>'
+        +'<th style="'+thBase+';text-align:center">#</th>'
+        +'<th style="'+thBase+';text-align:left;padding-left:.5rem">RP</th>'
+        +'<th style="'+thBase+';text-align:center;color:#4ac8ff;font-size:.9rem">🔥</th>'
+        +'<th style="'+thBase+';text-align:center;color:#ffb84a;font-size:.85rem">☎️</th>'
+        +'<th style="'+thBase+';text-align:center;color:#a96dff;font-size:.85rem">⚡️</th>'
+      +'</tr></thead>';
+      html+='<tbody>';
       data.forEach(function(p,i){ html+=rowHtml(p,i+1); });
 
       // Si moi pas dans le top 50 mais j'ai déjà répondu → ligne séparée avec mon rang
@@ -21588,11 +21610,11 @@ async function loadQuizzRanking(){
             .not('quizz_last_answer_date','is',null)
             .eq('is_visible',true);
           var myRank=(cnt.count||0)+1;
-          html+='<div style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;margin:.3rem 0">···</div>';
-          html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0},myRank);
+          html+='<tr><td colspan="5" style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;padding:.2rem 0">···</td></tr>';
+          html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0,quizz_total_time_ms:currentUser.quizz_total_time_ms||0,quizz_correct_count:currentUser.quizz_correct_count||0},myRank);
         }catch(e){console.warn('quizz rank count fail',e);}
       }
-      html+='</div>';
+      html+='</tbody></table></div>';
     }
 
     html+='</div>';
