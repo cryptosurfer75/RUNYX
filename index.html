@@ -3954,6 +3954,8 @@ const I18N = {
     'quizz.rank.title'          : 'Classement Quizz',
     'quizz.rank.empty'          : 'Personne n\'a encore répondu au quizz. À toi de jouer !',
     'quizz.rank.unavailable'    : 'Classement indisponible',
+    'quizz.rank.prev'           : 'Précédent',
+    'quizz.rank.next'           : 'Suivant',
     // — Page Lands (HTML statique)
     'lands.page.title'          : 'Conquête des <span style="color:var(--gold)">Lands</span>',
     'lands.page.subtitle'       : 'Explorer · Louer · Acheter · Étoiles · Trésors',
@@ -4704,6 +4706,8 @@ const I18N = {
     'quizz.rank.title'          : 'Quiz Rankings',
     'quizz.rank.empty'          : 'No one has played the quiz yet. You\'re up!',
     'quizz.rank.unavailable'    : 'Rankings unavailable',
+    'quizz.rank.prev'           : 'Previous',
+    'quizz.rank.next'           : 'Next',
     // — Lands page (static HTML)
     'lands.page.title'          : '<span style="color:var(--gold)">Land</span> capture',
     'lands.page.subtitle'       : 'Explore · Rent · Buy · Stars · Treasures',
@@ -23545,6 +23549,12 @@ function renderQuizzResult(correct,rpcGained,currentStreak,isReopen){
 // l'autre dès que le #1 change.
 var _quizzChampionUuid=null;
 
+// Classement quizz mis en cache pour la pagination (Top 100 = 2 pages de 50).
+var _quizzRankAll=[];           // classement complet trié (rempli par loadQuizzRanking)
+var _quizzRankPage=0;           // page affichée : 0 = rangs 1-50, 1 = rangs 51-100
+var QUIZZ_RANK_PAGE_SIZE=50;    // RP par page
+var QUIZZ_RANK_MAX=100;         // nombre max de RP classés affichés (Top 100)
+
 // Temps moyen (ms) sur bonnes réponses ; null = pas de temps → relégué en bas.
 function _quizzAvgMs(p){
   var cc=p.quizz_correct_count||0, tm=p.quizz_total_time_ms||0;
@@ -23587,7 +23597,7 @@ async function loadQuizzChampion(){
   }catch(e){ console.warn('loadQuizzChampion fail',e); }
 }
 
-// Charge et affiche le classement du quizz (top 50 + toi si hors top).
+// Charge le classement du quizz (Top 100, paginé par tranches de 50) puis l'affiche.
 // Inclut tous les RP qui ont déjà répondu au moins une fois, série à 0 incluse
 // (un RP qui a cassé sa série reste visible avec son score actuel).
 // Tri (côté client) : 1) quizz_streak desc · 2) quizz_jokers_used asc (moins de jokers = mieux)
@@ -23596,6 +23606,8 @@ async function loadQuizzChampion(){
 // relégués en bas, même à série/jokers égaux. Tri en JS car le "pas de temps" est
 // stocké comme 0 en base (pas NULL) → impossible à exprimer proprement côté PostgREST.
 // Exclut les RP invisibles (infirmerie) et les comptes en suppression (RLS).
+// Le rendu est délégué à _renderQuizzRanking pour que le changement de page n'ait
+// pas à refaire la requête (on garde le classement trié en cache dans _quizzRankAll).
 async function loadQuizzRanking(){
   var container=document.getElementById('quizz-ranking');
   if(!container) return;
@@ -23616,81 +23628,126 @@ async function loadQuizzRanking(){
       _quizzChampionUuid=_newChamp;
       if(typeof renderLeaguePanel==='function') renderLeaguePanel();
     }
-    var data=all.slice(0,50);
-
-    // Rendu d'une ligne du tableau de classement
-    function rowHtml(p,rank){
-      var rankDisplay=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'#'+rank;
-      var isMe=p.id===currentUser.id;
-      var bg=isMe?'rgba(255,201,71,.12)':'rgba(10,20,50,.4)';
-      var border=isMe?'1.5px solid var(--gold)':'1px solid rgba(255,255,255,.08)';
-      var nameColor=isMe?'var(--gold)':'var(--text)';
-      var nameWeight=isMe?'700':'500';
-      var jokers=p.quizz_jokers_used||0;
-      var correctCount=p.quizz_correct_count||0;
-      var totalMs=p.quizz_total_time_ms||0;
-      var avgSec=(correctCount>0 && totalMs>0)?(totalMs/correctCount/1000).toFixed(1)+'s':'—';
-      var cellCore='background:'+bg+';border-top:'+border+';border-bottom:'+border+';padding:.5rem .4rem';
-      var first=cellCore+';border-left:'+border+';border-top-left-radius:8px;border-bottom-left-radius:8px';
-      var last=cellCore+';border-right:'+border+';border-top-right-radius:8px;border-bottom-right-radius:8px';
-      return '<tr>'
-        +'<td style="'+first+';font-family:Bebas Neue,sans-serif;font-size:1.02rem;letter-spacing:1px;color:var(--text);text-align:center">'+rankDisplay+'</td>'
-        +'<td style="'+cellCore+';color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">'+escapeHtml(p.username||'RP')+'</td>'
-        +'<td style="'+cellCore+';font-family:Space Mono,monospace;font-size:.85rem;font-weight:700;color:#4ac8ff;text-align:center">'+p.quizz_streak+'</td>'
-        +'<td style="'+cellCore+';font-family:Space Mono,monospace;font-size:.8rem;font-weight:700;color:#ffb84a;text-align:center">'+jokers+'</td>'
-        +'<td style="'+last+';font-family:Space Mono,monospace;font-size:.78rem;font-weight:700;color:#a96dff;text-align:center">'+avgSec+'</td>'
-      +'</tr>';
-    }
-
-    var html=''
-      +'<div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.45);border-radius:12px;padding:1rem .6rem;margin-bottom:1rem">'
-      + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.7rem;text-align:center">'+t('quizz.rank.title')+'</div>';
-
-    if(data.length===0){
-      html+='<div style="text-align:center;color:var(--muted2);font-size:.78rem;padding:.5rem 0">'+t('quizz.rank.empty')+'</div>';
-    } else {
-      // Container scrollable + tableau avec entête sticky (au-delà de ~10 lignes le panneau ne pousse pas la page)
-      html+='<div style="max-height:60vh;overflow-y:auto;padding-right:.2rem">';
-      html+='<table style="width:100%;border-collapse:separate;border-spacing:0 .35rem;table-layout:fixed">';
-      html+='<colgroup>'
-        + '<col style="width:42px">'
-        + '<col>'
-        + '<col style="width:42px">'
-        + '<col style="width:42px">'
-        + '<col style="width:52px">'
-      +'</colgroup>';
-      var thBase='position:sticky;top:0;background:#0a1432;color:var(--muted2);font-family:Bebas Neue,sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:500;padding:.45rem .3rem;z-index:1;border-bottom:1px solid rgba(74,144,255,.3)';
-      html+='<thead><tr>'
-        +'<th style="'+thBase+';text-align:center">#</th>'
-        +'<th style="'+thBase+';text-align:left;padding-left:.5rem">RP</th>'
-        +'<th style="'+thBase+';text-align:center;color:#4ac8ff;font-size:.9rem">🔥</th>'
-        +'<th style="'+thBase+';text-align:center;color:#ffb84a;font-size:.85rem">☎️</th>'
-        +'<th style="'+thBase+';text-align:center;color:#a96dff;font-size:.85rem">⚡️</th>'
-      +'</tr></thead>';
-      html+='<tbody>';
-      data.forEach(function(p,i){ html+=rowHtml(p,i+1); });
-
-      // Si moi pas dans le top 50 mais j'ai déjà répondu → ligne séparée avec mon rang
-      var meInTop=data.some(function(p){return p.id===currentUser.id;});
-      var myStreak=currentUser.quizz_streak||0;
-      var iAnswered=!!currentUser.quizz_last_answer_date;
-      if(!meInTop && iAnswered){
-        // Mon rang = ma position dans le classement complet déjà trié (cohérent avec
-        // le tri ci-dessus, relégation des "—" incluse).
-        var myIdx=all.findIndex(function(p){return p.id===currentUser.id;});
-        var myRank=myIdx>=0?myIdx+1:all.length+1;
-        html+='<tr><td colspan="5" style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;padding:.2rem 0">···</td></tr>';
-        html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0,quizz_total_time_ms:currentUser.quizz_total_time_ms||0,quizz_correct_count:currentUser.quizz_correct_count||0},myRank);
-      }
-      html+='</tbody></table></div>';
-    }
-
-    html+='</div>';
-    container.innerHTML=html;
+    _quizzRankAll=all;
+    _quizzRankPage=0;           // toujours rouvrir sur la 1ère page (rangs 1-50)
+    _renderQuizzRanking();
   }catch(e){
     console.warn('quizz ranking fail',e);
     container.innerHTML='<div style="text-align:center;color:var(--muted2);font-size:.75rem;padding:.5rem">'+t('quizz.rank.unavailable')+'</div>';
   }
+}
+
+// Change la page affichée du classement quizz (sans refaire la requête).
+function _quizzGoToRankPage(n){
+  _quizzRankPage=n;
+  _renderQuizzRanking();
+  // Remonter en haut du panneau pour ne pas rester en bas de la page précédente.
+  var c=document.getElementById('quizz-ranking');
+  var sc=c&&c.querySelector('[data-quizz-scroll]');
+  if(sc) sc.scrollTop=0;
+}
+
+// Affiche la page courante (_quizzRankPage) du classement quizz en cache.
+// Top 100 max, 50 RP par page. La 2e page n'apparaît que s'il y a >50 RP classés.
+function _renderQuizzRanking(){
+  var container=document.getElementById('quizz-ranking');
+  if(!container) return;
+  var all=_quizzRankAll;
+  var maxItems=Math.min(all.length,QUIZZ_RANK_MAX);
+  var totalPages=Math.max(1,Math.ceil(maxItems/QUIZZ_RANK_PAGE_SIZE));
+  if(_quizzRankPage>totalPages-1) _quizzRankPage=totalPages-1;
+  if(_quizzRankPage<0) _quizzRankPage=0;
+  var start=_quizzRankPage*QUIZZ_RANK_PAGE_SIZE;
+  var data=all.slice(start,Math.min(start+QUIZZ_RANK_PAGE_SIZE,maxItems));
+
+  // Rendu d'une ligne du tableau de classement
+  function rowHtml(p,rank){
+    var rankDisplay=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'#'+rank;
+    var isMe=p.id===currentUser.id;
+    var bg=isMe?'rgba(255,201,71,.12)':'rgba(10,20,50,.4)';
+    var border=isMe?'1.5px solid var(--gold)':'1px solid rgba(255,255,255,.08)';
+    var nameColor=isMe?'var(--gold)':'var(--text)';
+    var nameWeight=isMe?'700':'500';
+    var jokers=p.quizz_jokers_used||0;
+    var correctCount=p.quizz_correct_count||0;
+    var totalMs=p.quizz_total_time_ms||0;
+    var avgSec=(correctCount>0 && totalMs>0)?(totalMs/correctCount/1000).toFixed(1)+'s':'—';
+    var cellCore='background:'+bg+';border-top:'+border+';border-bottom:'+border+';padding:.5rem .4rem';
+    var first=cellCore+';border-left:'+border+';border-top-left-radius:8px;border-bottom-left-radius:8px';
+    var last=cellCore+';border-right:'+border+';border-top-right-radius:8px;border-bottom-right-radius:8px';
+    return '<tr>'
+      +'<td style="'+first+';font-family:Bebas Neue,sans-serif;font-size:1.02rem;letter-spacing:1px;color:var(--text);text-align:center">'+rankDisplay+'</td>'
+      +'<td style="'+cellCore+';color:'+nameColor+';font-size:.85rem;font-weight:'+nameWeight+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">'+escapeHtml(p.username||'RP')+'</td>'
+      +'<td style="'+cellCore+';font-family:Space Mono,monospace;font-size:.85rem;font-weight:700;color:#4ac8ff;text-align:center">'+p.quizz_streak+'</td>'
+      +'<td style="'+cellCore+';font-family:Space Mono,monospace;font-size:.8rem;font-weight:700;color:#ffb84a;text-align:center">'+jokers+'</td>'
+      +'<td style="'+last+';font-family:Space Mono,monospace;font-size:.78rem;font-weight:700;color:#a96dff;text-align:center">'+avgSec+'</td>'
+    +'</tr>';
+  }
+
+  var html=''
+    +'<div style="background:rgba(10,20,50,.6);border:1.5px solid rgba(74,144,255,.45);border-radius:12px;padding:1rem .6rem;margin-bottom:1rem">'
+    + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--text);margin-bottom:.7rem;text-align:center">'+t('quizz.rank.title')+'</div>';
+
+  if(all.length===0){
+    html+='<div style="text-align:center;color:var(--muted2);font-size:.78rem;padding:.5rem 0">'+t('quizz.rank.empty')+'</div>';
+  } else {
+    // Container scrollable + tableau avec entête sticky (au-delà de ~10 lignes le panneau ne pousse pas la page)
+    html+='<div data-quizz-scroll style="max-height:60vh;overflow-y:auto;padding-right:.2rem">';
+    html+='<table style="width:100%;border-collapse:separate;border-spacing:0 .35rem;table-layout:fixed">';
+    html+='<colgroup>'
+      + '<col style="width:42px">'
+      + '<col>'
+      + '<col style="width:42px">'
+      + '<col style="width:42px">'
+      + '<col style="width:52px">'
+    +'</colgroup>';
+    var thBase='position:sticky;top:0;background:#0a1432;color:var(--muted2);font-family:Bebas Neue,sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:500;padding:.45rem .3rem;z-index:1;border-bottom:1px solid rgba(74,144,255,.3)';
+    html+='<thead><tr>'
+      +'<th style="'+thBase+';text-align:center">#</th>'
+      +'<th style="'+thBase+';text-align:left;padding-left:.5rem">RP</th>'
+      +'<th style="'+thBase+';text-align:center;color:#4ac8ff;font-size:.9rem">🔥</th>'
+      +'<th style="'+thBase+';text-align:center;color:#ffb84a;font-size:.85rem">☎️</th>'
+      +'<th style="'+thBase+';text-align:center;color:#a96dff;font-size:.85rem">⚡️</th>'
+    +'</tr></thead>';
+    html+='<tbody>';
+    // Rang réel = position dans le classement complet (offset de la page incluse).
+    data.forEach(function(p,i){ html+=rowHtml(p,start+i+1); });
+
+    // Si moi pas sur la page affichée mais j'ai déjà répondu → ligne séparée avec mon rang
+    var meOnPage=data.some(function(p){return p.id===currentUser.id;});
+    var myStreak=currentUser.quizz_streak||0;
+    var iAnswered=!!currentUser.quizz_last_answer_date;
+    if(!meOnPage && iAnswered){
+      // Mon rang = ma position dans le classement complet déjà trié (cohérent avec
+      // le tri ci-dessus, relégation des "—" incluse).
+      var myIdx=all.findIndex(function(p){return p.id===currentUser.id;});
+      var myRank=myIdx>=0?myIdx+1:all.length+1;
+      html+='<tr><td colspan="5" style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;padding:.2rem 0">···</td></tr>';
+      html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0,quizz_total_time_ms:currentUser.quizz_total_time_ms||0,quizz_correct_count:currentUser.quizz_correct_count||0},myRank);
+    }
+    html+='</tbody></table></div>';
+
+    // Pagination Top 100 : mêmes flèches carrées que la Player Card (navPcRank) —
+    // ◀ revenir en arrière · ▶ aller à la page suivante. La flèche en butée est grisée.
+    // Visible seulement s'il y a plus d'une page (>50 RP classés).
+    if(totalPages>1){
+      var rangeLabel=(start+1)+'–'+(start+data.length);
+      var arrowBase='width:32px;height:32px;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s';
+      var arrowOff=';opacity:.3;pointer-events:none';
+      var hoverIn='this.style.background=\'rgba(255,255,255,.1)\';this.style.color=\'var(--text)\'';
+      var hoverOut='this.style.background=\'rgba(255,255,255,.04)\';this.style.color=\'var(--muted2)\'';
+      var prevOff=_quizzRankPage<=0?arrowOff:'';
+      var nextOff=_quizzRankPage>=totalPages-1?arrowOff:'';
+      html+='<div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:.75rem">';
+      html+='<button onclick="_quizzGoToRankPage('+(_quizzRankPage-1)+')" title="'+t('quizz.rank.prev')+'" style="'+arrowBase+prevOff+'" onmouseover="'+hoverIn+'" onmouseout="'+hoverOut+'">◀</button>';
+      html+='<span style="font-family:Space Mono,monospace;font-size:.8rem;color:var(--muted2);min-width:62px;text-align:center">'+rangeLabel+'</span>';
+      html+='<button onclick="_quizzGoToRankPage('+(_quizzRankPage+1)+')" title="'+t('quizz.rank.next')+'" style="'+arrowBase+nextOff+'" onmouseover="'+hoverIn+'" onmouseout="'+hoverOut+'">▶</button>';
+      html+='</div>';
+    }
+  }
+
+  html+='</div>';
+  container.innerHTML=html;
 }
 </script>
 </body>
