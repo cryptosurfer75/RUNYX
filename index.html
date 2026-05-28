@@ -7048,17 +7048,14 @@ function _gradeIndex(cls){
 // (uniquement si le joueur affecté est l'utilisateur courant).
 async function updatePlayerGrade(playerId){
   if(!playerId) return;
-  var {data:player}=await supabaseClient.from('players').select('grade,rpc_balance,nyx_balance,rpc_cumulated').eq('id',playerId).single();
+  var {data:player}=await supabaseClient.from('players').select('grade,rpc_balance,nyx_balance,rpc_cumulated,active_periods').eq('id',playerId).single();
   if(!player) return;
 
-  // 1. Périodes actives (présence en palmarès hors Starter)
-  var {data:palData}=await supabaseClient.from('palmares').select('period,league_key').eq('player_id',playerId);
-  var pastPeriods=new Set();
-  (palData||[]).forEach(function(p){if(p.league_key&&p.league_key!=='starter') pastPeriods.add(p.period);});
-  // Si le joueur a au moins 1 run en période courante (period=0), on compte la période en cours
-  var {data:curRuns}=await supabaseClient.from('runs').select('id').eq('player_id',playerId).eq('period',0).limit(1);
-  if((curRuns||[]).length>0) pastPeriods.add('current');
-  var periods=pastPeriods.size;
+  // 1. Périodes actives = compteur stocké (players.active_periods), incrémenté à
+  //    chaque fin de mois pour les RP inscrits AVANT le 1er du mois ET ayant
+  //    cumulé >= 40 pts dessus. La période en cours ne compte jamais tant qu'elle
+  //    n'est pas bouclée. Cf. tally à la rotation (processEndOfPeriod).
+  var periods=player.active_periods||0;
 
   // 2. Points cumulés = somme runs.points TOUTES périodes confondues
   var {data:allRuns}=await supabaseClient.from('runs').select('points').eq('player_id',playerId);
@@ -7399,7 +7396,7 @@ function renderDashboard(){
       (async function(){
         // Charger runs de la période en cours + cumulés historiques
         var {data:allR}=await supabaseClient.from('runs').select('distance,time,elevation,points').eq('player_id',_statUid).eq('period',0);
-        var {data:cumData}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated,rpc_balance,nyx_balance').eq('id',_statUid).single();
+        var {data:cumData}=await supabaseClient.from('players').select('pts_cumulated,km_cumulated,elv_cumulated,time_cumulated,runs_cumulated,rpc_balance,nyx_balance,active_periods').eq('id',_statUid).single();
         var currentPts=0,currentKm=0,currentElv=0,currentTime=0,currentRuns=(allR||[]).length;
         (allR||[]).forEach(function(r){
           currentPts+=(r.points||0);
@@ -7435,13 +7432,11 @@ function renderDashboard(){
         } catch(e){ set('stat-badges','—'); }
         // Ranking actuel = position globale du joueur (évolue chaque jour)
         set('stat-best-rank', '#'+globalRank);
-        // Périodes actives = périodes passées hors Starter + courante si hors Starter et courses
-        var {data:palData}=await supabaseClient.from('palmares').select('period,league_key').eq('player_id',_statUid);
-        var pastPeriods=new Set();
-        (palData||[]).forEach(function(pp){if(pp.league_key!=='starter') pastPeriods.add(pp.period);});
-        var currentLeague=(p.leagueKey||'starter').toLowerCase();
-        var currentCounts=(currentLeague!=='starter'&&nbCourses>0)?1:0;
-        var activePeriods=pastPeriods.size+currentCounts;
+        // Périodes actives = compteur stocké (players.active_periods), incrémenté
+        // à chaque fin de mois pour les RP inscrits AVANT le 1er du mois ET ayant
+        // cumulé >= 40 pts dessus. La période en cours n'est jamais comptée tant
+        // qu'elle n'est pas bouclée. Cf. tally à la rotation (processEndOfPeriod).
+        var activePeriods=(cumData&&cumData.active_periods)||0;
         set('stat-periodes', activePeriods>0?activePeriods:'0');
         // Lands locataire / propriétaire
         // Une land en vente active est exclue du compte "propriété" (le RP a
@@ -11860,7 +11855,7 @@ async function _processEndOfPeriodInner(){
   var msg=document.getElementById('admin-period-msg');
 
   // 1. Charger tous les joueurs avec leurs points
-  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period');
+  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period,created_at,active_periods');
   // Agrégation côté base (fonction points_by_player) — un SELECT brut sur runs
   // serait plafonné à 1000 lignes et fausserait gains + montées/descentes.
   var {data:allRuns}=await supabaseClient.rpc('points_by_player',{p_period:0});
@@ -12241,6 +12236,26 @@ async function _processEndOfPeriodInner(){
       body:JSON.stringify({monthly_revenue:0})
     });
   } catch(eLand){ console.error('[rotation] reset rendement lands :', eLand); }
+
+  // 12b. Compteur "périodes actives" (players.active_periods) — la période qui se
+  //      termine compte pour chaque RP inscrit AVANT le 1er du mois de cette
+  //      période ET ayant cumulé >= 40 pts dessus. Sert au calcul du grade
+  //      (longévité) et à l'affichage PC. ptsByPlayer = pts de la période qui se
+  //      termine (points_by_player(0), chargé en début de rotation).
+  //      Le 1er du mois est dérivé de _periodData.end (= dernier jour du mois,
+  //      donc robuste même pour la période transitoire démarrée le 27/04).
+  try {
+    var _endDate=new Date(_periodData.end||Date.now());
+    var _monthStart=new Date(Date.UTC(_endDate.getUTCFullYear(), _endDate.getUTCMonth(), 1));
+    for(var api=0; api<allPlayers.length; api++){
+      var _ap=allPlayers[api];
+      var _apCreated=_ap.created_at?new Date(_ap.created_at):null;
+      var _apPts=ptsByPlayer[_ap.id]||0;
+      if(_apCreated && _apCreated<_monthStart && _apPts>=40){
+        await supabaseClient.from('players').update({active_periods:(_ap.active_periods||0)+1}).eq('id',_ap.id);
+      }
+    }
+  } catch(eAP){ console.error('[rotation] compteur périodes actives :', eAP); }
 
   // 13. Incrémenter la période — CRITIQUE. Si l'un des 3 updates plante, on
   //     log mais on continue (la rotation peut être finalisée manuellement).
