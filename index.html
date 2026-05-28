@@ -742,6 +742,8 @@ tr.skin-or-des-incas{
   /* LEAGUE page : sur mobile on utilise le dropdown, on masque la nav complète,
      et on place le classement principal avant le Prize Pool */
   #league-mobile-selector{display:block !important}
+  /* Recherche RP : visible uniquement sur mobile ET si Premium (classe .lrs-on en JS) */
+  #league-rp-search-wrap.lrs-on{display:block !important}
   #league-left-col > .block:first-child{display:none}
   .layout-sidebar-220{display:flex !important;flex-direction:column-reverse}
 
@@ -1332,7 +1334,7 @@ select option{background:#040c1c}
           </svg>
         </div>
         <!-- Carré parrainage (déplacé depuis la barre de titre pour libérer la ligne PLAYER CARD) -->
-        <div data-tuto-target="parrainage" onclick="showParrainageInfo()" title="Mon code parrainage" style="
+        <div data-tuto-target="parrainage" onclick="showParrainageInfo()" title="Mon code parrainage" data-i18n-title="sponsor.pcCard.title" style="
           width:54px;height:54px;border-radius:10px;
           background:rgba(245,200,66,.1);border:1.5px solid rgba(245,200,66,.5);
           display:flex;align-items:center;justify-content:center;
@@ -1542,6 +1544,18 @@ select option{background:#040c1c}
     <div style="flex-shrink:0">
       <button onclick="openModal('sync-modal')" data-i18n-title="league.strava.connect" title="Connecter ton compte Strava" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;padding:.35rem .7rem;border-radius:4px;border:none;background:#fc4c02;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;line-height:1;text-align:center"><span style="font-size:.55rem;letter-spacing:.5px;opacity:.95;display:block;width:100%;text-align:center">⚡ POWERED BY</span><span style="font-size:.55rem;letter-spacing:.5px;display:block;width:100%;text-align:center">STRAVA</span></button>
     </div>
+  </div>
+
+  <!-- Recherche d'un RP par username (mobile uniquement, Premium) — affichée via la
+       classe .lrs-on posée par updateLeaguePickerLabel quand isPremium() est vrai. -->
+  <div id="league-rp-search-wrap" style="display:none;margin-bottom:.6rem;position:relative">
+    <input id="league-rp-search" type="text" autocomplete="off" maxlength="30"
+      placeholder="🔍 Rechercher un RP…" data-i18n-placeholder="league.search.placeholder"
+      oninput="searchLeaguePlayers(this.value)"
+      onfocus="this.style.borderColor='var(--gold)'"
+      onblur="setTimeout(function(){var r=document.getElementById('league-rp-search-results');if(r)r.style.display='none';},200);this.style.borderColor='rgba(74,144,255,.25)'"
+      style="width:100%;box-sizing:border-box;padding:.7rem 1rem;border-radius:8px;border:1.5px solid rgba(74,144,255,.25);background:rgba(4,12,28,.5);color:var(--text);font-size:.85rem;outline:none;font-family:'Space Mono',monospace">
+    <div id="league-rp-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:#080e1e;border:1px solid rgba(74,144,255,.2);border-radius:8px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.6)"></div>
   </div>
 
   <!-- Bouton sélecteur de league (mobile uniquement) -->
@@ -3811,6 +3825,7 @@ const I18N = {
     'league.badge.debt.label'   : 'DETTE',
     'league.badge.inf'          : 'En infirmerie',
     'league.badge.paid'         : 'Place payée — gain RPC',
+    'league.badge.quizzchamp'   : 'Champion du quizz',
     'league.sep.up'             : '↑ MONTÉE',
     'league.sep.down'           : '↓ DESCENTE',
     'league.sep.upperFallback'  : 'League Supérieure',
@@ -3928,6 +3943,7 @@ const I18N = {
     'quizz.rank.loading'        : 'Chargement du classement…',
     'quizz.rank.title'          : 'Classement Quizz',
     'quizz.rank.empty'          : 'Personne n\'a encore répondu au quizz. À toi de jouer !',
+    'quizz.rank.unavailable'    : 'Classement indisponible',
     // — Page Lands (HTML statique)
     'lands.page.title'          : 'Conquête des <span style="color:var(--gold)">Lands</span>',
     'lands.page.subtitle'       : 'Explorer · Louer · Acheter · Étoiles · Trésors',
@@ -4187,6 +4203,16 @@ const I18N = {
     'collab.neighbor.your'      : 'ton voisin',
     'collab.reward.land6m'      : '🏞️ 1 land gratuite chacun pendant 6 mois',
     'collab.reward.share'       : 'à partager',
+    'collab.notif.accept.title' : 'Ton voisin attend !',
+    'collab.notif.accept.body'  : 'RP <strong>{name}</strong> vient de valider un défi collaboratif avec toi.<br><br>Pour valider de ton côté, va dans la page <strong>Voisins</strong> et accepte le défi.<br><br>Bon courage à vous deux 💪',
+    'collab.notif.decline.title': 'Défi refusé',
+    'collab.notif.decline.body' : 'Désolé, RP <strong>{name}</strong> a refusé le défi collaboratif avec toi. Il est sûrement trop occupé ou fatigué.<br><br>Peut-être une prochaine fois 🤞',
+    'collab.decline.title'      : 'REFUSER LE DÉFI ?',
+    'collab.decline.sub'        : 'Choisis l\'explication que ton voisin verra :',
+    'collab.decline.cancel'     : 'Annuler',
+    'collab.decline.you'        : 'Toi',
+    'collab.decline.reason.busy': 'Désolé j\'ai déjà plusieurs défis en cours, je ne peux plus en accepter d\'autre, j\'ai atteint ma limite autorisée.',
+    'collab.decline.reason.away': 'Désolé, indisponible en ce moment pour relever le défi. Peut-être une prochaine fois.',
     // — Badges (suffix tooltip)
     'badge.validated'           : ' (validé)',
     'badge.registered'          : ' (inscrit — dossard #{n})',
@@ -4367,11 +4393,37 @@ const I18N = {
     'league.elite.toast'        : '🔒 League Elite ouvrira plus tard — reste en Or pour l\'instant',
     'league.premium.gate'       : 'La consultation de toutes les Leagues est accessible avec le statut Premium.',
     'league.premium.toast'      : '🔒 Passe en Premium pour consulter cette League',
+    'league.search.placeholder' : '🔍 Rechercher un RP…',
+    'league.search.none'        : 'Aucun RP trouvé',
+    'league.search.gate'        : 'La recherche d\'un RP est accessible avec le statut Premium.',
+    'league.search.notlisted'   : 'Ce RP n\'apparaît pas dans le classement.',
     // — Rangs parrainage (titles)
     'sponsor.rank.A'            : 'Ambassadeur',
     'sponsor.rank.G'            : 'Gouverneur',
     'sponsor.rank.E'            : 'Empereur',
     'sponsor.rank.F'            : 'Fondateur',
+    // — Modale parrainage (showParrainageInfo)
+    'sponsor.modal.title'       : '🤝 Parrainage',
+    'sponsor.modal.sub'         : 'Titre de noblesse SPEEDIX',
+    'sponsor.referral'          : 'parrainage',
+    'sponsor.referrals'         : 'parrainages',
+    'sponsor.needAmbassador'    : '10 requis pour Ambassadeur',
+    'sponsor.yourCode'          : 'Ton code parrainage',
+    'sponsor.share'             : '📤 PARTAGER',
+    'sponsor.invitedBy'         : 'Invité par',
+    'sponsor.filleuls.yours'    : 'Tes filleuls',
+    'sponsor.filleuls.of'       : 'Filleuls de {name}',
+    'sponsor.steps'             : 'Étapes : {n} / 4',
+    'sponsor.steps.title'       : 'Les 4 étapes du filleul',
+    'sponsor.step1'             : 'Sa 1<sup>ère</sup> course',
+    'sponsor.step1.reward'      : '→ +2 000 RPC + 5 NYX',
+    'sponsor.step2'             : 'Dépasse 1 000 pts',
+    'sponsor.step3'             : '3 périodes consécutives',
+    'sponsor.step4'             : 'Rejoint ta team',
+    'sponsor.step.reward5'      : '→ +5 NYX',
+    'sponsor.pcCard.title'      : 'Mon code parrainage',
+    'sponsor.copyFail'          : '⚠️ Impossible de partager — copie ton code : {code}',
+    'sponsor.shareMsg'          : 'Salut ! Je participe à SPEEDIX League — un championnat de running gamifié : tu cours, tu marques des points, tu progresses dans la league et gagnes des récompenses. De nombreux défis sympas à accomplir. Fonctionne avec Strava.\n\nSi tu souhaites découvrir : c\'est fun, 100% motivant — 100% gratuit.\n\nClick sur le lien en dessous si tu aimes te challenger 💪\n\n{url}\n\nSportivement',
     // — Prize pool (renderLeaguePP)
     'pp.starter.empty'          : 'Pas de récompenses en Starter Zone.<br>Fais au moins <strong style="color:var(--gold)">500 pts</strong> pour rejoindre une League.',
     'pp.buyin.rpcrp'            : '{n} RPC / RP',
@@ -4509,6 +4561,7 @@ const I18N = {
     'league.badge.debt.label'   : 'DEBT',
     'league.badge.inf'          : 'In infirmary',
     'league.badge.paid'         : 'Paid place — RPC reward',
+    'league.badge.quizzchamp'   : 'Quiz champion',
     'league.sep.up'             : '↑ PROMOTION',
     'league.sep.down'           : '↓ RELEGATION',
     'league.sep.upperFallback'  : 'Upper League',
@@ -4626,6 +4679,7 @@ const I18N = {
     'quizz.rank.loading'        : 'Loading rankings…',
     'quizz.rank.title'          : 'Quiz Rankings',
     'quizz.rank.empty'          : 'No one has played the quiz yet. You\'re up!',
+    'quizz.rank.unavailable'    : 'Rankings unavailable',
     // — Lands page (static HTML)
     'lands.page.title'          : '<span style="color:var(--gold)">Land</span> capture',
     'lands.page.subtitle'       : 'Explore · Rent · Buy · Stars · Treasures',
@@ -4885,6 +4939,16 @@ const I18N = {
     'collab.neighbor.your'      : 'your neighbor',
     'collab.reward.land6m'      : '🏞️ 1 free land each for 6 months',
     'collab.reward.share'       : 'to share',
+    'collab.notif.accept.title' : 'Your neighbor is waiting!',
+    'collab.notif.accept.body'  : 'RP <strong>{name}</strong> just confirmed a collaborative challenge with you.<br><br>To confirm on your side, go to the <strong>Neighbors</strong> page and accept the challenge.<br><br>Good luck to you both 💪',
+    'collab.notif.decline.title': 'Challenge declined',
+    'collab.notif.decline.body' : 'Sorry, RP <strong>{name}</strong> declined the collaborative challenge with you. They\'re probably too busy or tired.<br><br>Maybe next time 🤞',
+    'collab.decline.title'      : 'DECLINE THE CHALLENGE?',
+    'collab.decline.sub'        : 'Choose the explanation your neighbor will see:',
+    'collab.decline.cancel'     : 'Cancel',
+    'collab.decline.you'        : 'You',
+    'collab.decline.reason.busy': 'Sorry, I already have several challenges going and can\'t take on any more — I\'ve reached my limit.',
+    'collab.decline.reason.away': 'Sorry, I\'m not available to take on the challenge right now. Maybe next time.',
     // — Badges (suffix tooltip)
     'badge.validated'           : ' (unlocked)',
     'badge.registered'          : ' (registered — bib #{n})',
@@ -5065,11 +5129,37 @@ const I18N = {
     'league.elite.toast'        : '🔒 Elite League will open later — stay in Gold for now',
     'league.premium.gate'       : 'Viewing all Leagues is available with Premium status.',
     'league.premium.toast'      : '🔒 Go Premium to view this League',
+    'league.search.placeholder' : '🔍 Search an RP…',
+    'league.search.none'        : 'No RP found',
+    'league.search.gate'        : 'RP search is available with Premium status.',
+    'league.search.notlisted'   : 'This RP is not listed in the ranking.',
     // — Sponsor ranks (titles)
     'sponsor.rank.A'            : 'Ambassador',
     'sponsor.rank.G'            : 'Governor',
     'sponsor.rank.E'            : 'Emperor',
     'sponsor.rank.F'            : 'Founder',
+    // — Referral modal (showParrainageInfo)
+    'sponsor.modal.title'       : '🤝 Referrals',
+    'sponsor.modal.sub'         : 'SPEEDIX nobility title',
+    'sponsor.referral'          : 'referral',
+    'sponsor.referrals'         : 'referrals',
+    'sponsor.needAmbassador'    : '10 required for Ambassador',
+    'sponsor.yourCode'          : 'Your referral code',
+    'sponsor.share'             : '📤 SHARE',
+    'sponsor.invitedBy'         : 'Invited by',
+    'sponsor.filleuls.yours'    : 'Your referrals',
+    'sponsor.filleuls.of'       : 'Referrals of {name}',
+    'sponsor.steps'             : 'Steps: {n} / 4',
+    'sponsor.steps.title'       : 'The referral\'s 4 steps',
+    'sponsor.step1'             : 'Their 1st run',
+    'sponsor.step1.reward'      : '→ +2,000 RPC + 5 NYX',
+    'sponsor.step2'             : 'Reaches 1,000 pts',
+    'sponsor.step3'             : '3 consecutive periods',
+    'sponsor.step4'             : 'Joins your team',
+    'sponsor.step.reward5'      : '→ +5 NYX',
+    'sponsor.pcCard.title'      : 'My referral code',
+    'sponsor.copyFail'          : '⚠️ Could not share — copy your code: {code}',
+    'sponsor.shareMsg'          : 'Hi! I\'m playing SPEEDIX League — a gamified running championship: you run, you score points, you climb the league and earn rewards. Lots of fun challenges to complete. Works with Strava.\n\nWant to check it out? It\'s fun, 100% motivating — 100% free.\n\nClick the link below if you like a good challenge 💪\n\n{url}\n\nSee you out there',
     // — Prize pool (renderLeaguePP)
     'pp.starter.empty'          : 'No rewards in Starter Zone.<br>Earn at least <strong style="color:var(--gold)">500 pts</strong> to join a League.',
     'pp.buyin.rpcrp'            : '{n} RPC / player',
@@ -6012,6 +6102,8 @@ async function loadPlayersFromSupabase(){
   renderLeaguePP();
   renderLeaguePanel();
   if(typeof updateLeaguePickerLabel === 'function') updateLeaguePickerLabel();
+  // Champion du quizz (👑) : recalcul async → re-render du panel si le #1 a changé.
+  if(typeof loadQuizzChampion === 'function') loadQuizzChampion();
 
 }
 
@@ -7848,6 +7940,9 @@ function buildLeaguePicker(){
   }).join('');
 }
 function updateLeaguePickerLabel(){
+  // Barre de recherche RP : réservée Premium (le CSS @media la limite au mobile).
+  var _srch=document.getElementById('league-rp-search-wrap');
+  if(_srch) _srch.classList.toggle('lrs-on', typeof isPremium==='function' && isPremium());
   const league=LEAGUES.find(l=>l.key===activeLeagueKey);
   if(!league)return;
   const lbl=document.getElementById('league-picker-label');
@@ -7917,6 +8012,95 @@ function selectLeague(key){
   renderLeaguePP();
   renderLeaguePanel();
   updateLeaguePickerLabel();
+}
+
+// ── Recherche d'un RP dans le classement (barre mobile, Premium uniquement) ──────
+// Cherche dans PLAYERS (toutes leagues déjà chargées) → permet de basculer sur la
+// league du RP et de surligner sa ligne. Réservé Premium (accès à tous les classements).
+var _leagueSearchTimeout=null;
+function searchLeaguePlayers(query){
+  var el=document.getElementById('league-rp-search-results');
+  if(!el) return;
+  // Garde-fou : la barre est masquée pour les Free, mais on re-vérifie côté code.
+  if(typeof isPremium==='function' && !isPremium()){
+    el.style.display='none';
+    if(!window.__premiumLeagueSearchGateSeen){
+      window.__premiumLeagueSearchGateSeen=true;
+      showPremiumGate(t('league.search.gate'));
+    }
+    return;
+  }
+  var q=(query||'').trim().toLowerCase();
+  if(q.length<2){ el.style.display='none'; return; }
+  clearTimeout(_leagueSearchTimeout);
+  _leagueSearchTimeout=setTimeout(function(){
+    var _myUid=currentUser?currentUser.id:null;
+    var matches=PLAYERS.filter(function(p){
+      if(!p.name) return false;
+      if(p.frozen) return false;
+      if(p.is_visible===false && p._uuid!==_myUid) return false;   // non navigables
+      return p.name.toLowerCase().indexOf(q)>=0;
+    }).slice(0,8);
+    if(!matches.length){
+      el.innerHTML='<div style="padding:.6rem;font-size:.72rem;color:var(--muted2);text-align:center">'+t('league.search.none')+'</div>';
+      el.style.display='block';
+      return;
+    }
+    el.innerHTML=matches.map(function(p){
+      var gc=GRADE_COLORS[p.grade]||'#8090b0';
+      var lg=LEAGUES.find(function(l){return l.key===p.leagueKey;});
+      var lgLabel=lg?(lg.emoji+' '+lg.name+' — '+lg.label):'';
+      var initial=escapeHtml(p.name.charAt(0).toUpperCase());
+      var av=p.avatar
+        ?'<img src="'+escapeHtml(p.avatar)+'" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1.5px solid '+gc+'">'
+        :'<div style="width:28px;height:28px;border-radius:6px;border:1.5px solid '+gc+';background:'+gc+'22;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:'+gc+'">'+initial+'</div>';
+      return '<div onclick="goToPlayerInLeague('+p.id+')" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;cursor:pointer;border-bottom:1px solid rgba(30,37,53,.4)" onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'transparent\'">'
+        +av
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.8rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.name)+' '+natFlagHtml(p.nat)+'</div>'
+        +'<div style="font-size:.62rem;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+lgLabel+'</div>'
+        +'</div>'
+        +'<span style="font-size:.8rem;color:var(--gold);flex-shrink:0">→</span>'
+        +'</div>';
+    }).join('');
+    el.style.display='block';
+  },250);
+}
+
+// Bascule sur la league du RP sélectionné et surligne sa ligne dans le classement.
+function goToPlayerInLeague(localId){
+  var p=PLAYERS.find(function(x){return x.id===localId;});
+  if(!p) return;
+  var el=document.getElementById('league-rp-search-results');
+  if(el) el.style.display='none';
+  var inp=document.getElementById('league-rp-search');
+  if(inp) inp.value='';
+  var dd=document.getElementById('league-picker-dropdown');
+  if(dd) dd.style.display='none';
+  var arrow=document.getElementById('league-picker-arrow');
+  if(arrow) arrow.style.transform='';
+  activeLeagueKey=p.leagueKey;
+  renderLeagueNav();
+  renderLeaguePP();
+  renderLeaguePanel();
+  updateLeaguePickerLabel();
+  _highlightLeagueRow(p._uuid);
+}
+
+// Scrolle vers la ligne du RP (data-uuid) et la fait clignoter brièvement en doré.
+function _highlightLeagueRow(uuid){
+  if(!uuid) return;
+  setTimeout(function(){
+    var panel=document.getElementById('league-main-panel');
+    if(!panel) return;
+    var row=panel.querySelector('tr[data-uuid="'+uuid+'"]');
+    if(!row){ showToast(t('league.search.notlisted')); return; }
+    row.scrollIntoView({behavior:'smooth',block:'center'});
+    var prev=row.style.boxShadow;
+    row.style.transition='box-shadow .3s';
+    row.style.boxShadow='inset 0 0 0 2px var(--gold)';
+    setTimeout(function(){ row.style.boxShadow=prev; },1800);
+  },60);
 }
 
 function renderLeaguePanel(){
@@ -8007,6 +8191,10 @@ function renderLeaguePanel(){
     var parrainBadge=p.parrain
       ?'<span title="'+(p.parrain==='A'?t('sponsor.rank.A'):p.parrain==='G'?t('sponsor.rank.G'):p.parrain==='E'?t('sponsor.rank.E'):t('sponsor.rank.F'))+'" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:3px;background:'+parrainColors[p.parrain]+'22;border:1px solid '+parrainColors[p.parrain]+'88;font-family:\'Bebas Neue\',sans-serif;font-size:.65rem;font-weight:700;color:'+parrainColors[p.parrain]+';margin-left:.3rem;flex-shrink:0;line-height:1">'+p.parrain+'</span>'
       :'';
+    // 👑 = #1 du classement Quizz (champion). Suit le RP en tête (cf. _quizzChampionUuid).
+    var crownBadge=(p._uuid && _quizzChampionUuid && p._uuid===_quizzChampionUuid)
+      ?'<span title="'+t('league.badge.quizzchamp')+'" style="margin-left:.3rem;font-size:.85rem;flex-shrink:0;line-height:1">👑</span>'
+      :'';
     var trend=p.trend||0;
     var totalInLeague=players.length;
     if(rankNum===1 && trend<0) trend=0;
@@ -8021,12 +8209,12 @@ function renderLeaguePanel(){
       ?'<span title="'+t('league.badge.paid')+'" style="font-size:.82rem;flex-shrink:0;line-height:1">💰</span>'
       :'';
     var avId='av-'+p.id+'-'+rankNum;
-    return '<tr'+rowSkinClass+' style="'+rowBg+rowStyle+'">'
+    return '<tr'+rowSkinClass+' data-uuid="'+(p._uuid||'')+'" style="'+rowBg+rowStyle+'">'
       +'<td>'+rankCell+'</td>'
       +'<td><div style="display:flex;align-items:center;gap:.55rem">'
       +natFlagHtml(p.nat)
       +'<div onclick="'+(p.id===1?'window.__viewedPlayer=null;renderDashboard();renderTeams();nav(\'dashboard\')':'showPlayerCard('+p.id+')')+'" style="width:28px;height:28px;border-radius:5px;border:2px solid '+gc+';overflow:hidden;flex-shrink:0;box-shadow:0 0 6px '+gc+'40;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'\'" title="'+p.name+'"><canvas id="'+avId+'" width="28" height="28" style="display:block"></canvas></div>'
-      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+infBadge+boostBadge+gelBadge+calibBadge+debtBadge+parrainBadge+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.2rem"><div class="runner-name">'+p.name+meBadge+'</div>'+crownBadge+infBadge+boostBadge+gelBadge+calibBadge+debtBadge+parrainBadge+'</div>'
       +'</div></td>'
       +'<td style="font-family:monospace;font-size:.82rem">'
       +'<span style="display:inline-flex;align-items:center;justify-content:flex-end;gap:.45rem;width:100%">'
@@ -8670,14 +8858,14 @@ function showRunDetails(runId){
 // ══════════════════════════════════════════════════════════════════════
 //  PARRAINAGE — titres de noblesse
 // ══════════════════════════════════════════════════════════════════════
-var _parrainageCache={count:0,titre:'—',lettre:'·',color:'var(--muted2)',filleuls:[]};
+var _parrainageCache={count:0,titre:'—',titreKey:null,lettre:'·',color:'var(--muted2)',filleuls:[]};
 
 function getParrainageTitre(count){
-  if(count>=40) return {titre:'Fondateur',lettre:'F',color:'var(--gold)'};
-  if(count>=30) return {titre:'Empereur',lettre:'E',color:'#9060f0'};
-  if(count>=20) return {titre:'Gouverneur',lettre:'G',color:'#ff6020'};
-  if(count>=10) return {titre:'Ambassadeur',lettre:'A',color:'#2ddb80'};
-  return {titre:'—',lettre:'·',color:'var(--muted2)'};
+  if(count>=40) return {titre:'Fondateur',key:'sponsor.rank.F',lettre:'F',color:'var(--gold)'};
+  if(count>=30) return {titre:'Empereur',key:'sponsor.rank.E',lettre:'E',color:'#9060f0'};
+  if(count>=20) return {titre:'Gouverneur',key:'sponsor.rank.G',lettre:'G',color:'#ff6020'};
+  if(count>=10) return {titre:'Ambassadeur',key:'sponsor.rank.A',lettre:'A',color:'#2ddb80'};
+  return {titre:'—',key:null,lettre:'·',color:'var(--muted2)'};
 }
 
 // Partage le code parrainage via la feuille système (SMS/WhatsApp/Mail/etc.)
@@ -8685,11 +8873,7 @@ function getParrainageTitre(count){
 async function shareReferralCode(code){
   // URL avec ?ref= → l'app pré-remplit le code parrain à l'inscription (cf. _autoFillReferralFromUrl).
   var url='https://speedixleague.com?ref='+encodeURIComponent(code);
-  var text='Salut ! Je participe à SPEEDIX League — un championnat de running gamifié : tu cours, tu marques des points, tu progresses dans la league et gagnes des récompenses. De nombreux défis sympas à accomplir. Fonctionne avec Strava.\n\n'
-    +'Si tu souhaites découvrir : c\'est fun, 100% motivant — 100% gratuit.\n\n'
-    +'Click sur le lien en dessous si tu aimes te challenger 💪\n\n'
-    +url+'\n\n'
-    +'Sportivement';
+  var text=t('sponsor.shareMsg').replace('{url}',url);
   // 1. Web Share API (mobile principalement)
   if(navigator.share){
     try{
@@ -8716,7 +8900,7 @@ async function shareReferralCode(code){
       showToast('✓ Message copié — colle-le dans WhatsApp/SMS/Mail pour partager');
     }
   }catch(e){
-    showToast('⚠️ Impossible de partager — copie ton code : '+code);
+    showToast(t('sponsor.copyFail').replace('{code}',code));
   }
 }
 
@@ -8745,7 +8929,7 @@ async function loadParrainageData(playerId){
     var {data:parrainData}=await supabaseClient.from('players').select('username').eq('id',meRes.data.referred_by).single();
     if(parrainData) parrainName=parrainData.username;
   }
-  _parrainageCache={count:count,titre:info.titre,lettre:info.lettre,color:info.color,filleuls:filleuls,parrainName:parrainName};
+  _parrainageCache={count:count,titre:info.titre,titreKey:info.key,lettre:info.lettre,color:info.color,filleuls:filleuls,parrainName:parrainName};
   // Mettre à jour le carré sur la PC
   // Sans titre (count < 10) → affiche le 🤝 en teaser
   // Avec titre (A/G/E/F) → la lettre colorée remplace le 🤝
@@ -8860,12 +9044,16 @@ async function showParrainageInfo(){
   // Recharger les données
   await loadParrainageData(uid);
   var c=_parrainageCache;
+  // Pluriel : EN au singulier seulement si 1, FR au singulier si ≤1
+  var refWord=(SPEEDIX_LANG==='en')
+    ? (c.count===1?t('sponsor.referral'):t('sponsor.referrals'))
+    : (c.count>1?t('sponsor.referrals'):t('sponsor.referral'));
   var detail;
-  if(c.count>=40) detail='Fondateur · '+c.count+' parrainages';
-  else if(c.count>=30) detail='Empereur · '+c.count+' parrainages';
-  else if(c.count>=20) detail='Gouverneur · '+c.count+' parrainages';
-  else if(c.count>=10) detail='Ambassadeur · '+c.count+' parrainages';
-  else detail=c.count+' parrainage'+(c.count>1?'s':'')+' · 10 requis pour Ambassadeur';
+  if(c.count>=40) detail=t('sponsor.rank.F')+' · '+c.count+' '+refWord;
+  else if(c.count>=30) detail=t('sponsor.rank.E')+' · '+c.count+' '+refWord;
+  else if(c.count>=20) detail=t('sponsor.rank.G')+' · '+c.count+' '+refWord;
+  else if(c.count>=10) detail=t('sponsor.rank.A')+' · '+c.count+' '+refWord;
+  else detail=c.count+' '+refWord+' · '+t('sponsor.needAmbassador');
 
   // Code parrainage du joueur consulté
   var _pName=viewedP?(viewedP.name||'?'):(window.__myPlayer?window.__myPlayer.name:'?');
@@ -8882,7 +9070,7 @@ async function showParrainageInfo(){
     var start=window._parrainagePage*perPage;
     var pageFilleuls=c.filleuls.slice(start,start+perPage);
     filleulHtml='<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.6rem">'
-      +'<div style="font-size:.62rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">'+(viewedP?'Filleuls de '+_pName:'Tes filleuls')+' ('+c.count+')</div>';
+      +'<div style="font-size:.62rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">'+(viewedP?t('sponsor.filleuls.of').replace('{name}',_pName):t('sponsor.filleuls.yours'))+' ('+c.count+')</div>';
     pageFilleuls.forEach(function(f){
       var steps=f._steps||0;
       var stepsColor=steps===4?'var(--green)':steps>0?'var(--gold)':'var(--muted2)';
@@ -8894,7 +9082,7 @@ async function showParrainageInfo(){
         +natFlagHtml(f.nat,'0.9rem')
         +'<span style="color:var(--text);flex:1">'+f.username+'</span>'
         +'<div style="display:flex;align-items:center;gap:.2rem">'+dots+'</div>'
-        +'<span style="font-size:.58rem;color:'+stepsColor+'">Étapes : '+steps+' / 4</span>'
+        +'<span style="font-size:.58rem;color:'+stepsColor+'">'+t('sponsor.steps').replace('{n}',steps)+'</span>'
       +'</div>';
     });
     // Pagination buttons
@@ -8908,38 +9096,38 @@ async function showParrainageInfo(){
     }
     // Légende des 4 étapes
     filleulHtml+='<div style="margin-top:.75rem;padding:.6rem .7rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px">'
-      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">Les 4 étapes du filleul</div>'
+      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">'+t('sponsor.steps.title')+'</div>'
       +'<div style="font-size:.7rem;color:var(--text);line-height:1.7">'
-        +'<div><span style="color:var(--gold)">●</span> <strong>1.</strong> Sa 1<sup>ère</sup> course <span style="color:var(--muted2)">→ +2 000 RPC + 5 NYX</span></div>'
-        +'<div><span style="color:var(--gold)">●</span> <strong>2.</strong> Dépasse 1 000 pts <span style="color:var(--muted2)">→ +5 NYX</span></div>'
-        +'<div><span style="color:var(--gold)">●</span> <strong>3.</strong> 3 périodes consécutives <span style="color:var(--muted2)">→ +5 NYX</span></div>'
-        +'<div><span style="color:var(--gold)">●</span> <strong>4.</strong> Rejoint ta team <span style="color:var(--muted2)">→ +5 NYX</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>1.</strong> '+t('sponsor.step1')+' <span style="color:var(--muted2)">'+t('sponsor.step1.reward')+'</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>2.</strong> '+t('sponsor.step2')+' <span style="color:var(--muted2)">'+t('sponsor.step.reward5')+'</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>3.</strong> '+t('sponsor.step3')+' <span style="color:var(--muted2)">'+t('sponsor.step.reward5')+'</span></div>'
+        +'<div><span style="color:var(--gold)">●</span> <strong>4.</strong> '+t('sponsor.step4')+' <span style="color:var(--muted2)">'+t('sponsor.step.reward5')+'</span></div>'
       +'</div>'
     +'</div>';
     filleulHtml+='</div>';
   }
 
-  document.getElementById('lm-title').textContent='🤝 Parrainage';
-  document.getElementById('lm-sub').textContent='Titre de noblesse SPEEDIX';
+  document.getElementById('lm-title').textContent=t('sponsor.modal.title');
+  document.getElementById('lm-sub').textContent=t('sponsor.modal.sub');
   document.getElementById('lm-body').innerHTML=''
     +'<div style="text-align:center;margin:.5rem 0 .75rem">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:2.2rem;letter-spacing:4px;color:'+c.color+';text-shadow:0 0 20px '+c.color+'88">'+c.titre+'</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:2.2rem;letter-spacing:4px;color:'+c.color+';text-shadow:0 0 20px '+c.color+'88">'+(c.titreKey?t(c.titreKey):c.titre)+'</div>'
       +'<div style="font-size:.85rem;color:var(--muted2);margin-top:.3rem">'+detail+'</div>'
     +'</div>'
     +'<div style="text-align:center;margin-bottom:.75rem;padding:.5rem .75rem;border-radius:7px;background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2)">'
-      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.2rem">Ton code parrainage</div>'
+      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.2rem">'+t('sponsor.yourCode')+'</div>'
       +'<div style="font-family:Space Mono,monospace;font-size:1.1rem;color:var(--gold);font-weight:700;letter-spacing:2px;margin-bottom:.5rem">'+myCode+'</div>'
-      +(viewedP?'':'<button onclick="event.stopPropagation();shareReferralCode(\''+myCode+'\')" style="padding:10px 1.2rem;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:Bebas Neue,sans-serif;font-size:.88rem;letter-spacing:2.5px;font-weight:700;cursor:pointer">📤 PARTAGER</button>')
+      +(viewedP?'':'<button onclick="event.stopPropagation();shareReferralCode(\''+myCode+'\')" style="padding:10px 1.2rem;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:Bebas Neue,sans-serif;font-size:.88rem;letter-spacing:2.5px;font-weight:700;cursor:pointer">'+t('sponsor.share')+'</button>')
     +'</div>'
     +(c.parrainName?'<div style="text-align:center;margin-bottom:.75rem;padding:.4rem .75rem;border-radius:7px;background:rgba(45,219,128,.06);border:1px solid rgba(45,219,128,.2)">'
-      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.15rem">Invité par</div>'
+      +'<div style="font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.15rem">'+t('sponsor.invitedBy')+'</div>'
       +'<div style="font-size:.88rem;color:var(--green);font-weight:700">'+c.parrainName+'</div>'
     +'</div>':'')
     +'<div style="font-size:.72rem;color:var(--muted2);line-height:2">'
-      +'<span style="color:#2ddb80">Ambassadeur</span> — 10 · '
-      +'<span style="color:#ff6020">Gouverneur</span> — 20 · '
-      +'<span style="color:#9060f0">Empereur</span> — 30+ · '
-      +'<span style="color:var(--gold)">Fondateur</span> — 40+'
+      +'<span style="color:#2ddb80">'+t('sponsor.rank.A')+'</span> — 10 · '
+      +'<span style="color:#ff6020">'+t('sponsor.rank.G')+'</span> — 20 · '
+      +'<span style="color:#9060f0">'+t('sponsor.rank.E')+'</span> — 30+ · '
+      +'<span style="color:var(--gold)">'+t('sponsor.rank.F')+'</span> — 40+'
     +'</div>'
     +filleulHtml;
   openModal('land-modal');
@@ -20527,9 +20715,9 @@ async function renderCollabChallenges(){
         var declineQuoteHtml='';
         if(it.neighbor && it.neighbor.declined && it.neighbor.declined_reason){
           var _whoNeigh=(it.neighborInfo && it.neighborInfo.username) ? it.neighborInfo.username : 'Ton voisin';
-          declineQuoteHtml='<div style="margin-top:.35rem;padding:.4rem .55rem;border-left:2px solid var(--muted2);background:rgba(255,255,255,.025);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4">💬 '+escapeHtml(_whoNeigh)+' : « '+escapeHtml(it.neighbor.declined_reason)+' »</div>';
+          declineQuoteHtml='<div style="margin-top:.35rem;padding:.4rem .55rem;border-left:2px solid var(--muted2);background:rgba(255,255,255,.025);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4">💬 '+escapeHtml(_whoNeigh)+' : « '+escapeHtml(_declineReasonText(it.neighbor.declined_reason))+' »</div>';
         } else if(it.part.declined && it.part.declined_reason){
-          declineQuoteHtml='<div style="margin-top:.35rem;padding:.4rem .55rem;border-left:2px solid var(--muted2);background:rgba(255,255,255,.025);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4">💬 Toi : « '+escapeHtml(it.part.declined_reason)+' »</div>';
+          declineQuoteHtml='<div style="margin-top:.35rem;padding:.4rem .55rem;border-left:2px solid var(--muted2);background:rgba(255,255,255,.025);font-size:.7rem;color:var(--muted2);font-style:italic;line-height:1.4">💬 '+t('collab.decline.you')+' : « '+escapeHtml(_declineReasonText(it.part.declined_reason))+' »</div>';
         }
         html+='<div style="padding:.55rem .65rem;border-radius:7px;border:1px solid var(--border2);background:rgba(255,255,255,.02);margin-bottom:.35rem">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">'
@@ -20677,23 +20865,30 @@ async function acceptCollabChallenge(participantId){
   }
 }
 
+// Traduit un code de motif de refus dans la langue du LECTEUR.
+// Tolère les anciennes lignes qui stockaient le texte FR brut (renvoyé tel quel).
+function _declineReasonText(code){
+  if(code==='busy') return t('collab.decline.reason.busy');
+  if(code==='away') return t('collab.decline.reason.away');
+  return code||'';
+}
+
 // Demande au RP de choisir une raison de refus (pour transmettre au voisin).
-// Retourne une Promise<string|null> — null si fermeture sans choix.
+// Retourne une Promise<'busy'|'away'|null> — null si fermeture sans choix.
+// On stocke un CODE (pas le texte) pour pouvoir l'afficher dans la langue du voisin.
 function _chooseDeclineReason(){
   return new Promise(function(resolve){
     var modal=document.getElementById('decline-reason-modal');
     var body=document.getElementById('dr-body');
     if(!modal || !body){ resolve(null); return; }
-    var REASON_BUSY = 'Désolé j\'ai déjà plusieurs défis en cours, je ne peux plus en accepter d\'autre, j\'ai atteint ma limite autorisée.';
-    var REASON_AWAY = 'Désolé, indisponible en ce moment pour relever le défi. Peut-être une prochaine fois.';
     body.innerHTML='<div style="text-align:center;padding:.4rem 0">'
       +'<div style="font-size:2.2rem;margin-bottom:.4rem">🤔</div>'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--text);margin-bottom:.4rem">REFUSER LE DÉFI ?</div>'
-      +'<div style="font-size:.78rem;color:var(--muted2);line-height:1.5;margin-bottom:1rem">Choisis l\'explication que ton voisin verra :</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--text);margin-bottom:.4rem">'+t('collab.decline.title')+'</div>'
+      +'<div style="font-size:.78rem;color:var(--muted2);line-height:1.5;margin-bottom:1rem">'+t('collab.decline.sub')+'</div>'
       +'<div style="display:flex;flex-direction:column;gap:.5rem;max-width:340px;margin:0 auto">'
-        +'<button data-dr="busy" style="padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--text);font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'rgba(245,200,66,.4)\'">'+REASON_BUSY+'</button>'
-        +'<button data-dr="away" style="padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(74,144,255,.4);background:rgba(74,144,255,.08);color:var(--text);font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'rgba(74,144,255,.4)\'">'+REASON_AWAY+'</button>'
-        +'<button data-dr="cancel" style="margin-top:.3rem;padding:.4rem;border:none;background:transparent;color:var(--muted2);font-size:.72rem;cursor:pointer">Annuler</button>'
+        +'<button data-dr="busy" style="padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.08);color:var(--text);font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'rgba(245,200,66,.4)\'">'+t('collab.decline.reason.busy')+'</button>'
+        +'<button data-dr="away" style="padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(74,144,255,.4);background:rgba(74,144,255,.08);color:var(--text);font-size:.8rem;line-height:1.4;text-align:left;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'rgba(74,144,255,.4)\'">'+t('collab.decline.reason.away')+'</button>'
+        +'<button data-dr="cancel" style="margin-top:.3rem;padding:.4rem;border:none;background:transparent;color:var(--muted2);font-size:.72rem;cursor:pointer">'+t('collab.decline.cancel')+'</button>'
       +'</div>'
     +'</div>';
     function pick(reason){
@@ -20701,8 +20896,8 @@ function _chooseDeclineReason(){
       body.querySelectorAll('button').forEach(function(b){b.onclick=null;});
       resolve(reason);
     }
-    body.querySelector('[data-dr="busy"]').onclick=function(){pick(REASON_BUSY);};
-    body.querySelector('[data-dr="away"]').onclick=function(){pick(REASON_AWAY);};
+    body.querySelector('[data-dr="busy"]').onclick=function(){pick('busy');};
+    body.querySelector('[data-dr="away"]').onclick=function(){pick('away');};
     body.querySelector('[data-dr="cancel"]').onclick=function(){pick(null);};
     openModal('decline-reason-modal');
   });
@@ -20787,13 +20982,13 @@ async function checkCollabPartnerActions(){
       var n=queue[j];
       if(n.type==='accept'){
         await askConfirm(
-          'RP <strong>'+n.name+'</strong> vient de valider un défi collaboratif avec toi.<br><br>Pour valider de ton côté, va dans la page <strong>Voisins</strong> et accepte le défi.<br><br>Bon courage à vous deux 💪',
-          {emoji:'🤜🤛',title:'Ton voisin attend !',singleAction:true,okLabel:'OK',success:true}
+          t('collab.notif.accept.body').replace('{name}',n.name),
+          {emoji:'🤜🤛',title:t('collab.notif.accept.title'),singleAction:true,okLabel:'OK',success:true}
         );
       } else {
         await askConfirm(
-          'Désolé, RP <strong>'+n.name+'</strong> a refusé le défi collaboratif avec toi. Il est sûrement trop occupé ou fatigué.<br><br>Peut-être une prochaine fois 🤞',
-          {emoji:'😔',title:'Défi refusé',singleAction:true,okLabel:'OK'}
+          t('collab.notif.decline.body').replace('{name}',n.name),
+          {emoji:'😔',title:t('collab.notif.decline.title'),singleAction:true,okLabel:'OK'}
         );
       }
       _markCollabPartnerActSeen(n.key);
@@ -23275,11 +23470,63 @@ function renderQuizzResult(correct,rpcGained,currentStreak,isReopen){
   loadQuizzRanking();
 }
 
+// ── Champion du quizz (👑 sur la ligne League) ──────────────────────────
+// _quizzChampionUuid = id Supabase du RP #1 du classement quizz. Mis à jour par
+// loadQuizzRanking (ouverture page Quizz) et loadQuizzChampion (chargement League).
+// renderLeaguePanel lit ce global pour poser le 👑 → le badge "passe" d'un RP à
+// l'autre dès que le #1 change.
+var _quizzChampionUuid=null;
+
+// Temps moyen (ms) sur bonnes réponses ; null = pas de temps → relégué en bas.
+function _quizzAvgMs(p){
+  var cc=p.quizz_correct_count||0, tm=p.quizz_total_time_ms||0;
+  return (cc>0 && tm>0)?tm/cc:null;
+}
+// Tri du classement quizz (in place) : 1) série desc · 2) jokers asc · 3) temps
+// moyen asc, les RP sans temps ("—") toujours en dernier.
+function _quizzSortRanking(arr){
+  arr.sort(function(a,b){
+    var sa=a.quizz_streak||0, sb=b.quizz_streak||0;
+    if(sb!==sa) return sb-sa;
+    var ja=a.quizz_jokers_used||0, jb=b.quizz_jokers_used||0;
+    if(ja!==jb) return ja-jb;
+    var ta=_quizzAvgMs(a), tb=_quizzAvgMs(b);
+    if(ta===null && tb===null) return 0;
+    if(ta===null) return 1;
+    if(tb===null) return -1;
+    return ta-tb;
+  });
+  return arr;
+}
+
+// Recalcule le champion du quizz ; rafraîchit le classement League si le #1 a changé.
+async function loadQuizzChampion(){
+  try{
+    var res=await supabaseClient
+      .from('players')
+      .select('id,quizz_streak,quizz_jokers_used,quizz_total_time_ms,quizz_correct_count')
+      .not('quizz_last_answer_date','is',null)
+      .eq('is_visible',true)
+      .limit(1000);
+    if(res.error) return;
+    var arr=res.data||[];
+    _quizzSortRanking(arr);
+    var champ=arr.length?arr[0].id:null;
+    if(champ!==_quizzChampionUuid){
+      _quizzChampionUuid=champ;
+      if(typeof renderLeaguePanel==='function') renderLeaguePanel();
+    }
+  }catch(e){ console.warn('loadQuizzChampion fail',e); }
+}
+
 // Charge et affiche le classement du quizz (top 50 + toi si hors top).
 // Inclut tous les RP qui ont déjà répondu au moins une fois, série à 0 incluse
 // (un RP qui a cassé sa série reste visible avec son score actuel).
-// Tri : 1) quizz_streak desc · 2) quizz_jokers_used asc (moins de jokers = mieux)
-//       · 3) quizz_total_time_ms asc (plus rapide = mieux, total cumulé sur bonnes réponses).
+// Tri (côté client) : 1) quizz_streak desc · 2) quizz_jokers_used asc (moins de jokers = mieux)
+//       · 3) temps moyen sur bonnes réponses asc (plus rapide = mieux).
+// Les RP SANS temps de réponse (jamais de bonne réponse → moyenne "—") sont TOUJOURS
+// relégués en bas, même à série/jokers égaux. Tri en JS car le "pas de temps" est
+// stocké comme 0 en base (pas NULL) → impossible à exprimer proprement côté PostgREST.
 // Exclut les RP invisibles (infirmerie) et les comptes en suppression (RLS).
 async function loadQuizzRanking(){
   var container=document.getElementById('quizz-ranking');
@@ -23291,12 +23538,17 @@ async function loadQuizzRanking(){
       .select('id,username,quizz_streak,quizz_jokers_used,quizz_total_time_ms,quizz_correct_count,quizz_last_answer_date')
       .not('quizz_last_answer_date','is',null)
       .eq('is_visible',true)
-      .order('quizz_streak',{ascending:false})
-      .order('quizz_jokers_used',{ascending:true,nullsFirst:true})
-      .order('quizz_total_time_ms',{ascending:true,nullsFirst:true})
-      .limit(50);
+      .limit(1000);
     if(res.error) throw res.error;
-    var data=res.data||[];
+    var all=res.data||[];
+    _quizzSortRanking(all);
+    // Le #1 = champion 👑 affiché sur la ligne League ; rafraîchir si changement.
+    var _newChamp=all.length?all[0].id:null;
+    if(_newChamp!==_quizzChampionUuid){
+      _quizzChampionUuid=_newChamp;
+      if(typeof renderLeaguePanel==='function') renderLeaguePanel();
+    }
+    var data=all.slice(0,50);
 
     // Rendu d'une ligne du tableau de classement
     function rowHtml(p,rank){
@@ -23355,17 +23607,12 @@ async function loadQuizzRanking(){
       var myStreak=currentUser.quizz_streak||0;
       var iAnswered=!!currentUser.quizz_last_answer_date;
       if(!meInTop && iAnswered){
-        try{
-          var cnt=await supabaseClient
-            .from('players')
-            .select('id',{count:'exact',head:true})
-            .gt('quizz_streak',myStreak)
-            .not('quizz_last_answer_date','is',null)
-            .eq('is_visible',true);
-          var myRank=(cnt.count||0)+1;
-          html+='<tr><td colspan="5" style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;padding:.2rem 0">···</td></tr>';
-          html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0,quizz_total_time_ms:currentUser.quizz_total_time_ms||0,quizz_correct_count:currentUser.quizz_correct_count||0},myRank);
-        }catch(e){console.warn('quizz rank count fail',e);}
+        // Mon rang = ma position dans le classement complet déjà trié (cohérent avec
+        // le tri ci-dessus, relégation des "—" incluse).
+        var myIdx=all.findIndex(function(p){return p.id===currentUser.id;});
+        var myRank=myIdx>=0?myIdx+1:all.length+1;
+        html+='<tr><td colspan="5" style="text-align:center;color:var(--muted2);font-size:.85rem;letter-spacing:3px;padding:.2rem 0">···</td></tr>';
+        html+=rowHtml({id:currentUser.id,username:currentUser.username,quizz_streak:myStreak,quizz_jokers_used:currentUser.quizz_jokers_used||0,quizz_total_time_ms:currentUser.quizz_total_time_ms||0,quizz_correct_count:currentUser.quizz_correct_count||0},myRank);
       }
       html+='</tbody></table></div>';
     }
@@ -23374,7 +23621,7 @@ async function loadQuizzRanking(){
     container.innerHTML=html;
   }catch(e){
     console.warn('quizz ranking fail',e);
-    container.innerHTML='<div style="text-align:center;color:var(--muted2);font-size:.75rem;padding:.5rem">Classement indisponible</div>';
+    container.innerHTML='<div style="text-align:center;color:var(--muted2);font-size:.75rem;padding:.5rem">'+t('quizz.rank.unavailable')+'</div>';
   }
 }
 </script>
