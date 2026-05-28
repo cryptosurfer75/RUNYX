@@ -1619,7 +1619,7 @@ select option{background:#040c1c}
 
   <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap">
     <div>
-      <div data-i18n-html="runs.page.title" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
+      <div id="runs-page-title" data-i18n-html="runs.page.title" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;line-height:1">
         Mes <span style="color:var(--gold)">Courses</span>
       </div>
       <div data-i18n="runs.page.subtitle" style="font-size:.78rem;color:var(--muted2);margin-top:.15rem">Historique & simulateur</div>
@@ -4015,6 +4015,7 @@ const I18N = {
     'lands.owned.validate'      : 'Valider',
     // — Page Mes Courses (page-points)
     'runs.page.title'           : 'Mes <span style="color:var(--gold)">Courses</span>',
+    'runs.page.title.other'     : 'Courses <span style="color:var(--gold)">de {name}</span>',
     'runs.page.subtitle'        : 'Historique & simulateur',
     'runs.live.tooltip'         : 'Démarrer une course en direct (GPS)',
     'runs.live.btn'             : '🏃 NOUVELLE COURSE',
@@ -4751,6 +4752,7 @@ const I18N = {
     'lands.owned.validate'      : 'Validate',
     // — My Runs page (page-points)
     'runs.page.title'           : 'My <span style="color:var(--gold)">Runs</span>',
+    'runs.page.title.other'     : 'Runs <span style="color:var(--gold)">of {name}</span>',
     'runs.page.subtitle'        : 'History & simulator',
     'runs.live.tooltip'         : 'Start a live run (GPS)',
     'runs.live.btn'             : '🏃 NEW RUN',
@@ -8682,12 +8684,12 @@ async function renderHistory(page){
   // Si on consulte un autre RP, afficher SES courses — sinon les miennes
   var _targetUuid=(window.__viewedPlayer&&window.__viewedPlayer._uuid)||currentUser.id;
   var _isViewingOther=!!window.__viewedPlayer;
-  // Titre adaptatif
-  var _pageTitle=document.querySelector('#page-points > div:first-child > div:first-child');
+  // Titre adaptatif (cibler le vrai titre, qui porte la police Bebas Neue)
+  var _pageTitle=document.getElementById('runs-page-title');
   if(_pageTitle){
     _pageTitle.innerHTML=_isViewingOther
-      ? 'Courses <span style="color:var(--gold)">de '+(window.__viewedPlayer.name||'RP')+'</span>'
-      : 'Mes <span style="color:var(--gold)">Courses</span>';
+      ? t('runs.page.title.other').replace('{name}',escapeHtml(window.__viewedPlayer.name||'RP'))
+      : t('runs.page.title');
   }
   // Charger TOUTES les courses lifetime (pas de filtre period — sinon après
   // une rotation l'historique disparaîtrait alors que les runs sont juste
@@ -14182,6 +14184,9 @@ function goToPcLeague(){
       return;
     }
     activeLeagueKey=targetKey;
+  } else if(window.__myPlayer){
+    // Depuis MA PC → toujours revenir sur MA league, jamais la dernière consultée.
+    activeLeagueKey=window.__myPlayer.leagueKey||'starter';
   }
   nav('league');
   if(typeof renderLeagueNav==='function') renderLeagueNav();
