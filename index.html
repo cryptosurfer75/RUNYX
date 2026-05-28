@@ -19026,10 +19026,10 @@ async function renderTeams(){
         var rank=idx+1;
         var nb=t._nb||0;
         var rankEl=rank===1
-          ?'<span style="font-size:1.5rem;line-height:1">🥇</span>'
-          :rank===2?'<span style="font-size:1.5rem;line-height:1">🥈</span>'
-          :rank===3?'<span style="font-size:1.5rem;line-height:1">🥉</span>'
-          :'<span style="font-family:monospace;font-size:.95rem;color:var(--muted2);font-weight:700">#'+rank+'</span>';
+          ?'<span style="font-size:1.05rem;line-height:1">🥇</span>'
+          :rank===2?'<span style="font-size:1.05rem;line-height:1">🥈</span>'
+          :rank===3?'<span style="font-size:1.05rem;line-height:1">🥉</span>'
+          :'<span style="font-family:monospace;font-size:.78rem;color:var(--muted2);font-weight:700">#'+rank+'</span>';
         var teamEmoji=t.emoji||'🏃';
         var teamColor=t.color||'#4a90ff';
         var isOpen=(t.invite_code===OPEN_TEAM_MARKER);
@@ -19055,7 +19055,7 @@ async function renderTeams(){
           ?'<div class="tmb-blason" data-bidx="'+_bIdx+'" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="cursor:pointer;flex-shrink:0;transition:transform .15s" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><img src="'+AVAIL_BLASON_SMALL[_bIdx]+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1.5px solid '+teamColor+'55;display:block;pointer-events:none"></div>'
           :'<div class="tmb-blason" data-bidx="-1" data-name="'+encodeURIComponent(t.name)+'" data-city="'+encodeURIComponent(t.city||'')+'" data-nb="'+nb+'" data-emoji="'+encodeURIComponent(teamEmoji)+'" style="width:38px;height:38px;border-radius:6px;border:1.5px solid '+teamColor+'55;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;cursor:pointer">'+teamEmoji+'</div>';
         return '<div class="team-row" style="'+(rank<=3?'background:rgba(255,255,255,.015)':'')+'">'
-          +'<div class="team-pos" style="width:44px">'+rankEl+'</div>'
+          +'<div class="team-pos" style="width:22px;margin-right:-.15rem;text-align:left">'+rankEl+'</div>'
           +emblemHtml
           +'<div class="team-info" style="flex:1;min-width:0">'
             +'<div class="team-name tmb-name" data-id="'+t.id+'" data-name="'+encodeURIComponent(t.name)+'" style="color:'+teamColor+';cursor:pointer" title="Voir la composition">'+escapeHtml(t.name)+typeTag+'</div>'
