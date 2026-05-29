@@ -375,6 +375,60 @@ tr.skin-or-des-incas{
 }
 
 /* ============================================================
+   SKIN — 20 KM DE BRUXELLES (défi du 31/05/2026)
+   Même mécanique que Or des Incas : image de fond posée sur la
+   Player Card + la ligne de classement, voile sombre pour la
+   lisibilité. Seule l'image change, le reste est identique.
+============================================================ */
+.skin-bruxelles{
+  /* FICHE JOUEUR = image "sport" (V2), semi-transparente posée sur le fond
+     normal de la carte → motif coloré discret, sans assombrir. */
+  background-image:
+    url('skin-bruxelles-v2-soft.png'),
+    linear-gradient(160deg,#05080f 0%,#0a1020 45%,#0d1530 100%) !important;
+  background-size:cover,cover !important;
+  background-position:center,center !important;
+  background-repeat:no-repeat,no-repeat !important;
+}
+tr.skin-bruxelles{
+  /* Bande horizontale dédiée (motif décentré, pas de répétition symétrique),
+     posée discrètement sur le fond bleu normal de la carte. Couvre toute la
+     largeur, jusqu'au bout de la ligne. */
+  background-image:
+    url('skin-bruxelles-row.png'),
+    linear-gradient(160deg,#0a1020,#0d1530) !important;
+  background-size:cover,cover !important;
+  background-position:left center,center !important;
+  background-repeat:no-repeat,no-repeat !important;
+  box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.6) !important;
+}
+/* Le filigrane "SL" (doré 4%) devient visible sur le fond clair du skin :
+   on le masque quand le skin Bruxelles est actif. */
+.skin-bruxelles .pc-watermark-sl{ display:none !important; }
+.skin-bruxelles button,
+.skin-bruxelles [data-tuto-target="parrainage"]{
+  background:rgba(10,20,50,.72) !important;
+}
+.skin-bruxelles .pc-avatar-frame,
+.skin-bruxelles [data-tuto-target="feed"]{
+  background:#0a0d18 !important;
+}
+.skin-bruxelles [data-tuto-target="pc"],
+.skin-bruxelles [data-tuto-target="races"],
+.skin-bruxelles [data-tuto-target="league"],
+.skin-bruxelles [data-tuto-target="lands"],
+.skin-bruxelles div:has(> div > #stat-cagnotte-rpc),
+.skin-bruxelles div:has(> div > #stat-cagnotte-nyx){
+  border:1.5px solid rgba(74,144,255,.5) !important;
+}
+.skin-bruxelles [data-tuto-target="pc"]:hover,
+.skin-bruxelles [data-tuto-target="races"]:hover,
+.skin-bruxelles [data-tuto-target="league"]:hover,
+.skin-bruxelles [data-tuto-target="lands"]:hover{
+  border-color:rgba(74,144,255,.95) !important;
+}
+
+/* ============================================================
    LEAGUE LEVELS
 ============================================================ */
 .league-nav{display:flex;flex-direction:column;gap:.3rem}
@@ -1455,7 +1509,7 @@ select option{background:#040c1c}
     </div>
 
     <!-- Watermark -->
-    <div style="position:absolute;right:-6px;bottom:-8px;font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:4px;color:rgba(245,200,66,.04);pointer-events:none">SL</div>
+    <div class="pc-watermark-sl" style="position:absolute;right:-6px;bottom:-8px;font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:4px;color:rgba(245,200,66,.04);pointer-events:none">SL</div>
   </div>
   </div>
 
@@ -22092,7 +22146,8 @@ function _renderSettingsAvailability(p){
 // Catalogue des skins disponibles (à enrichir quand on ajoute de nouveaux skins).
 // L'image du skin est posée par la classe CSS skin-<id> (déjà définie pour or-des-incas).
 var SKIN_CATALOG = {
-  'or-des-incas': { name: 'OR DES INCAS', price: 10000 }
+  'or-des-incas': { name: 'OR DES INCAS', price: 10000 },
+  'bruxelles':    { name: '20 KM DE BRUXELLES', price: 10000 }
 };
 
 // Section "Mes Skins" : liste tous les skins du RP (achetés + en cours d'éligibilité).
