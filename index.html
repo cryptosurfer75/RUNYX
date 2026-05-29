@@ -1374,16 +1374,16 @@ select option{background:#040c1c}
       <!-- Drapeau (rectangle, contenu dynamique inchangé) -->
       <div id="pc-flag" style="height:54px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;filter:drop-shadow(0 0 5px rgba(255,255,255,.15))"></div>
       <!-- Carré droite — bouton QUIZZ (question du jour) -->
-      <button onclick="nav('quizz')" title="Quizz — La question du jour" style="
+      <button id="pc-quizz-btn" data-champ="" onclick="nav('quizz')" title="Quizz — La question du jour" style="
         position:relative;width:54px;height:54px;border-radius:10px;
         background:rgba(74,200,255,.1);border:1.5px solid rgba(74,200,255,.5);
         display:flex;align-items:center;justify-content:center;
         cursor:pointer;transition:all .18s;
         margin:0 auto;padding:0;
-      " onmouseover="this.style.background='rgba(74,200,255,.22)';this.style.borderColor='rgba(74,200,255,.95)'"
-         onmouseout="this.style.background='rgba(74,200,255,.1)';this.style.borderColor='rgba(74,200,255,.5)'">
+      " onmouseover="pcQuizzBtnHover(this,true)"
+         onmouseout="pcQuizzBtnHover(this,false)">
         <span id="quizz-badge" style="display:none;position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:#ff8c2a;box-shadow:0 0 8px rgba(255,140,42,.7);border:2px solid #0a1432"></span>
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:2px;line-height:1;color:#4ac8ff;font-weight:900;text-shadow:0 0 8px rgba(74,200,255,.55)">?!</span>
+        <span id="pc-quizz-symbol" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:2px;line-height:1;color:#4ac8ff;font-weight:900;text-shadow:0 0 8px rgba(74,200,255,.55)">?!</span>
       </button>
     </div>
 
@@ -4437,6 +4437,13 @@ const I18N = {
     'sponsor.yourCode'          : 'Ton code parrainage',
     'sponsor.share'             : '📤 PARTAGER',
     'sponsor.invitedBy'         : 'Invité par',
+    // — Modale code d'invitation équipe (capitaine)
+    'invite.modal.sub'          : 'Code d\'invitation privé — capitaine uniquement',
+    'invite.modal.label'        : 'Code d\'invitation',
+    'invite.modal.copy'         : '📋 Copier le code',
+    'invite.modal.note'         : 'Partage ce code uniquement avec les RP que tu veux inviter.<br>Il ne sera jamais visible par les autres joueurs.',
+    'invite.modal.copied'       : '✓ Copié !',
+    'invite.modal.manual'       : 'Copie manuelle : ',
     'sponsor.filleuls.yours'    : 'Tes filleuls',
     'sponsor.filleuls.of'       : 'Filleuls de {name}',
     'sponsor.steps'             : 'Étapes : {n} / 4',
@@ -5189,6 +5196,13 @@ const I18N = {
     'sponsor.yourCode'          : 'Your referral code',
     'sponsor.share'             : '📤 SHARE',
     'sponsor.invitedBy'         : 'Invited by',
+    // — Team invite code modal (captain)
+    'invite.modal.sub'          : 'Private invite code — captain only',
+    'invite.modal.label'        : 'Invite code',
+    'invite.modal.copy'         : '📋 Copy code',
+    'invite.modal.note'         : 'Only share this code with the RPs you want to invite.<br>It will never be visible to other players.',
+    'invite.modal.copied'       : '✓ Copied!',
+    'invite.modal.manual'       : 'Manual copy: ',
     'sponsor.filleuls.yours'    : 'Your referrals',
     'sponsor.filleuls.of'       : 'Referrals of {name}',
     'sponsor.steps'             : 'Steps: {n} / 4',
@@ -7321,6 +7335,8 @@ function renderDashboard(){
       var _premActive=p.premium&&(!p.premiumUntil||new Date(p.premiumUntil)>new Date());
       _pcPrem.style.display=_premActive?'block':'none';
     }
+    // Bouton Quizz : 👑 si ce RP est le champion du quizz, sinon ?!
+    if(typeof updatePcQuizzCrown==='function') updatePcQuizzCrown();
     var flagEl=document.getElementById('pc-flag');
     if(flagEl){
       var _f=natFlag(p.nat);
@@ -21700,10 +21716,10 @@ function copyInviteCode(){
   var msg=document.getElementById('ic-copy-msg');
   if(code&&code!=='—'){
     navigator.clipboard.writeText(code).then(function(){
-      msg.style.color='var(--green)'; msg.textContent='✓ Copié !';
+      msg.style.color='var(--green)'; msg.textContent=t('invite.modal.copied');
       setTimeout(function(){msg.textContent='';},2000);
     }).catch(function(){
-      msg.style.color='#f66'; msg.textContent='Copie manuelle : '+code;
+      msg.style.color='#f66'; msg.textContent=t('invite.modal.manual')+code;
     });
   }
 }
@@ -22785,16 +22801,16 @@ function _showAccountRecoveryModal(hoursLeft, playerId){
     <button class="modal-close" onclick="closeModal('invite-code-modal')">✕</button>
     <div style="font-size:2rem;margin-bottom:.5rem">🔒</div>
     <div class="modal-title" id="ic-team-name" style="margin-bottom:.15rem">—</div>
-    <div class="modal-sub">Code d'invitation privé — capitaine uniquement</div>
+    <div class="modal-sub" data-i18n="invite.modal.sub">Code d'invitation privé — capitaine uniquement</div>
     <div style="background:rgba(245,200,66,.06);border:1.5px solid rgba(245,200,66,.35);border-radius:8px;padding:1rem 1.25rem;margin:.75rem 0">
-      <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);margin-bottom:.4rem">Code d'invitation</div>
+      <div data-i18n="invite.modal.label" style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);margin-bottom:.4rem">Code d'invitation</div>
       <div id="ic-code" style="font-family:'Space Mono',monospace;font-size:1.55rem;font-weight:700;color:var(--gold);letter-spacing:4px">—</div>
     </div>
-    <button onclick="copyInviteCode()" style="width:100%;padding:.6rem 1rem;border-radius:7px;border:1.5px solid rgba(245,200,66,.5);background:rgba(245,200,66,.1);color:var(--gold);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;letter-spacing:1px">
+    <button data-i18n="invite.modal.copy" onclick="copyInviteCode()" style="width:100%;padding:.6rem 1rem;border-radius:7px;border:1.5px solid rgba(245,200,66,.5);background:rgba(245,200,66,.1);color:var(--gold);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;letter-spacing:1px">
       📋 Copier le code
     </button>
     <div id="ic-copy-msg" style="font-size:.75rem;margin-top:.5rem;min-height:1rem"></div>
-    <div style="font-size:.68rem;color:var(--muted2);margin-top:.65rem;line-height:1.6">Partage ce code uniquement avec les RP que tu veux inviter.<br>Il ne sera jamais visible par les autres joueurs.</div>
+    <div data-i18n-html="invite.modal.note" style="font-size:.68rem;color:var(--muted2);margin-top:.65rem;line-height:1.6">Partage ce code uniquement avec les RP que tu veux inviter.<br>Il ne sera jamais visible par les autres joueurs.</div>
   </div>
 </div>
 
@@ -23215,6 +23231,50 @@ function updateQuizzBadge(){
   var hour=new Date().getHours();
   if(hour<6){ badge.style.display='none'; return; }
   badge.style.display=quizzAlreadyAnsweredToday()?'none':'block';
+}
+
+// Survol du bouton ?! / 👑 : respecte l'état champion (doré) ou normal (cyan).
+function pcQuizzBtnHover(el,over){
+  var g=el.dataset.champ==='1';
+  if(over){
+    el.style.background=g?'rgba(245,200,66,.24)':'rgba(74,200,255,.22)';
+    el.style.borderColor=g?'rgba(245,200,66,.95)':'rgba(74,200,255,.95)';
+  } else {
+    el.style.background=g?'rgba(245,200,66,.12)':'rgba(74,200,255,.1)';
+    el.style.borderColor=g?'rgba(245,200,66,.6)':'rgba(74,200,255,.5)';
+  }
+}
+
+// Couronne 👑 sur le bouton Quizz de la Player Card si le RP affiché est le
+// champion du quizz (#1 = _quizzChampionUuid). Sinon symbole maison ?! cyan.
+// La couronne "change de main" : appelée au rendu de la PC ET à chaque recalcul
+// du champion (loadQuizzChampion / loadQuizzRanking) → suit le #1 en direct.
+function updatePcQuizzCrown(){
+  var btn=document.getElementById('pc-quizz-btn');
+  var sym=document.getElementById('pc-quizz-symbol');
+  if(!btn||!sym) return;
+  var p=window.__viewedPlayer||window.__myPlayer||null;
+  var uid=p?(p._uuid||(!window.__viewedPlayer&&currentUser?currentUser.id:null)):null;
+  var isChamp=!!(uid && _quizzChampionUuid && uid===_quizzChampionUuid);
+  if(isChamp){
+    sym.textContent='👑';
+    sym.style.color='#f5c842';
+    sym.style.fontSize='1.55rem';
+    sym.style.textShadow='0 0 10px rgba(245,200,66,.7)';
+    btn.style.background='rgba(245,200,66,.12)';
+    btn.style.borderColor='rgba(245,200,66,.6)';
+    btn.dataset.champ='1';
+    btn.title=(typeof t==='function'?t('league.badge.quizzchamp'):'Champion du quizz')+' 👑';
+  } else {
+    sym.textContent='?!';
+    sym.style.color='#4ac8ff';
+    sym.style.fontSize='1.8rem';
+    sym.style.textShadow='0 0 8px rgba(74,200,255,.55)';
+    btn.style.background='rgba(74,200,255,.1)';
+    btn.style.borderColor='rgba(74,200,255,.5)';
+    btn.dataset.champ='';
+    btn.title='Quizz — La question du jour';
+  }
 }
 
 // Charge les données quizz depuis la DB et les colle sur currentUser.
@@ -23657,6 +23717,7 @@ async function loadQuizzChampion(){
     if(champ!==_quizzChampionUuid){
       _quizzChampionUuid=champ;
       if(typeof renderLeaguePanel==='function') renderLeaguePanel();
+      if(typeof updatePcQuizzCrown==='function') updatePcQuizzCrown();
     }
   }catch(e){ console.warn('loadQuizzChampion fail',e); }
 }
@@ -23691,6 +23752,7 @@ async function loadQuizzRanking(){
     if(_newChamp!==_quizzChampionUuid){
       _quizzChampionUuid=_newChamp;
       if(typeof renderLeaguePanel==='function') renderLeaguePanel();
+      if(typeof updatePcQuizzCrown==='function') updatePcQuizzCrown();
     }
     _quizzRankAll=all;
     _quizzRankPage=0;           // toujours rouvrir sur la 1ère page (rangs 1-50)
