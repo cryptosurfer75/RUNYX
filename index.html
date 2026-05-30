@@ -23233,8 +23233,8 @@ function quizzReward(streak){
   return tiers[0][1];
 }
 
-// Paliers de verrouillage NYX (spec section 4.2). Au-delà de J300 : +4 NYX par palier de 50 jours.
-var QUIZZ_LOCK_TIERS=[[10,2],[25,4],[50,8],[80,12],[110,16],[150,20],[200,24],[250,28],[300,32]];
+// Paliers de verrouillage NYX. Coût +4 NYX à chaque palier (2,4,8,12,16,20,24,28,32).
+var QUIZZ_LOCK_TIERS=[[8,2],[15,4],[24,8],[30,12],[40,16],[50,20],[60,24],[70,28],[80,32]];
 
 // Renvoie le coût NYX pour verrouiller à ce palier exact, ou 0 si pas un palier.
 function quizzLockCost(streak){
