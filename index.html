@@ -8944,15 +8944,12 @@ function showRunDetails(runId){
     +row('🏆','Points',pts.toLocaleString(SPEEDIX_LANG),'#f5c842')
     +'</div>'
     +(r.strava_activity_id
-      ?(function(){
-        var webUrl='https://www.strava.com/activities/'+r.strava_activity_id;
-        // Android : tente d'ouvrir l'app Strava native ; fallback navigateur si pas installée.
-        // Évite l'in-app browser qui n'a pas la session Strava (utilisateur bloqué sur la page de login).
-        var href=/android/i.test(navigator.userAgent)
-          ?'intent://www.strava.com/activities/'+r.strava_activity_id+'#Intent;scheme=https;package=com.strava;S.browser_fallback_url='+encodeURIComponent(webUrl)+';end'
-          :webUrl;
-        return '<a href="'+href+'" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:.45rem;margin-top:.9rem;padding:.55rem;border-radius:8px;background:#fc4c02;color:#fff;font-size:.78rem;font-weight:700;letter-spacing:.5px;text-decoration:none;box-shadow:0 3px 10px rgba(252,76,2,.3)">🔗 Voir sur Strava</a>';
-      })()
+      // Lien https simple : fiable partout (desktop, iOS, PWA et coque Android).
+      // Capacitor ouvre les liens externes dans le navigateur système (session Strava présente),
+      // et Android peut ouvrir l'app Strava via les App Links sur cette URL.
+      // ⚠️ Ne PAS utiliser de schéma intent:// : la WebView de la coque le rejette
+      // (ERR_UNKNOWN_URL_SCHEME → page d'erreur).
+      ?'<a href="https://www.strava.com/activities/'+r.strava_activity_id+'" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:.45rem;margin-top:.9rem;padding:.55rem;border-radius:8px;background:#fc4c02;color:#fff;font-size:.78rem;font-weight:700;letter-spacing:.5px;text-decoration:none;box-shadow:0 3px 10px rgba(252,76,2,.3)">🔗 Voir sur Strava</a>'
       :'');
 
   document.getElementById('lm-title').textContent='📋 Détails de la course';
