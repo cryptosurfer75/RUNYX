@@ -11930,20 +11930,97 @@ function updatePeriodTimerDisplay(){
   }
 }
 
+// ── Écran de maintenance pendant la rotation (site verrouillé) ────────
+// Affiché à TOUS les clients dès que la fin de période est constatée, le temps
+// que la mise à jour se fasse. Plein écran, au-dessus de tout, non fermable.
+function _showRotationMaintenance(){
+  if(document.getElementById('rotation-maintenance')) return;
+  var ov=document.createElement('div');
+  ov.id='rotation-maintenance';
+  ov.style.cssText='position:fixed;inset:0;z-index:2147483647;background:radial-gradient(circle at 50% 28%,#0b1530,#05070f 80%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;gap:1.1rem';
+  ov.innerHTML=''
+    +'<div style="font-size:3rem;line-height:1">🔥</div>'
+    +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.7rem;letter-spacing:3px;color:#f5c842">MISE À JOUR EN COURS</div>'
+    +'<div style="max-width:430px;color:#cfd8e6;font-size:1.02rem;line-height:1.55">La période vient de finir, la league revient après la mise à jour.<br>Reviens dans quelques minutes.<br><br><strong style="color:#7ee082">Bonne compétition RP 🔥</strong></div>'
+    +'<div id="rotation-maintenance-sub" style="color:#5a6b82;font-size:.8rem;margin-top:.4rem">Traitement de la fin de période…</div>';
+  document.body.appendChild(ov);
+}
+function _setRotationMaintenanceSub(txt){
+  var el=document.getElementById('rotation-maintenance-sub');
+  if(el) el.innerHTML=txt;
+}
+// Le client non-élu attend que la rotation (faite par un autre client) soit
+// terminée — on détecte la fin quand current_period a dépassé periodToClose —
+// puis recharge proprement. Filet de sécurité : bouton recharger après ~3 min.
+function _waitRotationThenReload(periodToClose){
+  var tries=0, maxTries=90; // 90 × 2 s = 3 min
+  var iv=setInterval(async function(){
+    tries++;
+    try {
+      var {data}=await supabaseClient.from('game_settings').select('value').eq('key','current_period').maybeSingle();
+      var cur=data?parseInt(data.value):periodToClose;
+      if(cur>periodToClose){
+        clearInterval(iv);
+        _setRotationMaintenanceSub('Terminé ! Rechargement…');
+        setTimeout(function(){ location.reload(); }, 800);
+        return;
+      }
+    } catch(e){ /* on retente au prochain tick */ }
+    if(tries>=maxTries){
+      clearInterval(iv);
+      _setRotationMaintenanceSub('<span style="color:#f5c842">La mise à jour prend plus de temps que prévu. <button onclick="location.reload()" style="background:none;border:1px solid #f5c842;color:#f5c842;border-radius:6px;padding:.3rem .7rem;cursor:pointer;font-family:inherit">Recharger</button></span>');
+    }
+  }, 2000);
+}
+
 // ── Traitement automatique de fin de période ──────────────────────────
+// VERROU ANTI-DOUBLON CÔTÉ SERVEUR : même si plusieurs onglets/RP constatent la
+// fin de période au même instant, UN SEUL exécute réellement la rotation. Le
+// verrou est gagné par un INSERT sur period_rotations (clé primaire = period :
+// le 2e insert concurrent échoue en 23505). Les autres clients affichent l'écran
+// de maintenance et rechargent quand current_period a avancé. Repli si la table
+// n'existe pas : on traite quand même (mode dégradé sans verrou) pour ne pas
+// bloquer la rotation.
 var _periodProcessing=false;
 async function processEndOfPeriod(){
   if(_periodProcessing){console.warn('[PERIOD] Déjà en cours, ignoré');return;}
   _periodProcessing=true;
+  _showRotationMaintenance(); // verrouille l'UI pour tout le monde, immédiatement
+  var periodToClose=_periodData.period;
   try {
-    return await _processEndOfPeriodInner();
-  } catch(eRot){
-    console.error('[rotation] exception non rattrapée :', eRot);
-    var _msgErr=document.getElementById('admin-period-msg');
-    if(_msgErr) _msgErr.innerHTML='<span style="color:var(--red)">❌ Erreur rotation — voir console</span>';
+    // 1) Tenter d'acquérir le verrou serveur
+    var lockAcquired=false;
+    try {
+      var {error:lockErr}=await supabaseClient.from('period_rotations').insert({period:periodToClose});
+      if(!lockErr){ lockAcquired=true; }
+      else if(lockErr.code==='23505'){ lockAcquired=false; } // déjà pris par un autre client
+      else { console.error('[rotation] verrou indisponible, mode dégradé :', lockErr); lockAcquired=true; }
+    } catch(eLock){ console.error('[rotation] verrou exception, mode dégradé :', eLock); lockAcquired=true; }
+
+    if(lockAcquired){
+      // 2) Je suis l'élu → j'exécute la rotation
+      _setRotationMaintenanceSub('Calcul des classements et reclassements…');
+      try {
+        await _processEndOfPeriodInner();
+      } catch(eInner){
+        console.error('[rotation] exception interne :', eInner);
+        // Libérer le verrou pour permettre une reprise (admin ou auto)
+        try { await supabaseClient.from('period_rotations').delete().eq('period',periodToClose); } catch(e){}
+        var _msgErr=document.getElementById('admin-period-msg');
+        if(_msgErr) _msgErr.innerHTML='<span style="color:var(--red)">❌ Erreur rotation — voir console</span>';
+        _setRotationMaintenanceSub('<span style="color:#ff6b6b">Erreur pendant la mise à jour. <button onclick="location.reload()" style="background:none;border:1px solid #ff6b6b;color:#ff6b6b;border-radius:6px;padding:.3rem .7rem;cursor:pointer;font-family:inherit">Recharger</button></span>');
+        return;
+      }
+      // 3) Marquer terminé + recharger proprement sur la nouvelle période
+      try { await supabaseClient.from('period_rotations').update({status:'done',finished_at:new Date().toISOString()}).eq('period',periodToClose); } catch(e){}
+      _setRotationMaintenanceSub('Terminé ! Rechargement…');
+      setTimeout(function(){ location.reload(); }, 1500);
+    } else {
+      // 2bis) Un autre client traite → j'attends puis je recharge
+      _setRotationMaintenanceSub('Mise à jour en cours côté serveur…');
+      _waitRotationThenReload(periodToClose);
+    }
   } finally {
-    // Garantit que le flag est libéré même si tout plante : permet de
-    // relancer la rotation manuellement après diagnostic.
     _periodProcessing=false;
   }
 }
