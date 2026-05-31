@@ -8886,6 +8886,35 @@ async function renderHistory(page){
   }
 }
 
+// Ouvre une activité Strava. Sur mobile, on essaie d'abord l'app Strava NATIVE
+// (où l'utilisateur est connecté) via le schéma strava:// ; sans ça, le web ouvre
+// une page d'inscription inutile faute de session. Repli vers le lien https si
+// l'app ne prend pas la main. Déclencheur via iframe cachée pour NE PAS casser la
+// vue de l'app si le schéma n'est pas géré (contrairement à intent:// en plein écran).
+function openStravaActivity(ev, actId){
+  try{
+    var web='https://www.strava.com/activities/'+actId;
+    var isMobile=/android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    if(isMobile){
+      if(ev && ev.preventDefault) ev.preventDefault();
+      var opened=false;
+      var onHide=function(){ if(document.hidden) opened=true; };
+      document.addEventListener('visibilitychange',onHide);
+      var ifr=document.createElement('iframe');
+      ifr.style.display='none';
+      ifr.src='strava://activities/'+actId;
+      document.body.appendChild(ifr);
+      setTimeout(function(){
+        document.removeEventListener('visibilitychange',onHide);
+        try{ ifr.parentNode&&ifr.parentNode.removeChild(ifr); }catch(e){}
+        if(!opened) window.open(web,'_blank','noopener');
+      },1400);
+      return false;
+    }
+  }catch(e){}
+  return true; // desktop / PWA : on laisse le lien https s'ouvrir normalement
+}
+
 function showRunDetails(runId){
   var r=window._historyRuns&&window._historyRuns[runId];
   if(!r) return;
@@ -8944,12 +8973,9 @@ function showRunDetails(runId){
     +row('🏆','Points',pts.toLocaleString(SPEEDIX_LANG),'#f5c842')
     +'</div>'
     +(r.strava_activity_id
-      // Lien https simple : fiable partout (desktop, iOS, PWA et coque Android).
-      // Capacitor ouvre les liens externes dans le navigateur système (session Strava présente),
-      // et Android peut ouvrir l'app Strava via les App Links sur cette URL.
-      // ⚠️ Ne PAS utiliser de schéma intent:// : la WebView de la coque le rejette
-      // (ERR_UNKNOWN_URL_SCHEME → page d'erreur).
-      ?'<a href="https://www.strava.com/activities/'+r.strava_activity_id+'" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:.45rem;margin-top:.9rem;padding:.55rem;border-radius:8px;background:#fc4c02;color:#fff;font-size:.78rem;font-weight:700;letter-spacing:.5px;text-decoration:none;box-shadow:0 3px 10px rgba(252,76,2,.3)">🔗 Voir sur Strava</a>'
+      // onclick : sur mobile, tente l'app Strava native (session connectée) ; le href https
+      // reste le repli universel (desktop/PWA, ou app non installée). Voir openStravaActivity.
+      ?'<a href="https://www.strava.com/activities/'+r.strava_activity_id+'" onclick="return openStravaActivity(event,\''+r.strava_activity_id+'\')" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:.45rem;margin-top:.9rem;padding:.55rem;border-radius:8px;background:#fc4c02;color:#fff;font-size:.78rem;font-weight:700;letter-spacing:.5px;text-decoration:none;box-shadow:0 3px 10px rgba(252,76,2,.3)">🔗 Voir sur Strava</a>'
       :'');
 
   document.getElementById('lm-title').textContent='📋 Détails de la course';
