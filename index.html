@@ -12002,6 +12002,17 @@ async function _processEndOfPeriodInner(){
     }
   }
 
+  // INTERRUPTEUR GLOBAL DE LANCEMENT : tant que game_settings.competition_enabled
+  // n'est pas 'true', la compétition officielle n'a pas démarré. On lit cette clé
+  // ici (avant le bloc médailles teams) car elle conditionne désormais à la fois
+  // la distribution des médailles d'équipe (§5) ET la bascule en compétitif (§5b).
+  // (clé absente = compétition OFF par sécurité).
+  var _compEnabled=false;
+  try {
+    var {data:_compRow}=await supabaseClient.from('game_settings').select('value').eq('key','competition_enabled').maybeSingle();
+    _compEnabled=(_compRow && (_compRow.value==='true' || _compRow.value===true));
+  } catch(eCompFlag){ console.warn('[rotation] lecture competition_enabled :', eCompFlag); }
+
   // 5. Médailles teams + prize pool teams
   var {data:allTeams}=await supabaseClient.from('teams').select('id,name').order('name');
   var {data:allTM}=await supabaseClient.from('team_members').select('team_id,player_id');
@@ -12020,14 +12031,19 @@ async function _processEndOfPeriodInner(){
       return {id:t.id,name:t.name,score:Math.round(base*(1+extra*2/100))};
     }).filter(function(t){return t.score>0;}).sort(function(a,b){return b.score-a.score;});
 
-    for(var ti=0;ti<Math.min(3,teamScores.length);ti++){
-      await supabaseClient.from('palmares').insert({
-        team_id:teamScores[ti].id,
-        period:_periodData.period,
-        rank:ti+1,
-        league_key:'teams',
-        pts:teamScores[ti].score
-      });
+    // Médailles d'équipe distribuées SEULEMENT quand la compétition officielle est
+    // lancée (competition_enabled=true). En période de calibrage (compétition pas
+    // encore démarrée) on ne crée aucun palmarès teams.
+    if(_compEnabled){
+      for(var ti=0;ti<Math.min(3,teamScores.length);ti++){
+        await supabaseClient.from('palmares').insert({
+          team_id:teamScores[ti].id,
+          period:_periodData.period,
+          rank:ti+1,
+          league_key:'teams',
+          pts:teamScores[ti].score
+        });
+      }
     }
   }
 
@@ -12078,11 +12094,8 @@ async function _processEndOfPeriodInner(){
   // la compétition (buy-in / podium / prize pool) sans reconfigurer les joueurs
   // un par un. Pour lancer la compétition : passer cette clé à true côté Supabase.
   // (clé absente = compétition OFF par sécurité).
-  var _compEnabled=false;
-  try {
-    var {data:_compRow}=await supabaseClient.from('game_settings').select('value').eq('key','competition_enabled').maybeSingle();
-    _compEnabled=(_compRow && (_compRow.value==='true' || _compRow.value===true));
-  } catch(eCompFlag){ console.warn('[rotation] lecture competition_enabled :', eCompFlag); }
+  // NB : _compEnabled est désormais lu plus haut (avant le bloc médailles teams)
+  // car il conditionne aussi la distribution des médailles d'équipe.
   if(_compEnabled) for(var ci=0;ci<ranked.length;ci++){
     var cp=ranked[ci];
     var cpFull=allPlayers.find(function(x){return x.id===cp.id;})||{};
@@ -12282,26 +12295,18 @@ async function _processEndOfPeriodInner(){
     var _bpPrem=_bp.premium&&!_bp.premium_trial&&_bp.premium_until&&new Date(_bp.premium_until)>new Date();
     var boostQty=_bpPrem?5:1;
     var patchData2={boost_stock:boostQty,boost_active_until:null};
-    // Récompenses mensuelles Full Premium (Free non touché côté Gel)
+    // Récompenses mensuelles Full Premium (Free non touché côté Gel).
+    // Bonus mensuel premium = boosts + gels UNIQUEMENT, plus de RPC/NYX tant que
+    // l'économie de compétition n'est pas lancée (le crédit RPC/NYX mensuel est
+    // retiré ; les boosts et gels restent inchangés).
     if(_bpPrem){
       patchData2.gel_stock=5;
-      patchData2.rpc_balance=(_bp.rpc_balance||0)+15000;
-      patchData2.nyx_balance=(_bp.nyx_balance||0)+20;
     }
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(_bp.id),{
       method:'PATCH',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
       body:JSON.stringify(patchData2)
     });
-    // Audit wallet_tx pour les bonus Premium (sinon invisibles dans le récap & historique)
-    if(_bpPrem){
-      await supabaseClient.from('wallet_tx').insert({
-        player_id:_bp.id,
-        rpc_delta:15000,
-        nyx_delta:20,
-        reason:'Bonus mensuel Premium P'+_periodData.period
-      });
-    }
   }
 
   // 10. Archiver les runs (marquer avec le numéro de période).
