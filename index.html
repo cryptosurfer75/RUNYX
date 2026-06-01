@@ -12047,7 +12047,7 @@ async function _processEndOfPeriodInner(){
   var msg=document.getElementById('admin-period-msg');
 
   // 1. Charger tous les joueurs avec leurs points
-  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period,created_at,active_periods');
+  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period,created_at,active_periods,boost_stock,gel_stock');
   // Agrégation côté base (fonction points_by_player) — un SELECT brut sur runs
   // serait plafonné à 1000 lignes et fausserait gains + montées/descentes.
   var {data:allRuns}=await supabaseClient.rpc('points_by_player',{p_period:0});
@@ -12385,18 +12385,22 @@ async function _processEndOfPeriodInner(){
   }
 
   // 9. Boost & Gel mensuels gratuits + récompenses Premium
+  //    On ACCUMULE sur le stock existant — JAMAIS d'écrasement (bug 2026-06-01 :
+  //    `boost_stock:boostQty` remettait tout le monde à 1 et effaçait les
+  //    réserves achetées). Et on NE TOUCHE PLUS `boost_active_until` : un boost
+  //    en cours doit survivre à la rotation, exactement comme le Gel (qui
+  //    survit justement parce qu'on ne touche pas le sien).
+  //    Distribution mensuelle : Premium PAYANT (hors essai) = 5 boosts + 5 gels ;
+  //    tout le reste (Free + Premium offert en essai) = 1 boost + 1 gel.
+  //    Pas de RPC/NYX tant que la compétition n'est pas lancée. Plafond stock 10.
   for(var bi2=0;bi2<allPlayers.length;bi2++){
     var _bp=allPlayers[bi2];
     var _bpPrem=_bp.premium&&!_bp.premium_trial&&_bp.premium_until&&new Date(_bp.premium_until)>new Date();
-    var boostQty=_bpPrem?5:1;
-    var patchData2={boost_stock:boostQty,boost_active_until:null};
-    // Récompenses mensuelles Full Premium (Free non touché côté Gel).
-    // Bonus mensuel premium = boosts + gels UNIQUEMENT, plus de RPC/NYX tant que
-    // l'économie de compétition n'est pas lancée (le crédit RPC/NYX mensuel est
-    // retiré ; les boosts et gels restent inchangés).
-    if(_bpPrem){
-      patchData2.gel_stock=5;
-    }
+    var _grant=_bpPrem?5:1;
+    var patchData2={
+      boost_stock:Math.min(10,(_bp.boost_stock||0)+_grant),
+      gel_stock:Math.min(10,(_bp.gel_stock||0)+_grant)
+    };
     await window.fetch(supabaseUrl+'/rest/v1/players?id=eq.'+encodeURIComponent(_bp.id),{
       method:'PATCH',
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Content-Type':'application/json'},
