@@ -11900,13 +11900,11 @@ async function loadPeriodSettings(){
   // Afficher le badge
   var badge=document.getElementById('period-badge');
   if(badge) badge.textContent='P'+_periodData.period+' test';
-  // Afficher dans la PC
+  // Afficher dans la PC : même badge jaune que sur le classement ("P3 test"),
+  // sans le nombre de jours restant (le chrono du classement fait déjà foi).
   var pcPeriod=document.getElementById('pc-period-info');
   if(pcPeriod){
-    var tl=getPeriodTimeLeft();
-    var daysLeft=tl&&!tl.expired?tl.days:'—';
-    var daysLabel=(daysLeft==='—')?'—':(daysLeft>1?t('period.daysLeft.plural'):t('period.daysLeft.singular')).replace('{n}','<strong style="color:var(--text)">'+daysLeft+'</strong>');
-    pcPeriod.innerHTML=t('period.label')+' '+_periodData.period+' · '+daysLabel;
+    pcPeriod.innerHTML='<span style="display:inline-block;font-family:\'Space Mono\',monospace;font-size:.72rem;font-weight:700;padding:.2rem .6rem;border-radius:4px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.3);color:var(--gold)">P'+_periodData.period+' test</span>';
   }
   // Démarrer le timer
   startPeriodTimer();
