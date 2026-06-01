@@ -12425,9 +12425,15 @@ async function _processEndOfPeriodInner(){
   //     en 400 sur les autres joueurs). Doit s'exécuter APRÈS l'archivage des
   //     runs (sinon les runs de la période qui vient de se clore ne sont pas
   //     encore en period >= 1 et donc pas comptés dans les cumulés).
+  //     IMPORTANT : on appelle la variante BOT-SAFE (`where is_bot=false`).
+  //     `refresh_cumulated_from_runs` recalculait AUSSI les bots à partir de
+  //     leurs runs → elle les affaiblissait à chaque rotation (leur cumul est
+  //     volontairement écrit en dur). Filet de sécurité : un pg_cron quotidien
+  //     (~00h30 Paris) relance la même fonction → répare tout seul si cet appel
+  //     client échoue (rotation client-only fragile).
   try {
-    await supabaseClient.rpc('refresh_cumulated_from_runs');
-  } catch(eRpc){ console.error('[rotation] refresh_cumulated_from_runs :', eRpc); }
+    await supabaseClient.rpc('refresh_cumulated_real_players');
+  } catch(eRpc){ console.error('[rotation] refresh_cumulated_real_players :', eRpc); }
 
   // 12. Reset rendement mensuel des lands
   try {
