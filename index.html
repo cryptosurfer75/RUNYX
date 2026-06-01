@@ -8281,7 +8281,12 @@ function renderLeaguePanel(){
     // fenêtre gratuite (J0 → J+7). Après expiration, la ligne redevient
     // classique. Livraison 2 : le skin acheté ne s'affichera PLUS dans le
     // classement (uniquement sur la PC) pour éviter l'effet sapin de Noël.
-    var _hasActiveSkin=p.activeSkin && p.skinFreeUntil && new Date(p.skinFreeUntil)>new Date();
+    // Un skin POSSÉDÉ (acheté) ne s'affiche jamais au classement (PC uniquement, cf. Livraison 2
+    // ci-dessus). On le montre sur la ligne SEULEMENT pendant sa fenêtre gratuite ET tant qu'il
+    // n'est pas acheté. Sans le test "pas acheté", la fenêtre d'un AUTRE skin (skin_free_until est
+    // une colonne unique partagée) faisait réapparaître un skin acheté au classement (bug 2026-06-01).
+    var _ownedRow=((window.__playerSkinsMap||{})[p._uuid]||[]).indexOf(p.activeSkin)>=0;
+    var _hasActiveSkin=p.activeSkin && p.skinFreeUntil && new Date(p.skinFreeUntil)>new Date() && !_ownedRow;
     var rowSkinClass=_hasActiveSkin?' class="skin-'+p.activeSkin+'"':'';
     // Rouge UNIQUEMENT si en zone de rétrogradation ET au moins 21 jours dans la
     // période courante (= alarme tardive). Sinon doré comme tout le monde.
