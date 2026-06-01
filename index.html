@@ -3985,6 +3985,8 @@ const I18N = {
     'quizz.wallet.reason'       : 'Quizz quotidien (J{n})',
     'quizz.lock.50'             : ' [50/50]',
     'quizz.lock.msg'            : 'Verrouille ta série pour <strong style="color:var(--gold)">{cost} NYX</strong>.<br><span style="color:var(--muted2);font-size:.85em">Si tu te trompes ou oublies un jour, ta série retombera à <strong>J{n}</strong> au lieu de zéro.</span><br><span style="color:var(--muted2);font-size:.8em">Sinon, prochain palier dans {d}.</span>',
+    'quizz.lock.msg.poor'       : 'Verrouille ta série à <strong>J{n}</strong> pour ne jamais retomber à zéro.<br>Il te faut <strong style="color:var(--gold)">{cost} NYX</strong>, mais tu n\'en as que <strong style="color:#ff8c2a">{have}</strong>.<br><span style="color:var(--muted2);font-size:.85em">Il te manque <strong>{missing} NYX</strong>.</span>',
+    'quizz.lock.buy'            : '💎 Acheter des NYX',
     'quizz.lock.title'          : 'Palier J{n} atteint !',
     'quizz.lock.days.singular'  : '{n} jour',
     'quizz.lock.days.plural'    : '{n} jours',
@@ -4744,6 +4746,8 @@ const I18N = {
     'quizz.wallet.reason'       : 'Daily quiz (D{n})',
     'quizz.lock.50'             : ' [50/50]',
     'quizz.lock.msg'            : 'Lock in your streak for <strong style="color:var(--gold)">{cost} NYX</strong>.<br><span style="color:var(--muted2);font-size:.85em">If you slip up or skip a day, your streak will fall back to <strong>D{n}</strong> instead of zero.</span><br><span style="color:var(--muted2);font-size:.8em">Otherwise, next milestone in {d}.</span>',
+    'quizz.lock.msg.poor'       : 'Lock your streak at <strong>D{n}</strong> so it never falls back to zero.<br>You need <strong style="color:var(--gold)">{cost} NYX</strong>, but you only have <strong style="color:#ff8c2a">{have}</strong>.<br><span style="color:var(--muted2);font-size:.85em">You\'re short <strong>{missing} NYX</strong>.</span>',
+    'quizz.lock.buy'            : '💎 Buy NYX',
     'quizz.lock.title'          : 'Milestone D{n} reached!',
     'quizz.lock.days.singular'  : '{n} day',
     'quizz.lock.days.plural'    : '{n} days',
@@ -23730,6 +23734,25 @@ function maybeShowQuizzLockModal(newStreak){
   var nextPalier=quizzNextPalierAfter(newStreak);
   var distance=nextPalier-newStreak;
   var distTxt=(distance>1?t('quizz.lock.days.plural'):t('quizz.lock.days.singular')).replace('{n}',distance);
+  // Solde NYX courant : si le RP n'a pas de quoi payer le verrou, on lui propose
+  // d'aller recharger (bouton "Acheter des NYX") plutôt que de lui présenter un
+  // bouton "Verrouiller" qui échouerait sur un toast "solde insuffisant".
+  var nyxBalance=(window.__wallet&&typeof window.__wallet.nyx==='number')?window.__wallet.nyx:0;
+  if(nyxBalance<cost){
+    var missing=cost-nyxBalance;
+    var poorMsg=t('quizz.lock.msg.poor').replace('{cost}',cost).replace('{n}',newStreak)
+      .replace('{have}',nyxBalance).replace('{missing}',missing);
+    askConfirm(poorMsg,{
+      title:t('quizz.lock.title').replace('{n}',newStreak),
+      emoji:'🔒',
+      okLabel:t('quizz.lock.buy'),
+      cancelLabel:'Plus tard',
+      success:true
+    }).then(function(goShop){
+      if(goShop) nav('economy');
+    });
+    return;
+  }
   var msg=t('quizz.lock.msg').replace('{cost}',cost).replace('{n}',newStreak).replace('{d}',distTxt);
   askConfirm(msg,{
     title:t('quizz.lock.title').replace('{n}',newStreak),
