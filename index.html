@@ -12577,7 +12577,9 @@ async function renderPeriodRecap(player, closedPeriod, opts){
   // Libellé du mois : en mode test = mois courant, en prod = mois de la
   // période close (= mois précédent du period_start, calculé en heure Paris
   // pour éviter les décalages timezone autour du 1er du mois).
-  var _monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var _monthNames=(SPEEDIX_LANG==='en')
+    ?['January','February','March','April','May','June','July','August','September','October','November','December']
+    :['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   var _monthLabel;
   if(opts.testMode){
     _monthLabel=_monthNames[nowParis.getMonth()]+' '+nowParis.getFullYear();
@@ -12592,12 +12594,19 @@ async function renderPeriodRecap(player, closedPeriod, opts){
     if(_closedM<1){ _closedM=12; _closedY--; }
     _monthLabel=_monthNames[_closedM-1]+' '+_closedY;
   }
+  var _en=(SPEEDIX_LANG==='en');
   if(opts.testMode){
-    document.getElementById('prc-title').textContent='Test : Période '+(_periodData.period)+' — '+_monthLabel+' (en cours)';
-    document.getElementById('prc-sub').textContent='Aperçu — données live de la période courante';
+    document.getElementById('prc-title').textContent=_en
+      ?'Test: Period '+(_periodData.period)+' — '+_monthLabel+' (ongoing)'
+      :'Test : Période '+(_periodData.period)+' — '+_monthLabel+' (en cours)';
+    document.getElementById('prc-sub').textContent=_en
+      ?'Preview — live data for the current period'
+      :'Aperçu — données live de la période courante';
   } else {
-    document.getElementById('prc-title').textContent='Période '+closedPeriod+' — '+_monthLabel+' terminée !';
-    document.getElementById('prc-sub').textContent='Voici ton bilan';
+    document.getElementById('prc-title').textContent=_en
+      ?'Period '+closedPeriod+' — '+_monthLabel+' over!'
+      :'Période '+closedPeriod+' — '+_monthLabel+' terminée !';
+    document.getElementById('prc-sub').textContent=_en?'Here\'s your summary':'Voici ton bilan';
   }
   // Stats grid (6 cases : pts, km, D+, sorties, badges, rang)
   var hStats='';
@@ -12608,19 +12617,19 @@ async function renderPeriodRecap(player, closedPeriod, opts){
     +'</div>';
   }
   // Couleurs alignées sur la Player Card (pour cohérence visuelle)
-  hStats+=_stat('Points',pts.toLocaleString(SPEEDIX_LANG),'var(--gold)');
-  hStats+=_stat('Distance',(Math.round(km*10)/10).toLocaleString(SPEEDIX_LANG)+' km','#4a90ff');
-  hStats+=_stat('Dénivelé',Math.round(elv)+' m','var(--green)');
-  hStats+=_stat('Sorties',nb,'var(--cyan)');
-  hStats+=_stat('Badges',nbBadges,'var(--gold)');
-  hStats+=_stat('RPC gagné',rpcGained.toLocaleString(SPEEDIX_LANG),'var(--gold)');
+  hStats+=_stat(_en?'Points':'Points',pts.toLocaleString(SPEEDIX_LANG),'var(--gold)');
+  hStats+=_stat(_en?'Distance':'Distance',(Math.round(km*10)/10).toLocaleString(SPEEDIX_LANG)+' km','#4a90ff');
+  hStats+=_stat(_en?'Elevation':'Dénivelé',Math.round(elv)+' m','var(--green)');
+  hStats+=_stat(_en?'Runs':'Sorties',nb,'var(--cyan)');
+  hStats+=_stat(_en?'Badges':'Badges',nbBadges,'var(--gold)');
+  hStats+=_stat(_en?'RPC earned':'RPC gagné',rpcGained.toLocaleString(SPEEDIX_LANG),'var(--gold)');
   document.getElementById('prc-stats').innerHTML=hStats;
   // Rang général final (pas de total volontairement)
   var rankLine;
   if(myRank>0){
-    rankLine='🏅 Classement général final : <strong style="color:var(--gold);font-family:Space Mono,monospace;font-size:1rem">#'+myRank+'</strong>';
+    rankLine=(_en?'🏅 Final overall ranking: ':'🏅 Classement général final : ')+'<strong style="color:var(--gold);font-family:Space Mono,monospace;font-size:1rem">#'+myRank+'</strong>';
   } else {
-    rankLine='<span style="color:var(--muted2)">Pas de classement (aucune course sur la période)</span>';
+    rankLine='<span style="color:var(--muted2)">'+(_en?'No ranking (no run this period)':'Pas de classement (aucune course sur la période)')+'</span>';
   }
   document.getElementById('prc-rank-line').innerHTML=rankLine;
   // Promotion / rétrogradation / maintien
@@ -12636,25 +12645,25 @@ async function renderPeriodRecap(player, closedPeriod, opts){
     resultBox.style.background='rgba(120,140,180,.08)';
     resultBox.style.border='1px solid rgba(120,140,180,.25)';
     resultBox.style.color='var(--muted2)';
-    resultBox.innerHTML='League actuelle : <strong style="color:'+(newLg?newLg.color:'var(--text)')+'">'+(newLg?newLg.emoji+' '+newLg.name+' — '+newLg.label:'—')+'</strong>';
+    resultBox.innerHTML=(_en?'Current league: ':'League actuelle : ')+'<strong style="color:'+(newLg?newLg.color:'var(--text)')+'">'+(newLg?newLg.emoji+' '+newLg.name+' — '+newLg.label:'—')+'</strong>';
   } else if(newIdx>prevIdx){
     // MONTÉE
     resultBox.style.background='rgba(45,219,128,.10)';
     resultBox.style.border='1.5px solid rgba(45,219,128,.45)';
     resultBox.style.color='var(--green)';
-    resultBox.innerHTML='🎉 Félicitations ! Tu montes en <strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
+    resultBox.innerHTML=(_en?'🎉 Congratulations! You move up to ':'🎉 Félicitations ! Tu montes en ')+'<strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
   } else if(newIdx<prevIdx){
     // RÉTROGRADATION
     resultBox.style.background='rgba(255,68,68,.10)';
     resultBox.style.border='1.5px solid rgba(255,68,68,.4)';
     resultBox.style.color='var(--red)';
-    resultBox.innerHTML='Désolé, tu es rétrogradé en <strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
+    resultBox.innerHTML=(_en?'Sorry, you\'re relegated to ':'Désolé, tu es rétrogradé en ')+'<strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
   } else {
     // MAINTIEN
     resultBox.style.background='rgba(245,200,66,.08)';
     resultBox.style.border='1px solid rgba(245,200,66,.3)';
     resultBox.style.color='var(--gold)';
-    resultBox.innerHTML='Tu te maintiens en <strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
+    resultBox.innerHTML=(_en?'You stay in ':'Tu te maintiens en ')+'<strong style="color:'+newLg.color+'">'+newLg.emoji+' '+newLg.name+' — '+newLg.label+'</strong>';
   }
   // Mémoriser pour le close (skip patch si test)
   window._prcCurrentPeriod=_periodData.period;
