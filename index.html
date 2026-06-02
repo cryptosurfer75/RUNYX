@@ -10868,7 +10868,7 @@ var _exploreSelection={lands:[],playerId:null};
 // ████████████████████████████████████████████████████████████████████████████
 // §8 — LOYER (RENT)
 // RENT_DAILY_RATE = 165 RPC/jour. Prorata à l'acquisition.
-// processMonthlyRent, _autoSettleUnpaidRent, adminAuditProrataRefunds.
+// processMonthlyRent, adminAuditProrataRefunds.
 // ████████████████████████████████████████████████████████████████████████████
 
 var RENT_DAILY_RATE=165;
@@ -11039,45 +11039,9 @@ async function _releaseExpiredLeases(){
   return expired;
 }
 
-async function _autoSettleUnpaidRent(info){
-  // info = { lands:[{id,_cost,...}], total }
-  var w=window.__wallet||{rpc:0};
-  var balance=w.rpc||0;
-
-  // Mélange aléatoire des lands
-  var pool=info.lands.slice();
-  for(var i=pool.length-1;i>0;i--){
-    var j=Math.floor(Math.random()*(i+1));
-    var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;
-  }
-
-  // Libère une à une tant que le reste n'est pas payable
-  var remaining=info.total;
-  var released=[];
-  while(remaining>balance && pool.length>0){
-    var land=pool.shift();
-    await _releaseSingleLand(land.id);
-    released.push(land);
-    remaining-=land._cost;
-  }
-
-  // Débite le loyer des lands conservées
-  if(remaining>0){
-    var ok=await walletCredit(-remaining,0,'Loyer mensuel '+pool.length+' land'+(pool.length>1?'s':'')+' (après libération auto)');
-    if(!ok) return;
-  }
-
-  // Messages
-  if(released.length && pool.length){
-    showToast('⚠️ '+released.length+' Land'+(released.length>1?'s':'')+' remise'+(released.length>1?'s':'')+' en jeu · −'+remaining.toLocaleString(SPEEDIX_LANG)+' RPC prélevés pour les '+pool.length+' autres');
-  } else if(released.length){
-    showToast('⚠️ '+released.length+' Land'+(released.length>1?'s':'')+' remise'+(released.length>1?'s':'')+' en jeu (solde insuffisant pour tout payer)');
-  } else {
-    showToast('🏠 Loyer prélevé : −'+remaining.toLocaleString(SPEEDIX_LANG)+' RPC ('+pool.length+' land'+(pool.length>1?'s':'')+')');
-  }
-  if(typeof loadLandsOnMap==='function') loadLandsOnMap();
-  if(typeof renderMyLands==='function') renderMyLands();
-}
+// _autoSettleUnpaidRent retiré le 2026-06-02 : l'encaissement et la libération
+// auto des Lands vivent désormais dans la fonction DB process_player_rent
+// (source unique), appelée par processMonthlyRent et adminForceRent.
 
 // ── Admin: forcer le loyer sans vérifier la date ──
 async function adminForceRent(){
