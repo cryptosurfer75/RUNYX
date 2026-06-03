@@ -807,10 +807,12 @@ tr.skin-bruxelles{
   #league-main-panel .tbl th,
   #league-main-panel .tbl td{padding:.5rem .35rem}
   #league-main-panel .tbl th:first-child,
-  #league-main-panel .tbl td:first-child{padding-left:.3rem;padding-right:.15rem;width:30px !important}
+  #league-main-panel .tbl td:first-child{padding-left:.3rem;padding-right:.15rem;width:34px !important}
   #league-main-panel .tbl th:nth-child(3),
   #league-main-panel .tbl td:nth-child(3){width:100px !important;text-align:right;white-space:nowrap}
-  #league-main-panel .rank-num{width:22px}
+  /* Rang à 3 chiffres (zone Starter >100) : on élargit le cadre et on réduit un
+     poil la police pour que le numéro ne déborde plus sous le drapeau voisin. */
+  #league-main-panel .rank-num{width:28px;font-size:.8rem;overflow:hidden}
   /* Le td contenant le joueur doit pouvoir rétrécir pour permettre l'ellipsis */
   #league-main-panel .tbl td:nth-child(2){min-width:0;overflow:hidden;padding-left:.2rem}
   #league-main-panel .tbl td:nth-child(2) > div{min-width:0;flex-wrap:nowrap;gap:.4rem}
