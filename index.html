@@ -11990,7 +11990,7 @@ async function _processEndOfPeriodInner(){
   var msg=document.getElementById('admin-period-msg');
 
   // 1. Charger tous les joueurs avec leurs points
-  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period,created_at,active_periods,boost_stock,gel_stock');
+  var {data:allPlayers}=await supabaseClient.from('players').select('id,username,league,grade,competitive,rpc_balance,nyx_balance,premium,premium_trial,premium_until,infirmerie_until,infirmerie_started_at,consecutive_zero_periods,is_visible,frozen,buyin_debt,calibration_period,created_at,active_periods,boost_stock,gel_stock,is_bot');
   // Agrégation côté base (fonction points_by_player) — un SELECT brut sur runs
   // serait plafonné à 1000 lignes et fausserait gains + montées/descentes.
   var {data:allRuns}=await supabaseClient.rpc('points_by_player',{p_period:0});
@@ -12156,38 +12156,31 @@ async function _processEndOfPeriodInner(){
 
   // 6. Reclassement de TOUS les RP — règles "mou progressif" :
   //    - En infirmerie → league figée (skip)
-  //    - 0 pt = FANTÔME : descente 1 league + invisible. 2ème consécutive → Starter, invisible.
-  //    - 1+ pt = ACTIF : descente max 1 league si pts < min (pas de saut multi).
-  //    - Montées : multi-league OK (auto via pts vs min)
-  for(var ri=0;ri<ranked.length;ri++){
-    var rp=ranked[ri];
-    var rpFull=allPlayers.find(function(x){return x.id===rp.id;})||{};
+  //    - 0 pt sur une période COMPLÈTE = FANTÔME (invisible au classement, mais
+  //      toujours compté dans le total à droite de la league) :
+  //         • en league  → invisible + descente -1 league ; 2ème 0 consécutif → retour Starter (calibrage)
+  //         • en Starter → invisible (reste Starter, il n'y a pas plus bas)
+  //      Un fantôme REDEVIENT visible AUSSITÔT qu'une course est validée, via le
+  //      trigger DB `trg_unghost_on_run` (pas besoin d'attendre la rotation).
+  //    - 1+ pt = ACTIF : visible, reset compteur ; descente max -1 si pts<min ; montées multi OK.
+  //    - Garde-fous : jamais les bots ; jamais un inscrit EN COURS de période
+  //      (il n'a pas encore vécu une période complète à 0 → on lui laisse son 1er mois).
+  // ⚠️ On boucle sur TOUS les joueurs (allPlayers), PAS sur `ranked` qui filtre
+  //    les 0 pt — sinon la mécanique fantôme ne s'applique jamais aux vrais zéros
+  //    (c'était le cas avant : la branche 0 pt ci-dessous était du code mort).
+  var _endDateR=new Date(_periodData.end||Date.now());
+  var _monthStartR=new Date(Date.UTC(_endDateR.getUTCFullYear(), _endDateR.getUTCMonth(), 1));
+  for(var ri=0;ri<allPlayers.length;ri++){
+    var rpFull=allPlayers[ri];
     var rpInInf=rpFull.infirmerie_until && new Date(rpFull.infirmerie_until)>new Date();
     if(rpInInf) continue; // league figée pendant infirmerie
-    var currentLk=(rp.league||'starter').toLowerCase();
+    var currentLk=(rpFull.league||'starter').toLowerCase();
     var currentIdx=LEAGUES.findIndex(function(l){return l.key===currentLk;});
     var targetKey=currentLk;
     var newConsecutiveZero=rpFull.consecutive_zero_periods||0;
     var newVisible=rpFull.is_visible!==false;
-    var pts=rp.pts||0;
-    if(pts===0 && currentLk!=='starter'){
-      // FANTÔME
-      newConsecutiveZero++;
-      newVisible=false;
-      if(newConsecutiveZero>=2){
-        // 2ème période consécutive 0 pt → retour Starter
-        targetKey='starter';
-        // competitive reset + calibration_period reset (retour zone Starter pure)
-        await supabaseClient.from('players').update({competitive:false,calibration_period:null}).eq('id',rp.id);
-      } else {
-        // 1ère période 0 pt → descente -1 league + invisible
-        if(currentIdx>0){
-          var lowerLg=LEAGUES[currentIdx-1];
-          if(lowerLg && lowerLg.key!=='starter') targetKey=lowerLg.key;
-          else targetKey='l10';
-        }
-      }
-    } else {
+    var pts=ptsByPlayer[rpFull.id]||0;
+    if(pts>0){
       // ACTIF : reset compteur fantôme + visible
       newConsecutiveZero=0;
       newVisible=true;
@@ -12204,6 +12197,30 @@ async function _processEndOfPeriodInner(){
         var upLg=LEAGUES.slice().reverse().find(function(l){return pts>=l.min&&l.key!=='lelite'&&l.key!=='starter';});
         if(upLg) targetKey=upLg.key;
       }
+    } else {
+      // pts === 0 : candidat fantôme
+      // Bots : jamais touchés (leur cumul est écrit en dur, pas de runs réguliers).
+      if(rpFull.is_bot) continue;
+      // Période COMPLÈTE seulement : inscrit AVANT le 1er du mois de la période
+      // qui se termine. Un inscrit en cours de mois garde son 1er mois visible.
+      var _createdR=rpFull.created_at?new Date(rpFull.created_at):null;
+      if(!(_createdR && _createdR<_monthStartR)) continue;
+      // FANTÔME : invisible au classement (toujours compté dans le total).
+      newVisible=false;
+      if(currentLk!=='starter'){
+        newConsecutiveZero++;
+        if(newConsecutiveZero>=2){
+          // 2ème période consécutive 0 pt → retour Starter (recommence en calibrage)
+          targetKey='starter';
+          await supabaseClient.from('players').update({competitive:false,calibration_period:null}).eq('id',rpFull.id);
+        } else if(currentIdx>0){
+          // 1ère période 0 pt → descente -1 league
+          var lowerLg=LEAGUES[currentIdx-1];
+          if(lowerLg && lowerLg.key!=='starter') targetKey=lowerLg.key;
+          else targetKey='l10';
+        }
+      }
+      // En Starter : on reste Starter, juste invisible (pas de descente possible).
     }
     // Plancher : ne jamais redescendre en Starter sauf via la mécanique fantôme
     var updates={};
@@ -12216,7 +12233,7 @@ async function _processEndOfPeriodInner(){
     // "tu montes / tu descends / tu te maintiens".
     updates.previous_league=currentLk;
     if(Object.keys(updates).length>0){
-      await supabaseClient.from('players').update(updates).eq('id',rp.id);
+      await supabaseClient.from('players').update(updates).eq('id',rpFull.id);
     }
   }
   // RP en Starter avec >= 500 pts CUMULÉS (toutes périodes) sortent aussi (montée libre).
