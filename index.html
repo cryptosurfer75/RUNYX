@@ -17124,6 +17124,15 @@ async function handleStravaCallback(){
         });
         var checkDup=await checkResp.json();
         if(checkDup&&checkDup.length>0){
+          // On refuse le lien → on révoque aussi l'autorisation qu'on vient de
+          // créer côté Strava (sinon elle reste "fantôme" et gonfle le quota).
+          try{
+            await window.fetch(STRAVA_OAUTH_ENDPOINT,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({action:'deauthorize',access_token:data.access_token,refresh_token:data.refresh_token})
+            });
+          }catch(e){}
           showToast('🚫 Ce compte Strava est déjà lié à un autre joueur ('+checkDup[0].username+'). Multi-compte interdit.');
           return;
         }
@@ -17218,13 +17227,16 @@ function updateStravaUI(connected){
 async function disconnectStrava(){
   if(!currentUser) return;
   if(!await askConfirm('Tu pourras te reconnecter quand tu veux.',{title:'Déconnecter Strava',emoji:'🔌',okLabel:'Déconnecter',destructive:true})) return;
-  // Révoquer le token côté Strava
-  if(window.__stravaToken){
+  // Révoquer l'autorisation côté Strava VIA NOTRE SERVEUR (l'appel direct
+  // navigateur → strava.com est bloqué par CORS et échouait en silence, laissant
+  // l'autorisation "fantôme" active chez Strava). Le serveur rafraîchit le jeton
+  // si besoin puis révoque réellement.
+  if(window.__stravaToken||window.__stravaRefresh){
     try{
-      await window.fetch('https://www.strava.com/oauth/deauthorize',{
+      await window.fetch(STRAVA_OAUTH_ENDPOINT,{
         method:'POST',
-        headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:'access_token='+window.__stravaToken
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'deauthorize',access_token:window.__stravaToken,refresh_token:window.__stravaRefresh})
       });
     }catch(e){}
   }
