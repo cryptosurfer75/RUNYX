@@ -4308,6 +4308,7 @@ const I18N = {
     'wallet.line.rpc.lands'     : 'RPC avec passages Lands',
     'wallet.line.rpc.bought'    : 'RPC achetés',
     'wallet.line.rpc.misc'      : 'Bonus divers (grades, parrainage…)',
+    'wallet.line.rpc.quizz'     : 'RPC gagnés au quizz',
     'wallet.line.nyx.challenges': 'NYX avec défis & challenges',
     'wallet.line.nyx.sales'     : 'NYX avec ventes de Lands',
     'wallet.line.nyx.referral'  : 'NYX avec parrainage',
@@ -5078,6 +5079,7 @@ const I18N = {
     'wallet.line.rpc.lands'     : 'RPC from Land crossings',
     'wallet.line.rpc.bought'    : 'RPC purchased',
     'wallet.line.rpc.misc'      : 'Misc bonuses (grades, referrals…)',
+    'wallet.line.rpc.quizz'     : 'RPC from the quiz',
     'wallet.line.nyx.challenges': 'NYX from challenges & quests',
     'wallet.line.nyx.sales'     : 'NYX from Land sales',
     'wallet.line.nyx.referral'  : 'NYX from referrals',
@@ -15899,19 +15901,23 @@ async function showWalletBreakdown(){
     // 4. Bonus divers (streak, passage grade, parrainage, gifts admin) + achats RPC (IAP) depuis wallet_tx
     var {data:txs}=await supabaseClient.from('wallet_tx')
       .select('rpc_delta,reason').eq('player_id',currentUser.id).gt('rpc_delta',0).limit(10000);
-    var streakRpc=0, autreRpc=0, achatRpc=0;
+    var streakRpc=0, autreRpc=0, achatRpc=0, quizzRpc=currentUser.quizz_total_rpc||0;
     (txs||[]).forEach(function(tx){
       var r=tx.reason||'';
       var d=tx.rpc_delta||0;
       // On ignore Course et Land (déjà comptés via runs et land_passages)
       if(/^Course/i.test(r) || /Land/i.test(r)) return;
+      // RPC quizz : comptés à part via quizz_total_rpc (réel encaissé). On saute
+      // donc les tx quizz ici, ce qui évite le double-compte ET les anciennes
+      // lignes "cosmétiques" pré-refonte qui n'ont jamais crédité le solde.
+      if(/quiz/i.test(r)) return;
       if(/^Streak/i.test(r) || /^Cha[iî]ne/i.test(r)) streakRpc+=d;
       else if(/^Achat RPC/i.test(r) || /^IAP/i.test(r) || /^Pack RPC/i.test(r)) achatRpc+=d;
       else autreRpc+=d;
     });
     // Défis = badges + streak (les 2 sont des "récompenses récurrentes")
     var defisRpc=badgesRpc+streakRpc;
-    var totalGagne=courseRpc+landsRpc+defisRpc+autreRpc+achatRpc;
+    var totalGagne=courseRpc+landsRpc+defisRpc+autreRpc+achatRpc+quizzRpc;
     var w=window.__wallet||{rpc:0};
     var soldeActuel=w.rpc||0;
     var fmt=function(n){return (n||0).toLocaleString(SPEEDIX_LANG);};
@@ -15927,6 +15933,7 @@ async function showWalletBreakdown(){
       +line('🗺️',t('wallet.line.rpc.lands'),landsRpc,'var(--green)')
       +(achatRpc>0?line('💳',t('wallet.line.rpc.bought'),achatRpc,'#20d0e0'):'')
       +(autreRpc>0?line('🎁',t('wallet.line.rpc.misc'),autreRpc,'#9060f0'):'')
+      +(quizzRpc>0?line('🧠',t('wallet.line.rpc.quizz'),quizzRpc,'#4ac8ff'):'')
       +'<div style="display:flex;justify-content:space-between;align-items:center;padding:.85rem .5rem;margin-top:.4rem;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);border-radius:8px">'
       +'<span style="font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2px;color:var(--text)">'+t('wallet.total')+'</span>'
       +'<strong style="font-family:Space Mono,monospace;font-size:1rem;color:var(--gold)">'+fmt(totalGagne)+' RPC</strong>'
