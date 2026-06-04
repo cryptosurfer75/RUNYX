@@ -9415,14 +9415,33 @@ function focusLandOnMap(landId){
   } catch(e){ console.warn('focusLandOnMap fail',e); }
 }
 
+// Charge TOUTES les lignes de la table lands pour une sélection donnée, en
+// contournant le plafond serveur de 1000 lignes. ⚠️ Supabase tronque tout SELECT
+// à 1000 lignes côté serveur — le .limit() ne le contourne PAS. Dès qu'il y a plus
+// de 1000 Lands dans le jeu, les suivantes étaient silencieusement coupées (→ des
+// hexagones manquants sur la carte). On lit donc par paquets de 1000 jusqu'à
+// épuisement. À utiliser pour TOUT chargement GLOBAL de lands (carte, totems,
+// agrégats par RP). Les requêtes filtrées sur un seul joueur n'en ont pas besoin.
+async function _fetchAllLands(selectStr){
+  var rows=[], from=0, page=1000;
+  while(true){
+    var {data:chunk,error}=await supabaseClient.from('lands')
+      .select(selectStr).order('id').range(from,from+page-1);
+    if(error||!chunk||!chunk.length) break;
+    rows=rows.concat(chunk);
+    if(chunk.length<page) break;
+    from+=page;
+  }
+  return rows;
+}
+
 async function loadLandsOnMap(){
   if(!_landsMap||!_landsHexLayer) return;
   _landsHexLayer.clearLayers();
-  // ⚠️ limit(200000) explicite : Supabase JS limite à 1000 par défaut, ce qui
-  // tronquait silencieusement les lands. 200k couvre ~200 RPs en beta.
-  // TODO V1.0 : implémenter un filtrage par viewport (charger uniquement les
-  // lands dans la zone visible ±5km) pour scaler au-delà.
-  var {data:lands}=await supabaseClient.from('lands').select('id,hex_col,hex_row,owner_id,tenant_id,status,stars,free_until,sponsor_name,sponsor_logo_url').limit(200000);
+  // Toutes les lands du jeu (paginé pour dépasser le plafond serveur de 1000).
+  // TODO V1.0 : filtrage par viewport (charger uniquement les lands visibles
+  // ±5km) pour scaler quand la base deviendra très grosse.
+  var lands=await _fetchAllLands('id,hex_col,hex_row,owner_id,tenant_id,status,stars,free_until,sponsor_name,sponsor_logo_url');
   // Charger les ventes actives
   var {data:sales}=await supabaseClient.from('land_sales').select('land_id,price_nyx').eq('status','active').limit(10000);
   var salesMap={};
@@ -11439,7 +11458,7 @@ async function addTotems(){
   _totemLayer=L.layerGroup().addTo(_landsMap);
 
   // Charger toutes les lands occupées
-  var {data:allLands}=await supabaseClient.from('lands').select('id,owner_id,tenant_id,status');
+  var allLands=await _fetchAllLands('id,owner_id,tenant_id,status');
   if(!allLands||!allLands.length) return;
 
   // Grouper par joueur
@@ -14588,7 +14607,7 @@ async function showTerritoireRanking(){
   var rowStyle='display:grid;grid-template-columns:28px 1fr auto auto auto;align-items:center;gap:.5rem;padding:.38rem .5rem;border-bottom:1px solid rgba(255,255,255,.06)';
 
   // ── Classement individuel depuis la DB ─────────────────────────
-  var {data:allLands}=await supabaseClient.from('lands').select('tenant_id,owner_id,status');
+  var allLands=await _fetchAllLands('tenant_id,owner_id,status');
   var indivMap={};
   (allLands||[]).forEach(function(l){
     var pid=l.owner_id||l.tenant_id;
@@ -14707,7 +14726,7 @@ async function loadTeamLandsOnMap(){
   _totemLayer=L.layerGroup().addTo(_landsMap);
 
   // Charger toutes les lands occupées
-  var {data:lands}=await supabaseClient.from('lands').select('id,owner_id,tenant_id,status,stars');
+  var lands=await _fetchAllLands('id,owner_id,tenant_id,status,stars');
   if(!lands||!lands.length) return;
 
   // Charger toutes les teams avec leurs membres
