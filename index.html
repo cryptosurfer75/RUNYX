@@ -13599,35 +13599,42 @@ function _showImageShareSheet(blob,fileName,shareText,shareTitle){
 
     var _isMobile=_capNative() || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
 
-    // « Enregistrer » : sur mobile, on ouvre la feuille « Enregistrer l'image / Photos »
-    // → la photo atterrit dans la Galerie/Photos (trouvable). Sur PC : téléchargement.
-    document.getElementById('share-card-dl').onclick=async function(){
-      if(_isMobile){
-        showToast(_en?'📸 Tap “Save Image / Photos” to add it to your gallery':'📸 Choisis « Enregistrer l’image / Photos » pour l’ajouter à ta galerie');
-        if(await _shareImage()) return;
+    // Repli quand aucun partage de fichier n'est possible — JAMAIS « rien ne se passe » :
+    //  • App native sans module partage (cas APK actuelle) → on guide vers Chrome.
+    //  • Navigateur mobile sans Web Share fichiers → appui long sur l'image affichée.
+    //  • PC → téléchargement direct.
+    function _noShareFallback(){
+      if(_capNative()){
+        showToast(_en
+          ?'📲 Sharing arrives in the next app update. For now, open speedixleague.com in Chrome to share / save.'
+          :'📲 Le partage arrive à la prochaine mise à jour de l’appli. En attendant, ouvre speedixleague.com dans Chrome pour partager / enregistrer.');
+      } else if(_isMobile){
+        showToast(_en?'📸 Press and hold the photo above to save it':'📸 Appuie longuement sur la photo ci-dessus pour l’enregistrer');
+      } else {
+        var link=document.createElement('a');
+        link.download=file.name; link.href=imgUrl; link.click();
+        showToast(_en?'📸 Image downloaded!':'📸 Image téléchargée !');
       }
-      // PC / repli : téléchargement direct
-      var link=document.createElement('a');
-      link.download=file.name; link.href=imgUrl; link.click();
-      showToast(_en?'📸 Image downloaded!':'📸 Image téléchargée !');
+    }
+
+    // « Enregistrer » : feuille « Enregistrer l'image / Photos » sur mobile (→ galerie),
+    // téléchargement direct sur PC, message d'aide si rien n'est dispo (cas APK actuelle).
+    document.getElementById('share-card-dl').onclick=async function(){
+      if(await _shareImage()) return;
+      _noShareFallback();
     };
 
     // « Partager » — déclenché par CE clic (activation fraîche → OK Android Chrome)
     document.getElementById('share-card-share').onclick=async function(){
       if(await _shareImage()) return;
-      // Niveau 2 : Web Share API SANS fichier (texte + lien) + téléchargement
+      // Niveau 2 : Web Share API SANS fichier (texte + lien) — navigateurs sans partage fichier
       if(navigator.share){
-        var dlLink=document.createElement('a');
-        dlLink.download=file.name; dlLink.href=imgUrl; dlLink.click();
         try{
           await navigator.share({title:shareTitle, text:shareText, url:'https://speedixleague.com'});
-        }catch(e){ if(e.name!=='AbortError') showToast(_en?'📸 Image downloaded — attach it to your message':'📸 Image téléchargée — joins-la à ton message'); }
+        }catch(e){ if(e.name!=='AbortError') _noShareFallback(); }
         return;
       }
-      // Niveau 3 : Desktop / pas de partage natif → simple téléchargement
-      var link=document.createElement('a');
-      link.download=file.name; link.href=imgUrl; link.click();
-      showToast(_en?'📸 Image downloaded — share it manually!':'📸 Image téléchargée — partage-la manuellement !');
+      _noShareFallback();
     };
   }
 }
