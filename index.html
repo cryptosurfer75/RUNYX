@@ -13070,10 +13070,16 @@ async function renderSocialFeed(){
         var s=sz||20;
         return '<span onclick="removeRunPhoto(\''+r.id+'\','+pi+')" style="position:absolute;top:6px;right:6px;width:'+s+'px;height:'+s+'px;border-radius:50%;background:rgba(0,0,0,.75);color:#ff4444;font-size:.7rem;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.15)" title="Supprimer la photo">✕</span>';
       };
+      // Bouton "Habiller" : génère une version de la photo avec les stats de la
+      // course incrustées (façon Strava/Garmin) puis ouvre l'aperçu de partage.
+      var habBtn=function(pi){
+        return '<span onclick="habillerPhoto(\''+r.id+'\','+pi+')" style="position:absolute;bottom:6px;left:6px;padding:.2rem .5rem;border-radius:7px;background:rgba(0,0,0,.7);color:#fff;font-size:.62rem;font-weight:700;display:inline-flex;align-items:center;gap:.25rem;cursor:pointer;border:1px solid rgba(255,255,255,.2)" title="Habiller la photo avec tes stats">📊 Stats</span>';
+      };
       if(photos.length===1){
         photoHtml='<div style="margin:.5rem 0;position:relative">'
           +'<img src="'+photos[0]+'" onclick="zoomPhoto(this.src)" style="width:100%;max-height:380px;object-fit:cover;border-radius:10px;border:1px solid rgba(74,144,255,.15);display:block;cursor:pointer" loading="lazy">'
           +rmBtn(0,22)
+          +habBtn(0)
           +'</div>';
       } else if(photos.length===2){
         photoHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:.5rem 0">';
@@ -13081,6 +13087,7 @@ async function renderSocialFeed(){
           photoHtml+='<div style="position:relative">'
             +'<img src="'+ph+'" onclick="zoomPhoto(this.src)" style="width:100%;height:200px;object-fit:cover;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;cursor:pointer" loading="lazy">'
             +rmBtn(pi)
+            +habBtn(pi)
             +'</div>';
         });
         photoHtml+='</div>';
@@ -13091,6 +13098,7 @@ async function renderSocialFeed(){
           photoHtml+='<div style="position:relative">'
             +'<img src="'+ph+'" onclick="zoomPhoto(this.src)" style="width:100%;height:170px;object-fit:cover;border-radius:8px;border:1px solid rgba(74,144,255,.15);display:block;cursor:pointer" loading="lazy">'
             +rmBtn(pi)
+            +habBtn(pi)
             +'</div>';
         });
         photoHtml+='</div>';
@@ -13497,9 +13505,20 @@ async function shareRunCard(runId){
 
   // Partager ou télécharger
   cv.toBlob(function(blob){
-    var file=new File([blob],'speedix-'+player.username+'-'+km+'km.png',{type:'image/png'});
+    var fileName='speedix-'+player.username+'-'+km+'km.png';
     var shareText=km+' km · '+pts+' pts · SPEEDIX League — Compétition · Motivation · Gaming · speedixleague.com';
     var shareTitle='SPEEDIX League — '+player.username;
+    _showImageShareSheet(blob,fileName,shareText,shareTitle);
+  },'image/png');
+}
+
+// Fenêtre d'aperçu + partage/téléchargement réutilisable (carte de course ET
+// photo habillée). Centralise toute la logique de partage natif (Web Share /
+// Capacitor / fallback desktop) pour ne pas la dupliquer entre les deux usages.
+function _showImageShareSheet(blob,fileName,shareText,shareTitle){
+  if(!blob){ showToast((typeof SPEEDIX_LANG!=='undefined'&&SPEEDIX_LANG==='en')?'⚠️ Image generation failed':'⚠️ Échec de la génération'); return; }
+  {
+    var file=new File([blob],fileName,{type:'image/png'});
     var imgUrl=URL.createObjectURL(blob);
     var _en=(typeof SPEEDIX_LANG!=='undefined' && SPEEDIX_LANG==='en');
 
@@ -13523,7 +13542,7 @@ async function shareRunCard(runId){
       '<img src="'+imgUrl+'" alt="carte SPEEDIX" style="max-width:min(360px,82vw);width:100%;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6)">'
       +'<div style="display:flex;gap:10px;width:min(360px,82vw)">'
         +'<button id="share-card-share" style="flex:1;padding:13px;border-radius:10px;border:none;border-bottom:4px solid #0c2e10;background:linear-gradient(180deg,#5ecb62,#2d8a32);color:#fff;font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2.5px;cursor:pointer">📤 '+(_en?'SHARE':'PARTAGER')+'</button>'
-        +'<button id="share-card-dl" style="flex:1;padding:13px;border-radius:10px;border:1px solid rgba(74,144,255,.4);background:rgba(74,144,255,.12);color:#cfe1ff;font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2.5px;cursor:pointer">⬇️ '+(_en?'DOWNLOAD':'TÉLÉCHARGER')+'</button>'
+        +'<button id="share-card-dl" style="flex:1;padding:13px;border-radius:10px;border:1px solid rgba(74,144,255,.4);background:rgba(74,144,255,.12);color:#cfe1ff;font-family:Bebas Neue,sans-serif;font-size:1rem;letter-spacing:2.5px;cursor:pointer">💾 '+(_en?'SAVE':'ENREGISTRER')+'</button>'
       +'</div>'
       +'<button id="share-card-close" style="background:transparent;border:none;color:#8aaccc;font-family:Rajdhani,sans-serif;font-size:.85rem;cursor:pointer;padding:6px 14px">'+(_en?'Close':'Fermer')+'</button>';
     document.body.appendChild(ov);
@@ -13548,34 +13567,20 @@ async function shareRunCard(runId){
       });
     }
 
-    // Téléchargement direct (l'URL reste valide jusqu'à fermeture de la fenêtre)
-    document.getElementById('share-card-dl').onclick=async function(){
-      // App native : <a download> n'enregistre rien dans la WebView → module Fichiers
-      if(_capNative() && window.Capacitor.Plugins.Filesystem){
-        try{
-          var b64=await _blobToB64(blob);
-          await window.Capacitor.Plugins.Filesystem.writeFile({path:file.name,data:b64,directory:'DOCUMENTS'});
-          showToast(_en?'📸 Saved to your Documents':'📸 Enregistrée dans tes Documents');
-        }catch(e){ showToast(_en?'⚠️ Save failed':'⚠️ Échec de l’enregistrement'); }
-        return;
-      }
-      var link=document.createElement('a');
-      link.download=file.name; link.href=imgUrl; link.click();
-      showToast(_en?'📸 Image downloaded!':'📸 Image téléchargée !');
-    };
-
-    // Partage natif — déclenché par CE clic (activation fraîche → OK Android Chrome)
-    document.getElementById('share-card-share').onclick=async function(){
-      // Niveau 1 : Web Share API AVEC le fichier image (iPhone + Chrome Android/PC)
+    // Helper commun : ouvre la feuille de partage native/web AVEC le fichier image.
+    // C'est par là que passe l'enregistrement dans la Galerie/Photos (« Enregistrer
+    // l'image » / « Save Image ») — seule voie fiable sans module galerie dédié dans
+    // la coque (la coque n'embarque que Partage + Fichiers, pas de plugin média).
+    async function _shareImage(){
+      // Niveau 1 : Web Share API AVEC fichier (iPhone + Chrome Android/PC)
       if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
         try{
           await navigator.share({title:shareTitle, text:shareText, files:[file]});
           _closeShareModal();
-          showToast(_en?'📸 Shared!':'📸 Partagé !');
-          return;
-        }catch(e){ if(e.name==='AbortError') return; /* sinon → fallback */ }
+          return true;
+        }catch(e){ if(e.name==='AbortError') return true; /* annulé = traité */ }
       }
-      // Niveau 1bis : APP NATIVE (Android) — Web Share absent de la WebView, on
+      // Niveau 1bis : APP NATIVE (Android) — Web Share absent de la WebView : on
       // écrit l'image en cache puis on ouvre la feuille de partage native.
       if(_capNative() && window.Capacitor.Plugins.Share && window.Capacitor.Plugins.Filesystem){
         try{
@@ -13583,13 +13588,33 @@ async function shareRunCard(runId){
           var w=await window.Capacitor.Plugins.Filesystem.writeFile({path:file.name,data:b64,directory:'CACHE'});
           await window.Capacitor.Plugins.Share.share({title:shareTitle, text:shareText, files:[w.uri]});
           _closeShareModal();
-          showToast(_en?'📸 Shared!':'📸 Partagé !');
         }catch(e){
           if(!(e && /cancel/i.test((e.message||'')+(e.errorMessage||''))))
             showToast(_en?'⚠️ Share unavailable':'⚠️ Partage indisponible');
         }
-        return;
+        return true;
       }
+      return false; // pas de partage de fichier (PC sans Web Share fichiers)
+    }
+
+    var _isMobile=_capNative() || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
+
+    // « Enregistrer » : sur mobile, on ouvre la feuille « Enregistrer l'image / Photos »
+    // → la photo atterrit dans la Galerie/Photos (trouvable). Sur PC : téléchargement.
+    document.getElementById('share-card-dl').onclick=async function(){
+      if(_isMobile){
+        showToast(_en?'📸 Tap “Save Image / Photos” to add it to your gallery':'📸 Choisis « Enregistrer l’image / Photos » pour l’ajouter à ta galerie');
+        if(await _shareImage()) return;
+      }
+      // PC / repli : téléchargement direct
+      var link=document.createElement('a');
+      link.download=file.name; link.href=imgUrl; link.click();
+      showToast(_en?'📸 Image downloaded!':'📸 Image téléchargée !');
+    };
+
+    // « Partager » — déclenché par CE clic (activation fraîche → OK Android Chrome)
+    document.getElementById('share-card-share').onclick=async function(){
+      if(await _shareImage()) return;
       // Niveau 2 : Web Share API SANS fichier (texte + lien) + téléchargement
       if(navigator.share){
         var dlLink=document.createElement('a');
@@ -13604,7 +13629,163 @@ async function shareRunCard(runId){
       link.download=file.name; link.href=imgUrl; link.click();
       showToast(_en?'📸 Image downloaded — share it manually!':'📸 Image téléchargée — partage-la manuellement !');
     };
-  },'image/png');
+  }
+}
+
+// Habille une photo du feed avec les stats de la course (façon Strava/Garmin) :
+// on dessine la photo dans un canvas à sa taille, puis on incruste — TOUT EN NOIR
+// avec un léger halo blanc pour rester lisible sur n'importe quelle photo — un
+// petit logo (hexagone + « SPEEDIX ») en haut à gauche et 4 stats en bas
+// (Distance, Temps, D+, Points). Réutilise _showImageShareSheet pour l'aperçu+partage.
+async function habillerPhoto(runId,photoIdx){
+  if(!currentUser) return;
+  var _en=(typeof SPEEDIX_LANG!=='undefined' && SPEEDIX_LANG==='en');
+  var lang=(typeof SPEEDIX_LANG!=='undefined')?SPEEDIX_LANG:'fr-FR';
+  try{
+    var {data:run}=await supabaseClient.from('runs').select('distance,time,elevation,points,photo,player_id').eq('id',runId).single();
+    if(!run){ showToast(_en?'Run not found':'Course introuvable'); return; }
+    var photos=[]; try{photos=run.photo?JSON.parse(run.photo):[];}catch(e){ if(run.photo) photos=[run.photo]; }
+    var src=photos[photoIdx];
+    if(!src){ showToast(_en?'Photo not found':'Photo introuvable'); return; }
+    showToast(_en?'✨ Generating…':'✨ Génération…');
+    // League du RP (affichage « L5 », « L10 », « Starter »…) via la table LEAGUES.
+    var leagueName='';
+    try{
+      var {data:pl}=await supabaseClient.from('players').select('league').eq('id',run.player_id).single();
+      if(pl && pl.league){
+        var lk=String(pl.league).toLowerCase();
+        if(typeof LEAGUE_DISPLAY!=='undefined' && LEAGUE_DISPLAY[lk]) leagueName=LEAGUE_DISPLAY[lk];
+        else if(typeof LEAGUES!=='undefined'){ var _f=LEAGUES.find(function(l){return l.key===lk;}); if(_f) leagueName=_f.name; }
+      }
+    }catch(e){}
+    var baseImg=new Image();
+    await new Promise(function(res,rej){ baseImg.onload=res; baseImg.onerror=function(){rej(new Error('img'));}; baseImg.src=src; });
+
+    // Canvas à la taille native de la photo (plafonné à 1080 de large pour garder
+    // un fichier raisonnable et un texte net). Les photos du feed sont déjà ≤1200.
+    var NW=baseImg.naturalWidth||baseImg.width, NH=baseImg.naturalHeight||baseImg.height;
+    var MAXW=1080;
+    var sc=NW>MAXW?MAXW/NW:1;
+    var W=Math.round(NW*sc), H=Math.round(NH*sc);
+    var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    var cx=cv.getContext('2d');
+    cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+    cx.drawImage(baseImg,0,0,W,H);
+
+    // ── Données de la course ─────────────────────────────────────────────
+    var km=run.distance||0, timeMin=run.time||0, elv=run.elevation||0, pts=run.points||0;
+    function pad(n){return n<10?'0'+n:''+n;}
+    var timeStr;
+    if(timeMin<=0) timeStr='—';
+    else { var totalSec=Math.round(timeMin*60); var h=Math.floor(totalSec/3600); var m=Math.floor((totalSec-h*3600)/60); var s=totalSec-h*3600-m*60;
+      timeStr=(h>0)?(h+'h '+pad(m)+'min'):(m+'min '+pad(s)+'s'); }
+    var metrics=[
+      {l:'Distance', v:(km).toLocaleString(lang)+' km'},
+      {l:_en?'Time':'Temps', v:timeStr},
+      {l:'D+', v:(elv).toLocaleString(lang)+' m'},
+      {l:'Points', v:(pts).toLocaleString(lang)}
+    ];
+
+    // S'assurer que Rajdhani (police arrondie de l'app) est prête avant de
+    // dessiner du texte, sinon le canvas retombe sur la police système.
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+
+    // Tailles proportionnelles à la largeur de la photo — compactes (façon Strava).
+    var margin=Math.round(W*0.05);
+    var valueFont=Math.max(15,Math.round(W/19));
+    var labelFont=Math.max(10,Math.round(valueFont*0.46));
+    var brandFont=Math.max(15,Math.round(W/16));
+
+    // Texte BLANC + ombre sombre diffuse : reste lisible sur fond clair comme
+    // sur fond foncé, sans pavé ni dégradé (look épuré type Strava/Garmin).
+    function halo(on){
+      if(on){ cx.shadowColor='rgba(0,0,0,.55)'; cx.shadowBlur=Math.round(valueFont*0.55); cx.shadowOffsetX=0; cx.shadowOffsetY=Math.round(valueFont*0.05); }
+      else { cx.shadowColor='transparent'; cx.shadowBlur=0; cx.shadowOffsetX=0; cx.shadowOffsetY=0; }
+    }
+
+    // ── Stats en bas, grille 2×2 (Distance/Temps puis D+/Points) ──────────
+    var col1=margin, col2=Math.round(W*0.52);
+    var labelGap=Math.round(valueFont*0.90);  // libellé au-dessus de sa valeur, petit espace pour bien le détacher
+    var rowH=Math.round(valueFont*1.55);       // espacement haut/bas resserré, avec un peu d'air entre les 2 lignes
+    var bottomPad=Math.round(W*0.06);
+    var v2=H-bottomPad;     // valeurs ligne du bas (D+, Points)
+    var v1=v2-rowH;         // valeurs ligne du haut (Distance, Temps)
+    cx.textAlign='left'; cx.textBaseline='alphabetic';
+    function cell(metric,x,vb){
+      halo(true);
+      cx.fillStyle='#fff';
+      // Libellé : petit, légèrement espacé, AU-DESSUS de la valeur
+      cx.font='600 '+labelFont+'px Rajdhani, sans-serif';
+      cx.letterSpacing=Math.max(1,Math.round(labelFont*0.08))+'px';
+      cx.fillText((metric.l||'').toUpperCase(), x, vb-labelGap);
+      cx.letterSpacing='0px';
+      // Valeur : grasse, arrondie (Rajdhani)
+      cx.font='700 '+valueFont+'px Rajdhani, sans-serif';
+      cx.fillText(metric.v, x, vb);
+      halo(false);
+    }
+    cell(metrics[0],col1,v1);
+    cell(metrics[1],col2,v1);
+    cell(metrics[2],col1,v2);
+    cell(metrics[3],col2,v2);
+
+    // ── Logo officiel (hexagone + 3 griffes) + « SPEEDIX » au-dessus des données ─
+    // On charge le vrai logo (PNG blanc détouré, fond transparent) et on le pose
+    // tel quel → fidèle au pixel. Repli sur un hexagone tracé si le PNG manque.
+    var brandH=Math.round(brandFont*1.6);                // hauteur du logo (un peu plus petit que le texte)
+    var dataTop=v1-labelGap-Math.round(labelFont*0.9);   // haut du libellé de la 1re ligne
+    var hy=Math.max(margin+brandH/2, dataTop-brandH/2-Math.round(brandFont*0.3));
+    var lx=margin;
+    var logoImg=new Image(); var logoOk=true;
+    try{
+      await new Promise(function(res,rej){ logoImg.onload=res; logoImg.onerror=function(){rej(new Error('logo'));}; logoImg.src='logo-mark-white.png'; });
+    }catch(e){ logoOk=false; }
+    halo(true);
+    var wordX;
+    if(logoOk && logoImg.naturalWidth){
+      var brandW=Math.round(brandH*(logoImg.naturalWidth/logoImg.naturalHeight));
+      cx.drawImage(logoImg, lx, Math.round(hy-brandH/2), brandW, brandH);
+      wordX=lx+brandW+Math.round(brandFont*0.4);
+    } else {
+      // Repli : hexagone tracé simple (si le PNG n'a pas chargé)
+      var hr=brandH*0.5, hx=lx+hr;
+      cx.lineJoin='round'; cx.lineCap='round';
+      cx.beginPath();
+      for(var i=0;i<6;i++){ var a=Math.PI/180*(60*i-90); var px=hx+hr*0.87*Math.cos(a), py=hy+hr*Math.sin(a); if(i===0)cx.moveTo(px,py); else cx.lineTo(px,py); }
+      cx.closePath();
+      cx.lineWidth=Math.max(2,Math.round(brandFont*0.1)); cx.strokeStyle='#fff'; cx.stroke();
+      wordX=hx+hr*0.87+Math.round(brandFont*0.45);
+    }
+    // Mot-marque « SPEEDIX » : Rajdhani 700, lettres espacées → sportif & arrondi.
+    // Bas du texte aligné sur le coin bas-droite de l'hexagone (vertex à hy+0.25·H).
+    cx.fillStyle='#fff'; cx.textAlign='left'; cx.textBaseline='alphabetic';
+    cx.font='700 '+brandFont+'px Rajdhani, sans-serif';
+    cx.letterSpacing=Math.max(1,Math.round(brandFont*0.1))+'px';
+    cx.fillText('SPEEDIX', wordX, Math.round(hy+brandH*0.25));
+    cx.letterSpacing='0px';
+    halo(false);
+
+    // ── League du RP, en haut à gauche (l'œil lit de gauche à droite) ─────
+    if(leagueName){
+      var lgFont=Math.round(valueFont*1.12);   // un poil plus grand que les stats
+      cx.textAlign='left'; cx.textBaseline='alphabetic';
+      halo(true);
+      cx.fillStyle='#fff';
+      cx.font='700 '+lgFont+'px Rajdhani, sans-serif';
+      cx.letterSpacing=Math.max(1,Math.round(lgFont*0.05))+'px';
+      cx.fillText(leagueName, margin, margin+Math.round(lgFont*0.92));
+      cx.letterSpacing='0px';
+      halo(false);
+    }
+
+    cv.toBlob(function(blob){
+      _showImageShareSheet(blob,'speedix-photo-'+km+'km.png',
+        (km).toLocaleString(lang)+' km · '+(pts).toLocaleString(lang)+' pts · SPEEDIX League — speedixleague.com',
+        'SPEEDIX League');
+    },'image/png');
+  }catch(e){
+    showToast(_en?'⚠️ Generation failed':'⚠️ Échec de la génération');
+  }
 }
 
 // Dessiner les mini-cartes polyline dans le feed
