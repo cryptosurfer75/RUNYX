@@ -22534,7 +22534,12 @@ async function editSettingsField(field){
   switch(field){
     case 'username':
       label='Nouveau nom de RP'; placeholder='SpeedyJoe'; current=p.username||'';
-      validate=function(v){return v && v.length>=3 && v.length<=12 ? null : 'Entre 3 et 12 caractères';};
+      // Même règle qu'à l'inscription : pas d'emoji ni de caractère exotique.
+      validate=function(v){
+        if(!v || v.length<3 || v.length>12) return 'Entre 3 et 12 caractères';
+        if(!/^[a-zA-Z0-9_-]+$/.test(v)) return 'Lettres, chiffres, tirets et underscores uniquement';
+        return null;
+      };
       break;
     case 'nat':
       // Sélection contrôlée parmi la liste officielle (même que l'inscription).
