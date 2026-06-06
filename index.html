@@ -23664,10 +23664,10 @@ function quizzPrevPalierAtOrBelow(streak){
 
 // État du verrou d'un RP pour l'affichage du classement quizz :
 //   'none'    → n'a jamais verrouillé, OU à découvert depuis +2 jours → aucun symbole
-//   'covered' → son verrou couvre encore sa série en cours → 🔐 (protégé)
+//   'covered' → son verrou couvre encore sa série en cours → 🔒 (protégé)
 //   'exposed' → vient de franchir un palier sans le reverrouiller → 😨 (à découvert)
 // Le 😨 est une ALERTE COURTE : il ne s'affiche QUE le jour du franchissement du palier
-// + le lendemain (2 jours), puis disparaît. Verrou J60 → reste 🔐 jusqu'à J79, passe 😨
+// + le lendemain (2 jours), puis disparaît. Verrou J60 → reste 🔒 jusqu'à J79, passe 😨
 // à J80 et J81, puis plus rien dès J82 (jusqu'au prochain palier franchi à J100).
 function quizzLockState(lockedAt,streak){
   lockedAt=lockedAt||0; streak=streak||0;
@@ -24393,11 +24393,11 @@ function _renderQuizzRanking(){
     var cellCore='background:'+bg+';border-top:'+border+';border-bottom:'+border+';padding:.5rem .4rem';
     var first=cellCore+';border-left:'+border+';border-top-left-radius:8px;border-bottom-left-radius:8px';
     var last=cellCore+';border-right:'+border+';border-top-right-radius:8px;border-bottom-right-radius:8px';
-    // Symbole de verrou : 🔐 si le verrou couvre encore la série, 😨 si le RP a
+    // Symbole de verrou : 🔒 si le verrou couvre encore la série, 😨 si le RP a
     // franchi le palier suivant sans reverrouiller (à découvert), rien sinon.
     var lockState=quizzLockState(p.quizz_locked_at,p.quizz_streak);
     var lockBadge = lockState==='covered'
-      ? ' <span title="Série protégée par un verrou" style="font-size:.72em;opacity:.85;vertical-align:baseline">🔐</span>'
+      ? ' <span title="Série protégée par un verrou" style="font-size:.72em;opacity:.85;vertical-align:baseline">🔒</span>'
       : lockState==='exposed'
         ? ' <span title="A dépassé son verrou sans le renouveler — série à découvert" style="font-size:.72em;opacity:.85;vertical-align:baseline">😨</span>'
         : '';
