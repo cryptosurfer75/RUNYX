@@ -919,7 +919,10 @@ tr.skin-bruxelles{
     padding:14px 16px;cursor:pointer;color:var(--text);
     font-family:'Rajdhani';font-weight:600;font-size:clamp(15px,2vw,20px);
     text-align:left;transition:transform .12s, border-color .15s, background .15s}
-  #cr-app .ans:hover{border-color:var(--blue);background:var(--bg3);transform:translateY(-1px)}
+  #cr-app .ans:focus,#cr-app .ans:focus-visible{outline:none}   /* pas de contour bleu de focus après clic */
+  @media (hover:hover) and (pointer:fine){                       /* survol uniquement à la souris (pas de "sticky hover" tactile) */
+    #cr-app .ans:hover{border-color:var(--blue);background:var(--bg3);transform:translateY(-1px)}
+  }
   #cr-app .ans .key{flex:0 0 34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;
     font-family:'Bebas Neue';font-size:22px;background:rgba(74,144,255,.15);color:var(--cyan)}
   #cr-app .ans .lab{flex:1;text-align:center}
