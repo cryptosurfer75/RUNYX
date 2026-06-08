@@ -13980,7 +13980,8 @@ function _showImageShareSheet(blob,fileName,shareText,shareTitle){
 }
 
 // Habille une photo du feed avec les stats de la course (façon Strava/Garmin) :
-// on dessine la photo dans un canvas à sa taille, puis on incruste — TOUT EN NOIR
+// on recadre la photo dans un canvas CARRÉ 1:1 (format universel, ne déborde
+// jamais d'une publi FB/Insta/Strava), puis on incruste — TOUT EN NOIR
 // avec un léger halo blanc pour rester lisible sur n'importe quelle photo — un
 // petit logo (hexagone + « SPEEDIX ») en haut à gauche et 4 stats en bas
 // (Distance, Temps, D+, Points). Réutilise _showImageShareSheet pour l'aperçu+partage.
@@ -14008,16 +14009,24 @@ async function habillerPhoto(runId,photoIdx){
     var baseImg=new Image();
     await new Promise(function(res,rej){ baseImg.onload=res; baseImg.onerror=function(){rej(new Error('img'));}; baseImg.src=src; });
 
-    // Canvas à la taille native de la photo (plafonné à 1080 de large pour garder
-    // un fichier raisonnable et un texte net). Les photos du feed sont déjà ≤1200.
+    // Canvas CARRÉ 1:1 (format universel FB / Instagram / Strava : la photo ne
+    // déborde jamais d'une publication et les stats restent toujours visibles).
+    // On recadre la photo en « cover » : elle remplit tout le carré et on rogne le
+    // surplus — les côtés si elle est en paysage, le haut/bas si elle est en
+    // portrait. Léger biais vers le haut en portrait pour protéger les visages
+    // (les selfies de course ont la tête en haut et le sol en bas = jetable).
     var NW=baseImg.naturalWidth||baseImg.width, NH=baseImg.naturalHeight||baseImg.height;
-    var MAXW=1080;
-    var sc=NW>MAXW?MAXW/NW:1;
-    var W=Math.round(NW*sc), H=Math.round(NH*sc);
+    var side=Math.min(1080, Math.max(NW,NH));   // carré net, sans suréchantillonner au-delà de la source
+    var W=side, H=side;
     var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     var cx=cv.getContext('2d');
     cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
-    cx.drawImage(baseImg,0,0,W,H);
+    // « cover » : on agrandit la photo jusqu'à couvrir le carré, on centre, on rogne le débord.
+    var coverSc=side/Math.min(NW,NH);
+    var dw=NW*coverSc, dh=NH*coverSc;
+    var dx=(side-dw)*0.5;          // centré horizontalement (rogne paysage à gauche/droite)
+    var dy=(side-dh)*0.42;         // portrait : garde un peu plus de haut que de bas (visages)
+    cx.drawImage(baseImg, dx, dy, dw, dh);
 
     // ── Données de la course ─────────────────────────────────────────────
     var km=run.distance||0, timeMin=run.time||0, elv=run.elevation||0, pts=run.points||0;
