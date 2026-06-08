@@ -27213,22 +27213,27 @@ function getStats(){ const u=CU();
     streak:u.cashrun_streak||0,bestStreak:u.cashrun_best_streak||0,fullLadders:u.cashrun_jackpots||0,
     gamesPlayed:u.cashrun_games||0,qAsked:u.cashrun_q_asked||0,qGood:u.cashrun_q_good||0}; }
 function dayStartMs(){ const d=nowDate(); d.setHours(0,0,0,0); return d.getTime(); }
+// Date du jour en LOCAL (YYYY-MM-DD). NE JAMAIS utiliser toISOString pour ça : il donne la date
+// UTC → pour un fuseau positif (Paris), minuit local = la veille en UTC → la date partait de -1
+// jour et cassait les séries à tort (bug réparé le 2026-06-09).
+function crDayStr(d){ const x=d||nowDate(); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+function crDayMs(str){ if(!str) return 0; const a=String(str).slice(0,10).split('-'); return new Date(+a[0],+a[1]-1,+a[2]).getTime(); } // minuit LOCAL de la date stockée
 function bumpStreak(){                              // appelé au lancement d'une partie
   const u=CU(), today=dayStartMs();
-  const last = u.cashrun_last_day ? new Date(u.cashrun_last_day).setHours(0,0,0,0) : 0;
+  const last = crDayMs(u.cashrun_last_day);
   const diff = last ? Math.round((today-last)/86400000) : null;
   let st = u.cashrun_streak||0;
   if(diff===0){}                                   // déjà joué aujourd'hui : rien
   else if(diff===1) st++;                           // hier → on continue
   else st=1;                                        // 1ère partie ou jour sauté → repart à 1
   const best=Math.max(u.cashrun_best_streak||0, st);
-  const lastDayIso=new Date(today).toISOString().slice(0,10);
+  const lastDayIso=crDayStr(nowDate());             // date LOCALE (pas UTC)
   u.cashrun_streak=st; u.cashrun_best_streak=best; u.cashrun_last_day=lastDayIso;
   crPatch({cashrun_streak:st, cashrun_best_streak:best, cashrun_last_day:lastDayIso});
 }
 function currentStreak(){                           // série affichée (cassée si dernier jour > hier)
   const u=CU(); if(!u.cashrun_last_day) return 0;
-  const last=new Date(u.cashrun_last_day).setHours(0,0,0,0);
+  const last=crDayMs(u.cashrun_last_day);
   return Math.round((dayStartMs()-last)/86400000)<=1 ? (u.cashrun_streak||0) : 0;
 }
 // Fin de partie : on crédite le VRAI solde (walletCredit) puis on met à jour les agrégats Cash Run.
