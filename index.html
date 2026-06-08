@@ -27255,21 +27255,26 @@ async function leaderboard(mode){
   const general = (mode==='general');
   const col = general ? 'cashrun_total_rpc' : 'cashrun_month_rpc';
   const jk  = general ? 'cashrun_jackpots'  : 'cashrun_month_jackpots';
+  const ref = general ? 'cashrun_ref_rank_g' : 'cashrun_ref_rank_m';  // position figée à minuit (photo serveur)
   let list=[];
-  try{
-    // Tri principal : RPC décroissant. Départage des égalités (validé 2026-06-08) :
-    //   1) à RPC égal, MOINS de parties jouées passe devant (plus efficace) → cashrun_games croissant
-    //   2) si toujours égal, PLUS de séries parfaites (jackpots = échelles complètes) → jk décroissant
-    let q=supabaseClient.from('players').select('id,username,cashrun_games,'+col+','+jk)
+  // Tri principal : RPC décroissant. Départage des égalités (validé 2026-06-08) :
+  //   1) à RPC égal, MOINS de parties jouées passe devant (plus efficace) → cashrun_games croissant
+  //   2) si toujours égal, PLUS de séries parfaites (jackpots = échelles complètes) → jk décroissant
+  function buildQ(withRef){
+    let q=supabaseClient.from('players').select('id,username,cashrun_games,'+col+','+jk+(withRef?(','+ref):''))
       .order(col,{ascending:false})
       .order('cashrun_games',{ascending:true})
       .order(jk,{ascending:false})
       .limit(200);
     if(general) q=q.gt('cashrun_games',0);                // général : tous ceux qui ont DÉJÀ JOUÉ (même 0 RPC)
     else        q=q.eq('cashrun_month',crMonthKey());     // mensuel : tous ceux qui ont JOUÉ ce mois-ci (même 0 RPC)
-    const {data}=await q;
+    return q;
+  }
+  try{
+    let {data,error}=await buildQ(true);
+    if(error){ const r2=await buildQ(false); data=r2.data; }   // colonnes ref pas encore créées → repli sans flèche
     list=(data||[])
-      .map(p=>({id:p.id, name:p.username||'RP', rpc:p[col]||0, full:p[jk]||0, games:p.cashrun_games||0, me:(CU().id===p.id)}));
+      .map(p=>({id:p.id, name:p.username||'RP', rpc:p[col]||0, full:p[jk]||0, games:p.cashrun_games||0, refRank:(p[ref]!=null?p[ref]:null), me:(CU().id===p.id)}));
   }catch(e){ console.warn('cashrun leaderboard fail',e); }
   return list;
 }
@@ -27564,13 +27569,12 @@ function openStats(){ paintStats(); show('s-stats'); }
 function tile(v,sub,label,cls){
   return `<div class="tile ${cls||''}"><div class="v">${v}${sub?` <small>${sub}</small>`:''}</div><div class="l">${label}</div></div>`;
 }
-// ---- Tendance classement (flèches ▲/▼) : la référence est la PRÉCÉDENTE consultation (par mode),
-//      stockée en local. La flèche montre donc le mouvement depuis la dernière fois que tu as ouvert
-//      le classement (ex. tu regardes avant ta partie = 15e, tu joues, tu rouvres = 8e → ▲7). ----
-function crReadTrend(mode){ try{ return JSON.parse(localStorage.getItem('cr_trend_'+mode)||'null'); }catch(_){ return null; } }
-function crWriteTrend(mode,ranks){ try{ localStorage.setItem('cr_trend_'+mode,JSON.stringify({ranks:ranks})); }catch(_){ } }
-// prev=null → nouveau venu / 1re consultation : rien. Pas de mouvement (d=0) : rien non plus
-// (on n'affiche pas de "=" partout, ça surcharge pour rien). Sinon ▲ places gagnées / ▼ perdues.
+// ---- Tendance classement (flèches ▲/▼) : la référence est la position de chaque RP figée à
+//      MINUIT (heure de Paris), via une photo quotidienne calculée côté serveur (colonnes
+//      cashrun_ref_rank_*). La flèche = position de référence − position actuelle → mouvement net
+//      du RP dans la journée, IDENTIQUE pour tous les joueurs, remis à zéro chaque nuit. ----
+// prev=null → pas de référence (nouveau venu / hors photo) : rien. d=0 (revenu à sa place) : rien non plus
+// (pas de "=" partout, ça surcharge pour rien). Sinon ▲ places gagnées / ▼ places perdues.
 function crTrendHtml(prev,cur){ if(prev==null) return ''; var d=prev-cur; if(d>0) return '<span class="up">▲'+d+'</span>'; if(d<0) return '<span class="dn">▼'+(-d)+'</span>'; return ''; }
 
 async function paintStats(){
@@ -27597,20 +27601,15 @@ async function paintStats(){
   const list=await leaderboard(lbMode), wrap=$('st-list'); wrap.innerHTML='';
   // Référence de tendance du jour (par mode). 1re ouverture du jour = on enregistre les
   // rangs actuels (aucune flèche) ; ensuite on affiche le delta de place vs cette référence.
-  const curRanks={};
-  list.forEach((r,i)=>{ if(r.id!=null) curRanks[r.id]=i+1; });
-  // Référence = positions lors de ta consultation précédente (par mode). La flèche = mouvement depuis.
-  const snap=crReadTrend(lbMode);
-  const baseline=(snap && snap.ranks) ? snap.ranks : null;
   list.forEach((r,i)=>{
     const row=document.createElement('div');
     row.className='lbrow'+(r.me?' me':'')+(i<3?' top'+(i+1):'');
     const rk = i<3 ? ['🥇','🥈','🥉'][i] : (i+1);
-    const prev = (baseline && r.id!=null && baseline[r.id]!=null) ? baseline[r.id] : null;
+    // Flèche = position de référence (photo de minuit, serveur) − position actuelle (i+1).
+    const prev = (r.refRank!=null) ? r.refRank : null;
     row.innerHTML=`<span class="rk">${rk}</span><span class="nm">${r.name}</span><span class="gm">${fmt(r.games)}</span><span class="tr">${r.full}</span><span class="pts">${fmt(r.rpc)}</span><span class="tnd">${crTrendHtml(prev,i+1)}</span>`;
     wrap.appendChild(row);
   });
-  crWriteTrend(lbMode,curRanks);   // mémorise les positions actuelles → référence de la prochaine consultation
   if(general){                                   // Général : on centre sur ta ligne (loin dans la liste)
     const me=wrap.querySelector('.lbrow.me');
     if(me) wrap.scrollTop = Math.max(0, me.offsetTop - wrap.clientHeight/2);
