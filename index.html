@@ -27265,6 +27265,7 @@ async function leaderboard(mode){
       .order(col,{ascending:false})
       .order('cashrun_games',{ascending:true})
       .order(jk,{ascending:false})
+      .order('id',{ascending:true})   // départage final STABLE (id) → ordre identique à la photo serveur, évite les fausses flèches sur les ex-aequo
       .limit(200);
     if(general) q=q.gt('cashrun_games',0);                // général : tous ceux qui ont DÉJÀ JOUÉ (même 0 RPC)
     else        q=q.eq('cashrun_month',crMonthKey());     // mensuel : tous ceux qui ont JOUÉ ce mois-ci (même 0 RPC)
