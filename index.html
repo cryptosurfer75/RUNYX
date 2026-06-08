@@ -27147,12 +27147,12 @@ async function leaderboard(mode){
   const jk  = general ? 'cashrun_jackpots'  : 'cashrun_month_jackpots';
   let list=[];
   try{
-    let q=supabaseClient.from('players').select('id,username,'+col+','+jk)
-      .order(col,{ascending:false}).limit(100);
-    if(!general) q=q.eq('cashrun_month',crMonthKey());   // mensuel : uniquement le mois courant
+    let q=supabaseClient.from('players').select('id,username,cashrun_games,'+col+','+jk)
+      .order(col,{ascending:false}).limit(200);
+    if(general) q=q.gt('cashrun_games',0);                // général : tous ceux qui ont DÉJÀ JOUÉ (même 0 RPC)
+    else        q=q.eq('cashrun_month',crMonthKey());     // mensuel : tous ceux qui ont JOUÉ ce mois-ci (même 0 RPC)
     const {data}=await q;
     list=(data||[])
-      .filter(p=>(p[col]||0)>0)                            // on n'affiche que ceux qui ont déjà gagné
       .map(p=>({name:p.username||'RP', rpc:p[col]||0, full:p[jk]||0, me:(CU().id===p.id)}));
   }catch(e){ console.warn('cashrun leaderboard fail',e); }
   return list;
