@@ -6063,7 +6063,10 @@ async function doRegister(){
     var parrainUuid=null;
     var codeMsgEl=document.getElementById('code-msg');
     if(codeMsgEl&&codeMsgEl.dataset.parrainUuid) parrainUuid=codeMsgEl.dataset.parrainUuid;
-    var regAv=window._regAvatar||null;
+    // Si le RP n'a pas choisi d'avatar pendant l'inscription, on lui en attribue
+    // un par défaut dérivé de son pseudo (jamais NULL → plus de silhouette grise
+    // dans le classement). Même logique que le filet de onLoginSuccess.
+    var regAv=window._regAvatar||('https://api.dicebear.com/9.x/avataaars/svg?seed='+encodeURIComponent(username));
     // Attribue un rtw_id séquentiel dès l'inscription (sinon hs6 affiche "…"
     // tant que l'utilisateur n'a pas cliqué ENTRER → onLoginSuccess qui le setait)
     var newRtwId=null;
