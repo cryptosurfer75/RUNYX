@@ -27511,6 +27511,18 @@ async function recordWinnings(rpc,nyx,perfect,asked,good){
   if((rpc>0||nyx>0) && typeof walletCredit==='function'){
     await walletCredit(rpc, nyx, 'Cash Run');       // crédite rpc_balance + nyx_balance + wallet_tx
   }
+  // ⚠️ ANTI-ÉCRASEMENT (bug Laura Q-Runner 2026-06-09) : cette fonction fait un
+  // read-modify-write. Si la mémoire (currentUser) avait perdu les colonnes cashrun_*
+  // (ex. rechargement des joueurs sans ces colonnes entre l'ouverture et la fin de partie),
+  // on réécrirait TOUT comme une 1re partie (games→1, total→dernier gain, série→1).
+  // On RELIT donc toujours les vraies valeurs en base juste avant de calculer → on
+  // additionne sur la vérité DB, jamais sur une mémoire potentiellement vide.
+  try{
+    const {data:fresh}=await supabaseClient.from('players')
+      .select('cashrun_total_rpc,cashrun_month_rpc,cashrun_month,cashrun_jackpots,cashrun_month_jackpots,cashrun_games,cashrun_q_asked,cashrun_q_good')
+      .eq('id',u.id).maybeSingle();
+    if(fresh) Object.assign(u, fresh);
+  }catch(e){ console.warn('recordWinnings refresh fail',e); }
   const sameMonth=(u.cashrun_month===mk);           // reset auto au changement de mois
   const fields={
     cashrun_total_rpc:(u.cashrun_total_rpc||0)+rpc,
