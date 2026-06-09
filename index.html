@@ -429,6 +429,55 @@ tr.skin-bruxelles{
 }
 
 /* ============================================================
+   SKIN — ODYSSEA (course rose 10 km, dimanche)
+   Même mécanique qu'Or des Incas / Bruxelles. Le motif rose étant
+   très clair, on pose un voile prune/rose sombre PAR-DESSUS l'image
+   (listé en premier) pour garder le texte blanc/doré lisible tout en
+   conservant l'identité rose. Accents de contour en rose (ruban Odyssea).
+============================================================ */
+.skin-odyssea{
+  background-image:
+    linear-gradient(rgba(58,10,42,.42),rgba(40,6,30,.54)),
+    url('skin-odyssea-pc-v2.jpg') !important;
+  background-size:cover,cover !important;
+  background-position:center,center !important;
+  background-repeat:no-repeat,no-repeat !important;
+}
+tr.skin-odyssea{
+  background-image:
+    linear-gradient(rgba(58,10,42,.62),rgba(40,6,30,.72)),
+    url('skin-odyssea.jpg') !important;
+  background-size:cover,cover !important;
+  background-position:center,center !important;
+  background-repeat:no-repeat,no-repeat !important;
+  box-shadow:inset 0 0 0 1.5px rgba(255,120,190,.6) !important;
+}
+/* Filigrane "SL" doré masqué (sinon il ressort sur le fond rose). */
+.skin-odyssea .pc-watermark-sl{ display:none !important; }
+.skin-odyssea button,
+.skin-odyssea [data-tuto-target="parrainage"]{
+  background:rgba(40,10,32,.72) !important;
+}
+.skin-odyssea .pc-avatar-frame,
+.skin-odyssea [data-tuto-target="feed"]{
+  background:#160510 !important;
+}
+.skin-odyssea [data-tuto-target="pc"],
+.skin-odyssea [data-tuto-target="races"],
+.skin-odyssea [data-tuto-target="league"],
+.skin-odyssea [data-tuto-target="lands"],
+.skin-odyssea div:has(> div > #stat-cagnotte-rpc),
+.skin-odyssea div:has(> div > #stat-cagnotte-nyx){
+  border:1.5px solid rgba(255,120,190,.5) !important;
+}
+.skin-odyssea [data-tuto-target="pc"]:hover,
+.skin-odyssea [data-tuto-target="races"]:hover,
+.skin-odyssea [data-tuto-target="league"]:hover,
+.skin-odyssea [data-tuto-target="lands"]:hover{
+  border-color:rgba(255,120,190,.95) !important;
+}
+
+/* ============================================================
    LEAGUE LEVELS
 ============================================================ */
 .league-nav{display:flex;flex-direction:column;gap:.3rem}
@@ -9483,7 +9532,7 @@ async function renderMyChallenges(){
     var {data:unlocked}=await supabaseClient.from('player_badges').select('badge_id,earned_at').eq('player_id',targetUuid).order('earned_at',{ascending:false});
     var unlockedMap={};
     (unlocked||[]).forEach(function(u){unlockedMap[u.badge_id]=u.earned_at;});
-    var today=new Date().toISOString().slice(0,10);
+    var today=getParisTodayStr();
     var isOwn=!vp;
     // Sur la PC d'un autre RP : on masque le bandeau (inscriptions = localStorage perso)
     if(!isOwn){ block.style.display='none'; return; }
@@ -10350,7 +10399,7 @@ async function showLandDetail(landId){
       if(_rentedDate>_firstOfMonth) _cutoffMonth=_rentedDate;
     }
     var _cutoffTotal=land.rented_at?new Date(land.rented_at):new Date('2000-01-01');
-    var _cutoffTotalStr=_cutoffTotal.toISOString().slice(0,10);
+    var _cutoffTotalStr=parisDayStr(_cutoffTotal);
     var _passResp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_cutoffTotalStr+'&select=passage_date,rpc_earned',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json','Prefer':'count=exact'}
     });
@@ -10358,7 +10407,7 @@ async function showLandDetail(landId){
     if(Array.isArray(_passList)){
       nbPassagesTotal=_passList.length;
       revenueTotal=_passList.reduce(function(s,p){return s+(p.rpc_earned||0);},0);
-      var _monthCutStr=_cutoffMonth.toISOString().slice(0,10);
+      var _monthCutStr=parisDayStr(_cutoffMonth);
       _passList.forEach(function(p){
         if(p.passage_date>=_monthCutStr){
           nbPassages++;
@@ -10531,7 +10580,7 @@ async function showLandPassersList(landId, mode){
         if(_rentedDate>_firstOfMonth) _cutoff=_rentedDate;
       }
     }
-    var _cutoffStr=_cutoff.toISOString().slice(0,10);
+    var _cutoffStr=parisDayStr(_cutoff);
     var _resp=await window.fetch(supabaseUrl+'/rest/v1/land_passages?land_id=eq.'+encodeURIComponent(landId)+'&passage_date=gte.'+_cutoffStr+'&select=player_id',{
       headers:{'apikey':supabaseKey,'Authorization':'Bearer '+supabaseKey,'Accept':'application/json'}
     });
@@ -16358,6 +16407,13 @@ function showToast(msg){
 function getParisDate(){
   return new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
 }
+// Date d'un instant donné formatée en jour de Paris (YYYY-MM-DD). À utiliser pour
+// comparer/filtrer avec passage_date (écrit en heure de Paris) — JAMAIS toISOString
+// qui donne le jour UTC et décale d'un jour autour de minuit (cf bug fuseau 2026-06-09).
+function parisDayStr(d){
+  var p=new Date((d||new Date()).toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+  return p.getFullYear()+'-'+String(p.getMonth()+1).padStart(2,'0')+'-'+String(p.getDate()).padStart(2,'0');
+}
 function getParisTodayStr(){
   var d=getParisDate();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -20792,7 +20848,7 @@ async function renderChallenges(){
   var nbUnlocked=Object.keys(unlockedMap).length;
   var nbTotal=_badgesCatalog.length;
   if(summary) summary.textContent=nbUnlocked+' / '+nbTotal+' gagnés';
-  var _today=new Date().toISOString().slice(0,10);
+  var _today=getParisTodayStr();
   // Detecte s'il y a au moins un challenge (event_run) actif pour faire "briller" le label
   var _hasActiveChallenge=_badgesCatalog.some(function(b){
     return b.threshold_type==='event_run' && !unlockedMap[b.id]
@@ -20875,7 +20931,7 @@ async function renderChallenges(){
       progressTxt='Gagné le '+d.toLocaleDateString(SPEEDIX_LANG,{day:'2-digit',month:'short'});
     } else if(isEvent){
       // Badge événementiel : bandeau date + bouton Participer si à venir
-      var today=new Date().toISOString().slice(0,10);
+      var today=getParisTodayStr();
       var startDay=b.event_date||'';
       var endDay=b.event_date_end||b.event_date||'';
       var status='upcoming';
@@ -21012,7 +21068,7 @@ function _markChallengesAsSeen(ids){
 async function updateChallengeNavBadge(){
   if(!currentUser) return;
   try {
-    var today=new Date().toISOString().slice(0,10);
+    var today=getParisTodayStr();
     // 1. Catalogue (cache si déjà chargé)
     if(!_badgesCatalog){
       var {data:cat}=await supabaseClient.from('badges').select('*').order('sort_order');
@@ -21107,7 +21163,7 @@ function switchChallengesTab(tab){
     if(collabWrap) collabWrap.style.display='none';
     // events / defis : marquage Events si onglet events
     if(tab==='events'){
-      var today=new Date().toISOString().slice(0,10);
+      var today=getParisTodayStr();
       var activeIds=(_badgesCatalog||[]).filter(function(b){
         return b.threshold_type==='event_run'
           && b.event_date && (b.event_date_end || b.event_date) >= today;
@@ -22833,7 +22889,8 @@ function _renderSettingsAvailability(p){
 // L'image du skin est posée par la classe CSS skin-<id> (déjà définie pour or-des-incas).
 var SKIN_CATALOG = {
   'or-des-incas': { name: 'OR DES INCAS', price: 10000 },
-  'bruxelles':    { name: '20 KM DE BRUXELLES', price: 10000 }
+  'bruxelles':    { name: '20 KM DE BRUXELLES', price: 10000 },
+  'odyssea':      { name: 'ODYSSEA', price: 10000 }
 };
 
 // Section "Mes Skins" : liste tous les skins du RP (achetés + en cours d'éligibilité).
