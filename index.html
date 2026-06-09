@@ -23678,8 +23678,117 @@ if ('serviceWorker' in navigator) {
 // ====================== CASH RUN (remplace l'ancien quizz, 2026-06-08) ======================
 (function(){
 
-// ====================== QUESTIONS (un seul ensemble, 3 catégories) ======================
-// Facile / Modérée / Compliquée — la difficulté monte avec l'échelle de gains.
+// ====================== QUESTIONS (un seul ensemble, 4 catégories) ======================
+// Très facile / Facile / Modérée / Compliquée — la difficulté monte avec l'échelle de gains.
+
+// TRÈS FACILE — réservées aux 3 premiers paliers (niveau 0). Questions triviales de
+// culture sportive : tout le monde doit pouvoir répondre. Ajoutées 2026-06-09.
+const Q_TRES_FACILE = [
+  {cat:'foot', q:"Quel sport joue-t-on avec les pieds et un ballon rond ?", a:["Le basket","Le football","Le tennis","Le golf"], q_en:"Which sport is played with the feet and a round ball?", a_en:["Basketball","Football","Tennis","Golf"], c:1},
+  {cat:'foot', q:"Qui empêche le ballon d'entrer dans le but au football ?", a:["L'arbitre","Le gardien","Le supporter","Le speaker"], q_en:"Who stops the ball from entering the goal in football?", a_en:["The referee","The goalkeeper","The fan","The announcer"], c:1},
+  {cat:'foot', q:"Quel pays a gagné la Coupe du Monde de football 2018 ?", a:["Croatie","France","Brésil","Allemagne"], q_en:"Which country won the 2018 football World Cup?", a_en:["Croatia","France","Brazil","Germany"], c:1},
+  {cat:'foot', q:"De quelle couleur est généralement la pelouse d'un terrain de foot ?", a:["Bleue","Verte","Rouge","Jaune"], q_en:"What colour is a football pitch usually?", a_en:["Blue","Green","Red","Yellow"], c:1},
+  {cat:'foot', q:"Quel sport pratique Kylian Mbappé ?", a:["Le rugby","Le football","Le tennis","La natation"], q_en:"Which sport does Kylian Mbappé play?", a_en:["Rugby","Football","Tennis","Swimming"], c:1},
+  {cat:'foot', q:"Avec quoi joue-t-on au football ?", a:["Une raquette","Un ballon","Un volant","Une crosse"], q_en:"What do you play football with?", a_en:["A racket","A ball","A shuttlecock","A stick"], c:1},
+  {cat:'foot', q:"Combien d'équipes s'affrontent dans un match de football ?", a:["1","2","3","4"], q_en:"How many teams play against each other in a football match?", a_en:["1","2","3","4"], c:1},
+  {cat:'foot', q:"Combien de mi-temps y a-t-il dans un match de football ?", a:["1","2","3","4"], q_en:"How many halves are there in a football match?", a_en:["1","2","3","4"], c:1},
+  {cat:'foot', q:"Qui siffle les fautes pendant un match de foot ?", a:["Le gardien","L'arbitre","Le capitaine","Le public"], q_en:"Who whistles for fouls during a football match?", a_en:["The goalkeeper","The referee","The captain","The crowd"], c:1},
+  {cat:'foot', q:"De quelle couleur est le carton d'exclusion au football ?", a:["Vert","Rouge","Bleu","Blanc"], q_en:"What colour is the send-off card in football?", a_en:["Green","Red","Blue","White"], c:1},
+  {cat:'foot', q:"De quelle couleur est le carton d'avertissement au football ?", a:["Jaune","Noir","Bleu","Violet"], q_en:"What colour is the warning card in football?", a_en:["Yellow","Black","Blue","Purple"], c:0},
+  {cat:'foot', q:"Quelle équipe gagne au foot : celle qui marque... ?", a:["le moins de buts","le plus de buts","le plus de fautes","le plus de cartons"], q_en:"Who wins in football: the team that scores...?", a_en:["the fewest goals","the most goals","the most fouls","the most cards"], c:1},
+  {cat:'foot', q:"Combien de joueurs titulaires dans une équipe de football ?", a:["9","10","11","12"], q_en:"How many starting players in a football team?", a_en:["9","10","11","12"], c:2},
+  {cat:'foot', q:"Combien de buts vaut un penalty marqué au football ?", a:["1","2","3","0"], q_en:"How many goals is a scored penalty worth in football?", a_en:["1","2","3","0"], c:0},
+  {cat:'foot', q:"Comment s'appelle la personne qui entraîne une équipe ?", a:["L'entraîneur","L'arbitre","Le supporter","Le speaker"], q_en:"What do you call the person who coaches a team?", a_en:["The coach","The referee","The fan","The announcer"], c:0},
+  {cat:'foot', q:"Quel sport pratique Cristiano Ronaldo ?", a:["Le football","Le basket","Le tennis","Le rugby"], q_en:"Which sport does Cristiano Ronaldo play?", a_en:["Football","Basketball","Tennis","Rugby"], c:0},
+  {cat:'foot', q:"Sur quel terrain joue-t-on au foot ?", a:["Sur l'herbe","Sur la glace","Dans l'eau","Sur un tatami"], q_en:"On what surface is football played?", a_en:["On grass","On ice","In water","On a tatami"], c:0},
+  {cat:'foot', q:"Que reçoit un joueur de foot averti par l'arbitre ?", a:["Un carton","Une médaille","Un trophée","Un ballon"], q_en:"What does a footballer get when booked by the referee?", a_en:["A card","A medal","A trophy","A ball"], c:0},
+  {cat:'tennis', q:"Dans quel sport renvoie-t-on une balle avec une raquette par-dessus un filet ?", a:["Le foot","Le tennis","Le judo","Le cyclisme"], q_en:"In which sport do you hit a ball over a net with a racket?", a_en:["Football","Tennis","Judo","Cycling"], c:1},
+  {cat:'tennis', q:"Quel sport a rendu célèbre Rafael Nadal ?", a:["Le golf","Le tennis","La boxe","Le ski"], q_en:"Which sport made Rafael Nadal famous?", a_en:["Golf","Tennis","Boxing","Skiing"], c:1},
+  {cat:'tennis', q:"Quel sport pratique Roger Federer ?", a:["Le tennis","Le golf","Le rugby","La boxe"], q_en:"Which sport does Roger Federer play?", a_en:["Tennis","Golf","Rugby","Boxing"], c:0},
+  {cat:'tennis', q:"Quel sport pratique Serena Williams ?", a:["Le tennis","Le golf","La boxe","Le ski"], q_en:"Which sport does Serena Williams play?", a_en:["Tennis","Golf","Boxing","Skiing"], c:0},
+  {cat:'tennis', q:"De quelle couleur est une balle de tennis ?", a:["Jaune fluo","Rouge","Bleue","Noire"], q_en:"What colour is a tennis ball?", a_en:["Fluorescent yellow","Red","Blue","Black"], c:0},
+  {cat:'tennis', q:"Dans quel sport y a-t-il des \"sets\" et des \"jeux\" ?", a:["Le tennis","Le foot","Le judo","Le cyclisme"], q_en:"In which sport are there 'sets' and 'games'?", a_en:["Tennis","Football","Judo","Cycling"], c:0},
+  {cat:'tennis', q:"Comment s'appelle le grand tournoi de tennis à Paris ?", a:["Roland-Garros","Le Tour de France","Le Mondial","Le Dakar"], q_en:"What is the big tennis tournament in Paris called?", a_en:["Roland-Garros","Tour de France","The World Cup","The Dakar"], c:0},
+  {cat:'tennis', q:"Dans quel pays se déroule le tournoi de Wimbledon (tennis) ?", a:["Angleterre","France","Espagne","Italie"], q_en:"In which country is the Wimbledon tournament (tennis) held?", a_en:["England","France","Spain","Italy"], c:0},
+  {cat:'basket', q:"Quel sport se joue avec un ballon orange que l'on met dans un panier ?", a:["Le hand","Le basket","Le rugby","Le volley"], q_en:"Which sport uses an orange ball thrown into a hoop?", a_en:["Handball","Basketball","Rugby","Volleyball"], c:1},
+  {cat:'basket', q:"Où doit-on mettre le ballon pour marquer au basket ?", a:["Dans un but","Dans un panier","Dans un trou","Dans un filet de tennis"], q_en:"Where must you put the ball to score in basketball?", a_en:["In a goal","In a hoop","In a hole","In a tennis net"], c:1},
+  {cat:'basket', q:"Combien de joueurs dans une équipe de basket sur le terrain ?", a:["5","6","7","11"], q_en:"How many players are on the court per basketball team?", a_en:["5","6","7","11"], c:0},
+  {cat:'basket', q:"Quel sport pratiquait la légende Michael Jordan ?", a:["Le basket","Le foot","Le tennis","La boxe"], q_en:"Which sport did the legend Michael Jordan play?", a_en:["Basketball","Football","Tennis","Boxing"], c:0},
+  {cat:'basket', q:"Quel objet lance-t-on vers le panier au basket ?", a:["Un ballon","Un palet","Un volant","Une balle de golf"], q_en:"What do you throw toward the hoop in basketball?", a_en:["A ball","A puck","A shuttlecock","A golf ball"], c:0},
+  {cat:'cyclisme', q:"Combien de roues a un vélo ?", a:["1","2","3","4"], q_en:"How many wheels does a bicycle have?", a_en:["1","2","3","4"], c:1},
+  {cat:'cyclisme', q:"De quelle couleur est le maillot du leader du Tour de France ?", a:["Vert","Jaune","Rouge","Bleu"], q_en:"What colour is the Tour de France leader's jersey?", a_en:["Green","Yellow","Red","Blue"], c:1},
+  {cat:'cyclisme', q:"Quel engin utilise-t-on dans le Tour de France ?", a:["Une moto","Un vélo","Une voiture","Des skis"], q_en:"What vehicle is used in the Tour de France?", a_en:["A motorbike","A bicycle","A car","Skis"], c:1},
+  {cat:'cyclisme', q:"Comment s'appelle la course de vélo la plus célèbre de France ?", a:["Le Tour de France","Roland-Garros","Le Mondial","Les 24 Heures"], q_en:"What is France's most famous cycling race called?", a_en:["The Tour de France","Roland-Garros","The World Cup","The 24 Hours"], c:0},
+  {cat:'cyclisme', q:"Quel sport consiste à pédaler le plus vite possible ?", a:["Le cyclisme","La natation","Le judo","Le golf"], q_en:"Which sport is about pedalling as fast as possible?", a_en:["Cycling","Swimming","Judo","Golf"], c:0},
+  {cat:'natation', q:"Dans quel lieu pratique-t-on la natation en compétition ?", a:["Une piscine","Un stade","Une patinoire","Un ring"], q_en:"Where is competitive swimming practised?", a_en:["A pool","A stadium","An ice rink","A boxing ring"], c:0},
+  {cat:'natation', q:"Que fait un nageur ?", a:["Il court","Il nage","Il saute à la perche","Il lance le poids"], q_en:"What does a swimmer do?", a_en:["He runs","He swims","He pole-vaults","He throws the shot"], c:1},
+  {cat:'natation', q:"Dans quel sport fait-on des longueurs de bassin ?", a:["La natation","Le foot","Le tennis","Le golf"], q_en:"In which sport do you swim lengths of a pool?", a_en:["Swimming","Football","Tennis","Golf"], c:0},
+  {cat:'natation', q:"Quel sport se pratique dans l'eau avec un ballon, dans une piscine ?", a:["Le water-polo","Le basket","Le foot","Le golf"], q_en:"Which sport is played in a pool with a ball?", a_en:["Water polo","Basketball","Football","Golf"], c:0},
+  {cat:'rugby', q:"Quel sport se joue avec un ballon ovale ?", a:["Le foot","Le rugby","Le tennis","Le golf"], q_en:"Which sport is played with an oval ball?", a_en:["Football","Rugby","Tennis","Golf"], c:1},
+  {cat:'rugby', q:"Au rugby, comment marque-t-on en aplatissant le ballon derrière la ligne ?", a:["Un but","Un essai","Un panier","Un ace"], q_en:"In rugby, what is it called when you ground the ball behind the line?", a_en:["A goal","A try","A basket","An ace"], c:1},
+  {cat:'rugby', q:"Combien de joueurs dans une équipe de rugby à XV ?", a:["11","13","15","18"], q_en:"How many players in a rugby union (XV) team?", a_en:["11","13","15","18"], c:2},
+  {cat:'boxe', q:"Dans quel sport met-on des gants pour combattre sur un ring ?", a:["La boxe","Le golf","Le tennis","La natation"], q_en:"In which sport do you wear gloves to fight in a ring?", a_en:["Boxing","Golf","Tennis","Swimming"], c:0},
+  {cat:'boxe', q:"Sur quoi combattent deux boxeurs ?", a:["Un court","Un ring","Une piste","Un green"], q_en:"Where do two boxers fight?", a_en:["A court","A ring","A track","A green"], c:1},
+  {cat:'boxe', q:"Comment s'appelle le sport où l'on combat avec les poings ?", a:["La boxe","Le golf","Le tennis","La natation"], q_en:"What is the sport of fighting with fists called?", a_en:["Boxing","Golf","Tennis","Swimming"], c:0},
+  {cat:'judo', q:"Quel sport de combat pratique Teddy Riner ?", a:["La boxe","Le judo","La lutte","Le karaté"], q_en:"Which combat sport does Teddy Riner practise?", a_en:["Boxing","Judo","Wrestling","Karate"], c:1},
+  {cat:'judo', q:"Sur quoi se déroule un combat de judo ?", a:["Un ring","Un tatami","Une piste","Un court"], q_en:"On what surface does a judo bout take place?", a_en:["A ring","A tatami","A track","A court"], c:1},
+  {cat:'judo', q:"Quel sport pratique-t-on dans un dojo ?", a:["Les arts martiaux","Le foot","Le golf","Le cyclisme"], q_en:"Which sport is practised in a dojo?", a_en:["Martial arts","Football","Golf","Cycling"], c:0},
+  {cat:'ski', q:"Quel sport se pratique sur la neige avec des skis ?", a:["Le surf","Le ski","Le patinage","La voile"], q_en:"Which sport is done on snow with skis?", a_en:["Surfing","Skiing","Skating","Sailing"], c:1},
+  {cat:'ski', q:"Quel sport se pratique avec des skis et deux bâtons ?", a:["Le ski","Le tennis","Le foot","La boxe"], q_en:"Which sport uses skis and two poles?", a_en:["Skiing","Tennis","Football","Boxing"], c:0},
+  {cat:'ski', q:"Quel sport d'hiver consiste à glisser sur la neige debout sur une planche ?", a:["Le snowboard","La natation","Le tennis","Le golf"], q_en:"Which winter sport involves sliding on snow standing on a board?", a_en:["Snowboarding","Swimming","Tennis","Golf"], c:0},
+  {cat:'hockey', q:"Quel sport se pratique sur la glace avec des patins ?", a:["Le ski","Le patinage","La natation","Le vélo"], q_en:"Which sport is practised on ice with skates?", a_en:["Skiing","Skating","Swimming","Cycling"], c:1},
+  {cat:'hockey', q:"Le hockey sur glace se joue sur...", a:["du sable","de la glace","de l'herbe","de l'eau"], q_en:"Ice hockey is played on...", a_en:["sand","ice","grass","water"], c:1},
+  {cat:'hockey', q:"Quel sport se joue avec une crosse et un palet sur la glace ?", a:["Le hockey","Le foot","Le tennis","Le rugby"], q_en:"Which sport uses a stick and a puck on ice?", a_en:["Hockey","Football","Tennis","Rugby"], c:0},
+  {cat:'hockey', q:"Quel est le sport national sur glace au Canada ?", a:["Le hockey","Le foot","Le golf","Le tennis"], q_en:"What is Canada's national sport on ice?", a_en:["Hockey","Football","Golf","Tennis"], c:0},
+  {cat:'athle', q:"Que fait principalement un marathonien ?", a:["Il nage","Il court","Il pédale","Il saute"], q_en:"What does a marathon runner mainly do?", a_en:["Swims","Runs","Cycles","Jumps"], c:1},
+  {cat:'athle', q:"Un marathon est une épreuve de...", a:["natation","course à pied","cyclisme","ski"], q_en:"A marathon is an event of...", a_en:["swimming","running","cycling","skiing"], c:1},
+  {cat:'athle', q:"Avec quoi court-on le 100 mètres ?", a:["Un vélo","Ses jambes","Une raquette","Un ballon"], q_en:"What do you use to run the 100 metres?", a_en:["A bike","Your legs","A racket","A ball"], c:1},
+  {cat:'athle', q:"Dans le saut en longueur, que cherche à faire l'athlète ?", a:["Courir le plus vite","Sauter le plus loin","Lancer le plus loin","Nager le plus vite"], q_en:"In the long jump, what does the athlete try to do?", a_en:["Run fastest","Jump the farthest","Throw the farthest","Swim fastest"], c:1},
+  {cat:'athle', q:"Quel sport pratique Usain Bolt, l'homme le plus rapide ?", a:["Le sprint (course)","La natation","Le golf","Le judo"], q_en:"Which sport does Usain Bolt, the fastest man, do?", a_en:["Sprinting (running)","Swimming","Golf","Judo"], c:0},
+  {cat:'athle', q:"Dans quel sport saute-t-on par-dessus une barre le plus haut possible ?", a:["Le saut en hauteur","La natation","Le foot","Le judo"], q_en:"In which sport do you jump over a bar as high as possible?", a_en:["High jump","Swimming","Football","Judo"], c:0},
+  {cat:'golf', q:"Dans quel sport envoie-t-on une petite balle dans un trou avec un club ?", a:["Le tennis","Le golf","Le foot","Le rugby"], q_en:"In which sport do you hit a small ball into a hole with a club?", a_en:["Tennis","Golf","Football","Rugby"], c:1},
+  {cat:'golf', q:"Quel sport se joue sur un \"green\" avec des trous ?", a:["Le golf","Le tennis","Le foot","Le rugby"], q_en:"Which sport is played on a 'green' with holes?", a_en:["Golf","Tennis","Football","Rugby"], c:0},
+  {cat:'golf', q:"Quel sport pratique le champion Tiger Woods ?", a:["Le golf","Le tennis","Le foot","Le ski"], q_en:"Which sport does champion Tiger Woods play?", a_en:["Golf","Tennis","Football","Skiing"], c:0},
+  {cat:'volley', q:"Dans quel sport renvoie-t-on le ballon par-dessus un filet avec les mains ?", a:["Le volley","Le foot","Le golf","Le judo"], q_en:"In which sport do you send the ball over a net with your hands?", a_en:["Volleyball","Football","Golf","Judo"], c:0},
+  {cat:'badminton', q:"Quel sport se joue avec des raquettes et un volant ?", a:["Le badminton","Le foot","Le golf","Le judo"], q_en:"Which sport is played with rackets and a shuttlecock?", a_en:["Badminton","Football","Golf","Judo"], c:0},
+  {cat:'badminton', q:"Comment appelle-t-on la petite chose qu'on frappe au badminton ?", a:["Un volant","Un ballon","Un palet","Une quille"], q_en:"What is the small object you hit in badminton called?", a_en:["A shuttlecock","A ball","A puck","A pin"], c:0},
+  {cat:'pingpong', q:"Quel objet rond frappe-t-on au tennis de table (ping-pong) ?", a:["Une balle","Un ballon","Un palet","Un volant"], q_en:"What round object do you hit in table tennis (ping-pong)?", a_en:["A ball","A football","A puck","A shuttlecock"], c:0},
+  {cat:'pingpong', q:"Le ping-pong est aussi appelé...", a:["Tennis de table","Football","Basket","Golf"], q_en:"Ping-pong is also called...", a_en:["Table tennis","Football","Basketball","Golf"], c:0},
+  {cat:'pingpong', q:"Sur quoi joue-t-on au ping-pong ?", a:["Une table","Un court de terre","Une piscine","Une piste"], q_en:"On what do you play ping-pong?", a_en:["A table","A clay court","A pool","A track"], c:0},
+  {cat:'f1', q:"Dans quel sport pilote-t-on une voiture de course très rapide ?", a:["La Formule 1","Le tennis","La natation","Le judo"], q_en:"In which sport do you drive a very fast racing car?", a_en:["Formula 1","Tennis","Swimming","Judo"], c:0},
+  {cat:'f1', q:"Dans quel sport double-t-on des concurrents sur un circuit en voiture ?", a:["La Formule 1","La natation","Le judo","Le tennis"], q_en:"In which sport do you overtake rivals on a track in a car?", a_en:["Formula 1","Swimming","Judo","Tennis"], c:0},
+  {cat:'equitation', q:"Quel animal monte-t-on dans une course hippique ?", a:["Un chien","Un cheval","Un chameau","Une vache"], q_en:"Which animal do you ride in a horse race?", a_en:["A dog","A horse","A camel","A cow"], c:1},
+  {cat:'equitation', q:"Quel animal accompagne le sport du saut d'obstacles ?", a:["Le cheval","Le chien","Le chat","Le lapin"], q_en:"Which animal is part of show jumping?", a_en:["The horse","The dog","The cat","The rabbit"], c:0},
+  {cat:'surf', q:"Quel sport se pratique sur des vagues avec une planche ?", a:["Le surf","Le ski","Le judo","Le golf"], q_en:"Which sport is done on waves with a board?", a_en:["Surfing","Skiing","Judo","Golf"], c:0},
+  {cat:'surf', q:"Quel sport se pratique avec une planche et une voile sur l'eau ?", a:["La planche à voile","Le ski","Le judo","Le golf"], q_en:"Which sport uses a board and a sail on the water?", a_en:["Windsurfing","Skiing","Judo","Golf"], c:0},
+  {cat:'tir', q:"Dans quel sport vise-t-on une cible avec un arc et des flèches ?", a:["Le tir à l'arc","Le foot","La natation","Le tennis"], q_en:"In which sport do you aim at a target with a bow and arrows?", a_en:["Archery","Football","Swimming","Tennis"], c:0},
+  {cat:'tir', q:"Dans quel sport vise-t-on le centre d'une cible (le mille) ?", a:["Le tir","Le foot","La natation","Le cyclisme"], q_en:"In which sport do you aim for the centre of a target (the bullseye)?", a_en:["Shooting","Football","Swimming","Cycling"], c:0},
+  {cat:'bowling', q:"Quel sport se joue en faisant tomber des quilles avec une boule ?", a:["Le bowling","Le golf","Le tennis","Le judo"], q_en:"Which sport involves knocking down pins with a ball?", a_en:["Bowling","Golf","Tennis","Judo"], c:0},
+  {cat:'bowling', q:"Dans quel sport peut-on faire un \"strike\" ?", a:["Le bowling","Le foot","Le tennis","Le ski"], q_en:"In which sport can you get a 'strike'?", a_en:["Bowling","Football","Tennis","Skiing"], c:0},
+  {cat:'haltero', q:"Quel sport olympique consiste à soulever de lourdes barres ?", a:["L'haltérophilie","Le tennis","Le golf","La voile"], q_en:"Which Olympic sport is about lifting heavy bars?", a_en:["Weightlifting","Tennis","Golf","Sailing"], c:0},
+  {cat:'vtt', q:"Quel sport pratique-t-on avec un vélo sur un chemin de montagne ?", a:["Le VTT","La natation","Le golf","Le judo"], q_en:"Which sport uses a bike on a mountain trail?", a_en:["Mountain biking","Swimming","Golf","Judo"], c:0},
+  {cat:'patinage', q:"Comment se déplace-t-on en patinage artistique ?", a:["En patins à glace","En vélo","À la nage","En ski"], q_en:"How do you move in figure skating?", a_en:["On ice skates","By bike","By swimming","On skis"], c:0},
+  {cat:'canoe', q:"Quel sport consiste à descendre une rivière en pagayant ?", a:["Le canoë-kayak","Le ski","Le tennis","Le golf"], q_en:"Which sport involves paddling down a river?", a_en:["Canoe-kayak","Skiing","Tennis","Golf"], c:0},
+  {cat:'jo', q:"Les Jeux Olympiques d'été ont lieu tous les combien d'années ?", a:["1 an","2 ans","4 ans","10 ans"], q_en:"Every how many years are the Summer Olympics held?", a_en:["1 year","2 years","4 years","10 years"], c:2},
+  {cat:'jo', q:"Quelle médaille gagne le premier d'une épreuve olympique ?", a:["Argent","Bronze","Or","Chocolat"], q_en:"Which medal does the winner of an Olympic event get?", a_en:["Silver","Bronze","Gold","Chocolate"], c:2},
+  {cat:'jo', q:"Combien d'anneaux compte le drapeau olympique ?", a:["4","5","6","7"], q_en:"How many rings are on the Olympic flag?", a_en:["4","5","6","7"], c:1},
+  {cat:'jo', q:"Dans quelle ville se sont déroulés les JO d'été 2024 ?", a:["Tokyo","Paris","Londres","Los Angeles"], q_en:"Which city hosted the 2024 Summer Olympics?", a_en:["Tokyo","Paris","London","Los Angeles"], c:1},
+  {cat:'foot', q:"Comment s'appelle le filet où l'on marque au football ?", a:["Le panier","Le but","Le trou","Le ring"], q_en:"What is the net you score into in football called?", a_en:["The hoop","The goal","The hole","The ring"], c:1},
+  {cat:'foot', q:"Combien de points marque-t-on pour un seul but au football ?", a:["1","2","3","5"], q_en:"How many points is a single football goal worth?", a_en:["1","2","3","5"], c:0},
+  {cat:'foot', q:"Combien de pieds un footballeur utilise-t-il pour jouer ?", a:["1","2","3","4"], q_en:"How many feet does a footballer use to play?", a_en:["1","2","3","4"], c:1},
+  {cat:'tennis', q:"Quel objet sert à frapper la balle au tennis ?", a:["Une raquette","Une crosse","Un club","Un bâton"], q_en:"What is used to hit the ball in tennis?", a_en:["A racket","A stick","A club","A pole"], c:0},
+  {cat:'tennis', q:"Au tennis, le terrain est séparé en deux par...", a:["un filet","un mur","une ligne blanche seule","une haie"], q_en:"In tennis, the court is split in two by...", a_en:["a net","a wall","a single white line","a hedge"], c:0},
+  {cat:'basket', q:"Au basket, le panier est placé...", a:["en hauteur","au sol","dans l'eau","sous terre"], q_en:"In basketball, the hoop is placed...", a_en:["up high","on the ground","in water","underground"], c:0},
+  {cat:'foot', q:"Comment appelle-t-on les supporters qui encouragent une équipe ?", a:["Les fans","Les arbitres","Les entraîneurs","Les remplaçants"], q_en:"What do you call the fans who cheer a team?", a_en:["The fans","The referees","The coaches","The substitutes"], c:0},
+  {cat:'natation', q:"Pour nager, on utilise surtout...", a:["ses bras et ses jambes","une raquette","un ballon","un vélo"], q_en:"To swim, you mainly use...", a_en:["your arms and legs","a racket","a ball","a bike"], c:0},
+  {cat:'cyclisme', q:"Sur quoi s'assoit-on pour faire du vélo ?", a:["Une selle","Un panier","Un filet","Un tatami"], q_en:"What do you sit on to ride a bike?", a_en:["A saddle","A basket","A net","A tatami"], c:0},
+  {cat:'foot', q:"Quand le ballon sort sur le côté du terrain au foot, on fait...", a:["une touche","un panier","un essai","un ace"], q_en:"When the ball goes off the side of the pitch in football, you take...", a_en:["a throw-in","a basket","a try","an ace"], c:0},
+  {cat:'rugby', q:"De quelle forme est le ballon de rugby ?", a:["Ovale","Rond","Carré","Triangulaire"], q_en:"What shape is a rugby ball?", a_en:["Oval","Round","Square","Triangular"], c:0},
+  {cat:'ski', q:"Le ski se pratique surtout en quelle saison ?", a:["En hiver","En été","Au printemps uniquement","Jamais"], q_en:"Skiing is mostly done in which season?", a_en:["Winter","Summer","Spring only","Never"], c:0},
+  {cat:'foot', q:"Combien de ballons utilise-t-on en même temps dans un match de foot ?", a:["1","2","3","11"], q_en:"How many balls are used at once in a football match?", a_en:["1","2","3","11"], c:0},
+  {cat:'jo', q:"Quel objet enflammé ouvre les Jeux Olympiques ?", a:["La flamme olympique","Une bougie","Un feu d'artifice seul","Une lanterne"], q_en:"What flaming object opens the Olympic Games?", a_en:["The Olympic flame","A candle","A firework only","A lantern"], c:0},
+  {cat:'foot', q:"Dans un match, l'équipe qui reçoit joue...", a:["à domicile","à l'étranger toujours","sans public","sans gardien"], q_en:"In a match, the hosting team plays...", a_en:["at home","always abroad","without fans","without a goalkeeper"], c:0},
+];
 
 const Q_FACILE = [
   {cat:'foot', q:"Quelle équipe a remporté la Coupe du Monde de football 2022 au Qatar ?", a:["France","Argentine","Brésil","Croatie"], q_en:"Which team won the 2022 FIFA World Cup in Qatar?", a_en:["France","Argentina","Brazil","Croatia"], c:1},
@@ -27105,17 +27214,18 @@ const Q_COMPLIQUEE = [
 Q_FACILE.forEach(q=>q.d=1);
 Q_MODEREE.forEach(q=>q.d=2);
 Q_COMPLIQUEE.forEach(q=>q.d=3);
-const QUIZZ_POOL = [...Q_FACILE, ...Q_MODEREE, ...Q_COMPLIQUEE];
+const QUIZZ_POOL = [...Q_TRES_FACILE, ...Q_FACILE, ...Q_MODEREE, ...Q_COMPLIQUEE];
 
-// Constitue une partie où la difficulté monte avec l'échelle de gains (facile → dur)
+// Constitue une partie où la difficulté monte avec l'échelle de gains (très facile → dur)
 function pickRound(){
   const n = CONFIG.questionsPerRound;
   const plan = (CONFIG.diffPlan && CONFIG.diffPlan.length===n) ? CONFIG.diffPlan
              : Array.from({length:n},(_,i)=> i < n*0.3 ? 1 : i < n*0.7 ? 2 : 3);
-  const banks = {1:shuffle(Q_FACILE), 2:shuffle(Q_MODEREE), 3:shuffle(Q_COMPLIQUEE)};
+  const banks = {0:shuffle(Q_TRES_FACILE), 1:shuffle(Q_FACILE), 2:shuffle(Q_MODEREE), 3:shuffle(Q_COMPLIQUEE)};
   const used=new Set(), out=[];
   for(const lvl of plan){
-    const order = lvl===1 ? [1,2,3] : lvl===2 ? [2,3,1] : [3,2,1]; // repli au plus proche si vide
+    // repli au plus proche si la banque est vide (ex. niveau 0 épuisé → on pioche dans facile)
+    const order = lvl===0 ? [0,1,2,3] : lvl===1 ? [1,0,2,3] : lvl===2 ? [2,3,1,0] : [3,2,1,0];
     let picked=null;
     for(const L of order){ const b=banks[L];
       while(b.length){ const c=b.pop(); if(!used.has(c)){ picked=c; break; } }
@@ -27128,7 +27238,7 @@ function pickRound(){
 // ====================== RÉGLAGES (modifiables ici) ======================
 const CONFIG = {
   questionsPerRound: 12,
-  diffPlan: [1,1,1,1,2,2,2,2,2,3,3,3], // niveau par palier : 4 faciles → 5 modérées → 3 compliquées
+  diffPlan: [0,0,0,1,2,2,2,2,2,3,3,3], // niveau par palier : 3 très faciles → 1 facile → 5 modérées → 3 compliquées
   roundSeconds: 60,
   ladder: [10, 20, 50, 80, 120, 180, 250, 350, 500, 800], // RPC, 10 paliers (jackpot 800 + 1 NYX)
   nyxTop: 1,               // bonus NYX si on sécurise le dernier palier (jackpot)
