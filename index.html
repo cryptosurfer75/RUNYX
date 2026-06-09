@@ -13459,7 +13459,7 @@ async function renderSocialFeed(){
         photoHtml+='</div>';
       }
     }
-    var canAddPhoto=isMyRun&&photos.length<4;
+    var canAddPhoto=(isMyRun||isAdmin())&&photos.length<4;
     var uploadBtn=canAddPhoto?'<button onclick="document.getElementById(\'photo-'+r.id+'\').click()" style="font-size:.6rem;padding:.15rem .4rem;border-radius:4px;border:1px solid rgba(144,96,240,.3);background:rgba(144,96,240,.08);color:#9060f0;cursor:pointer;font-weight:600">📷 Photo'+(photos.length>0?' ('+(4-photos.length)+')':'')+'</button><input type="file" id="photo-'+r.id+'" accept="image/*" style="display:none" onchange="uploadRunPhoto(this,\''+r.id+'\')">':'';
     var descHtml='';
     if(r.description){
@@ -13468,7 +13468,7 @@ async function renderSocialFeed(){
         +(isMyRun?'<span onclick="removeRunDesc(\''+r.id+'\')" style="position:absolute;top:4px;right:4px;color:#ff4444;cursor:pointer;font-size:.55rem" title="Supprimer">✕</span>':'')
         +(isAdmin()&&!isMyRun?'<span onclick="removeRunDesc(\''+r.id+'\')" style="position:absolute;top:4px;right:4px;color:#ff4444;cursor:pointer;font-size:.55rem" title="Supprimer (admin)">✕</span>':'')
         +'</div>';
-    } else if(isMyRun){
+    } else if(isMyRun||isAdmin()){
       descHtml='<div style="margin:.4rem 0">'
         +'<div id="desc-wrap-'+r.id+'" style="display:flex;gap:.4rem">'
         +'<input id="desc-'+r.id+'" type="text" placeholder="Exprime-toi sur ta course…" maxlength="300" style="flex:1;padding:.4rem .6rem;border-radius:6px;border:1px solid rgba(144,96,240,.2);background:rgba(144,96,240,.05);color:var(--text);font-size:.75rem;outline:none" onkeydown="if(event.key===\'Enter\')publishRunDesc(\''+r.id+'\')">'
