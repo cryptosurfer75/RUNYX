@@ -11365,12 +11365,6 @@ async function renderMyLands(page){
     } else {
       loyerCell='<span style="color:var(--red)">−'+rentCost.toLocaleString(SPEEDIX_LANG)+'</span>';
     }
-    // Prix d'achat possible
-    var buyPrice='—';
-    if(!isOwned&&rp>=3){
-      var nyx=rp>=12?200:rp>=6?150:120;
-      buyPrice='<span style="color:var(--green)">'+nyx+' NYX</span>';
-    }
     return '<tr>'
       +'<td '+clickAttr+'font-family:Space Mono,monospace;font-size:.82rem;color:var(--cyan);text-align:center;font-weight:700">'+_landNum+'</td>'
       +'<td>'+statusBadge+'</td>'
@@ -11385,13 +11379,11 @@ async function renderMyLands(page){
         if(isOwned){
           return '<button onclick="openSellModal(\''+l.id+'\')" style="padding:.15rem .35rem;border-radius:3px;border:1px solid var(--cyan);background:rgba(32,208,224,.08);color:var(--cyan);font-size:.58rem;font-weight:700;cursor:pointer">V</button>';
         }
-        var btns='';
-        if(canBuyLands()){
-          btns+='<button onclick="buyLand(\''+l.id+'\')" style="padding:.15rem .35rem;border-radius:3px;border:1px solid var(--green);background:rgba(45,219,128,.08);color:var(--green);font-size:.58rem;font-weight:700;cursor:pointer">A</button>';
-        } else {
-          btns+=buyPrice;
-        }
-        return btns;
+        // On affiche TOUJOURS le bouton "A" (Acheter) sur une location, comme
+        // avant la v523 : colonne compacte (pas de prix qui élargit la table sur
+        // mobile). Le contrôle du droit d'acquisition se fait au clic dans
+        // buyLand() (toast "achète d'abord le droit d'acquisition" si manquant).
+        return '<button onclick="buyLand(\''+l.id+'\')" style="padding:.15rem .35rem;border-radius:3px;border:1px solid var(--green);background:rgba(45,219,128,.08);color:var(--green);font-size:.58rem;font-weight:700;cursor:pointer">A</button>';
       })()+'</td>'
     +'</tr>';
   }).join('');
