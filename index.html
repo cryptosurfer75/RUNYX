@@ -10772,7 +10772,7 @@ async function claimHq(landId){
   }
   if(typeof _removeFromPendingExploration==='function') _removeFromPendingExploration(landId);
   closeModal('land-modal');
-  showToast('❤️ '+dName+' fondé ! Cette Land est à toi pour toujours.');
+  showToast('❤️ '+dName+' fondé ! Cette Land est ton QG à présent.');
   loadLandsOnMap(); renderMyLands();
   if(typeof updatePlayerGrade==='function') updatePlayerGrade(currentUser.id);
 }
