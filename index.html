@@ -1245,6 +1245,12 @@ select option{background:#040c1c}
   #lands-tbl td:nth-child(3),
   #lands-tbl th:nth-child(6),
   #lands-tbl td:nth-child(6){display:none}
+  /* Padding horizontal resserré sur mobile : avec 6 colonnes visibles, le
+     padding par défaut (.75rem de chaque côté) faisait déborder la table à
+     droite (on ne voyait plus la colonne A/V). On compacte ici pour que tout
+     tienne dans la largeur de l'écran sans scroll horizontal. */
+  #lands-tbl th,
+  #lands-tbl td{padding-left:.3rem;padding-right:.3rem}
   /* Carte hexagonale : adapter la hauteur sur mobile */
   #lands-map{height:340px !important}
 }
