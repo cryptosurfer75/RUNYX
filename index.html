@@ -10747,10 +10747,12 @@ async function claimHq(landId){
   // Si non (case libre), c'est la case offerte → abandonnée au déménagement.
   var wasMine=!!(existing && (existing.owner_id===currentUser.id || existing.tenant_id===currentUser.id));
   var gifted=!wasMine;
-  var _confirmMsg=wasMine
-    ? 'Faire de cette case (déjà à toi) ton <strong style="color:#f5c842">'+dName+'</strong> ?<br><br>Elle devient ta <strong>propriété permanente, sans loyer</strong>. Tu la <strong>gardes</strong> même si tu déménages ton QG plus tard.'
-    : 'Faire de cette case ton <strong style="color:#f5c842">'+dName+'</strong> ?<br><br>Elle devient ta <strong>propriété permanente</strong>, <strong>offerte</strong> et <strong>sans loyer</strong>. Tu ne pourras plus la perdre.';
-  if(!await askConfirm(_confirmMsg,{title:'❤️ Choisir mon QG',emoji:'❤️',success:true,okLabel:'Oui, c\'est mon QG'})) return;
+  // Modale volontairement minimale : cœur en haut + une seule question. Le détail
+  // (propriété permanente / offerte / sans loyer / déjà à toi) a été retiré à la
+  // demande — il alourdissait l'écran. La distinction cadeau/possédée reste gérée
+  // côté code via `gifted`, juste plus affichée ici.
+  var _confirmMsg='Faire de cette case ton <strong style="color:#f5c842">'+dName+'</strong> ?';
+  if(!await askConfirm(_confirmMsg,{title:'Choisir mon QG',emoji:'❤️',success:true,okLabel:'Valider mon QG'})) return;
   var nowIso=new Date().toISOString();
   var period=_periodData.period||1;
   if(existing){
@@ -10792,7 +10794,7 @@ async function moveHq(landId){
   var _oldFate=oldWasGift
     ? '<strong style="color:var(--red)">⚠️ Ta case de départ (offerte) sera abandonnée</strong> et repartira dans le jeu. Tu ne la récupères pas.'
     : 'Ton ancienne case <strong>reste ta propriété</strong> (elle perd juste le statut de QG).';
-  if(!await askConfirm('Déménager ton <strong style="color:#f5c842">'+dName+'</strong> sur cette case ?<br><br>Coût : <strong style="color:var(--gold)">'+QG_MOVE_COST_NYX+' NYX</strong>.<br>'+_oldFate,{title:'❤️ Déménager mon QG',emoji:'❤️',success:true,okLabel:'Déménager ('+QG_MOVE_COST_NYX+' NYX)'})) return;
+  if(!await askConfirm('Déménager ton <strong style="color:#f5c842">'+dName+'</strong> sur cette case ?<br><br>Coût : <strong style="color:var(--gold)">'+QG_MOVE_COST_NYX+' NYX</strong>.<br>'+_oldFate,{title:'Déménager mon QG',emoji:'❤️',success:true,okLabel:'Valider mon QG'})) return;
   var {data:existing}=await supabaseClient.from('lands').select('status,owner_id,tenant_id,rented_at').eq('id',landId).maybeSingle();
   var blocked=_hqTargetBlocked(existing);
   if(blocked){showToast(blocked);return;}
