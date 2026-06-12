@@ -47,6 +47,10 @@ var WEB_URL     = "https://speedixleague.com/";
   if (isIOS && IOS_URL) dest = IOS_URL;
   else if (isAndroid && ANDROID_URL) dest = ANDROID_URL;
 
+  // On transmet le code parrain (?ref=SL-XXXXX) UNIQUEMENT vers l'app web.
+  // Les liens stores ne savent pas porter ce paramètre, on ne l'ajoute pas là.
+  if (dest === WEB_URL && location.search) dest = dest + location.search;
+
   document.getElementById("manual").href = dest;
   location.replace(dest);
 })();
