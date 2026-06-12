@@ -27722,6 +27722,23 @@ async function loadCashrunData(){
     if(data) Object.assign(CU(), data);
   }catch(e){ console.warn('loadCashrunData fail',e); }
 }
+// ---- Reprise d'une manche interrompue (mise à jour / rechargement EN PLEIN JEU) ----
+// La manche ne vit qu'en mémoire (S) ; si l'app se recharge pendant une partie, on
+// reconstruit S depuis localStorage pour ne PAS "manger" le cooldown sans avoir joué.
+// On ne sauvegarde QUE des états propres (début de question, encaissement) → pas de
+// double-comptage des compteurs précision (asked/good).
+const RKEY = () => 'cr_round_' + (CU().id || 'anon');
+function saveRound(){
+  try{ if(S && S.questions) localStorage.setItem(RKEY(), JSON.stringify({uid:CU().id, lang, S})); }catch(e){}
+}
+function clearRound(){ try{ localStorage.removeItem(RKEY()); }catch(e){} }
+function loadRound(){
+  try{
+    const o=JSON.parse(localStorage.getItem(RKEY())||'null');
+    if(!o || o.uid!==CU().id || !o.S || !o.S.questions || o.S.locked===undefined) return null;
+    return o;
+  }catch(e){ return null; }
+}
 const TITLE = { fr:'CASH RUN', en:'CASH RUN' };   // nom du jeu
 
 // Niveaux basés sur le TOTAL de RPC gagnés (à vie) — modifiable
@@ -28034,6 +28051,7 @@ function renderQuestion(){
   // bouton banque dispo seulement s'il y a une cagnotte à sécuriser
   $('g-bank').disabled = pot()===0;
   S.locked=false;
+  saveRound();   // checkpoint propre : reprise possible si l'app se recharge ici
 }
 
 function answer(btn,correct){
@@ -28089,10 +28107,11 @@ function doBank(){
   setTimeout(()=>$('chip-bank').classList.remove('pop'),400);
   $('g-bank').disabled=true;
   $('g-hint').innerHTML=T[lang].hintBanked(S.bank);
+  saveRound();   // la cagnotte encaissée fait partie de l'état à reprendre
 }
 
 function abandon(){ if(confirm(lang==='fr'?'Quitter la manche en cours ?':'Quit the current round?')){clearInterval(timerId);goHome();} }
-function goHome(){ clearInterval(timerId); paintStart(); show('s-start'); }
+function goHome(){ clearInterval(timerId); clearRound(); paintStart(); show('s-start'); }
 
 function amountHtml(total){
   return fmt(total)+' '+CONFIG.currency
@@ -28100,6 +28119,7 @@ function amountHtml(total){
 }
 function endRound(reason){
   clearInterval(timerId);
+  clearRound();                 // manche terminée → plus rien à reprendre (évite tout re-crédit)
   const tr=T[lang];
   const total=S.bank;
   recordWinnings(total, S.bankNyx, reason==='done', S.asked, S.good);   // 'done' = échelle complète parfaite
@@ -28193,8 +28213,34 @@ function setLb(mode){ lbMode=mode; paintStats(); }
 
 
 
+// Reconstruit l'écran de jeu à partir d'un état sauvegardé (même question, temps restant
+// correct car endTs est un horodatage absolu). Ne RE-démarre PAS le cooldown ni la série.
+function resumeRound(o){
+  clearInterval(timerId); clearInterval(cdId);
+  lang = o.lang || lang;
+  S = o.S;
+  show('s-game');
+  $('g-round').textContent=T[lang].round;
+  $('g-bank').textContent=T[lang].bank;
+  $('g-hint').innerHTML='';
+  buildLadder(); paintLadder();
+  renderQuestion();
+  tick();
+  timerId=setInterval(tick,200);
+}
 // ----- Pont SPEEDIX : entrée = CR.open() (appelée par nav). Le reste reste privé. -----
-function __crOpen(){ lang=(typeof SPEEDIX_LANG!=='undefined'?SPEEDIX_LANG:'fr'); loadCashrunData().then(function(){ paintStart(); show('s-start'); }); }
+function __crOpen(){
+  lang=(typeof SPEEDIX_LANG!=='undefined'?SPEEDIX_LANG:'fr');
+  loadCashrunData().then(function(){
+    const o=loadRound();                 // une manche a-t-elle été interrompue (mise à jour) ?
+    if(o){
+      if(now() < o.S.endTs){ resumeRound(o); return; }   // il reste du temps → on reprend où on en était
+      // temps déjà écoulé pendant l'absence → on clôt la manche en sécurisant l'acquis (pas de cooldown perdu pour rien)
+      clearInterval(timerId); S=o.S; endRound('time'); return;   // endRound efface la sauvegarde + crédite la banque
+    }
+    paintStart(); show('s-start');
+  });
+}
 window.CR={startRound,openStats,abandon,doBank,goHome,setLb,closeWin,open:__crOpen,refreshBadge:updateBadge};
 
 // Re-vérifie la dispo toutes les minutes : la pastille apparaît d'elle-même
