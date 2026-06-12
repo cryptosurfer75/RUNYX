@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SPEEDIX</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0f14;color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;align-items:center;justify-content:center;text-align:center}
+  .box{padding:24px}
+  img{width:96px;height:96px;object-fit:contain;margin-bottom:18px}
+  h1{font-size:20px;letter-spacing:.08em;margin:0 0 6px;font-weight:800}
+  p{opacity:.7;font-size:14px;margin:0 0 22px}
+  a{display:inline-block;background:#19c37d;color:#03150d;text-decoration:none;
+    font-weight:700;padding:12px 22px;border-radius:999px}
+</style>
+</head>
+<body>
+  <div class="box">
+    <img src="../logo-mark-white.png" alt="SPEEDIX">
+    <h1>SPEEDIX</h1>
+    <p>Redirection en cours…</p>
+    <a id="manual" href="https://speedixleague.com/">Continuer</a>
+  </div>
+
+<script>
+/* ============================================================
+   SEUL ENDROIT À MODIFIER LE JOUR DU LANCEMENT.
+   Tant qu'une adresse de store est vide (""), tout le monde
+   est envoyé vers l'app web. Le jour J : colle les 2 liens,
+   pousse le fichier, et toutes les cartes pointent vers les
+   bons stores automatiquement. Aucune carte à réécrire.
+   ============================================================ */
+var IOS_URL     = "";  // ex: https://apps.apple.com/app/idXXXXXXXXX
+var ANDROID_URL = "";  // ex: https://play.google.com/store/apps/details?id=com.speedixleague.runner
+var WEB_URL     = "https://speedixleague.com/";
+
+(function () {
+  var ua = navigator.userAgent || navigator.vendor || "";
+  var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var isAndroid = /android/i.test(ua);
+
+  var dest = WEB_URL;
+  if (isIOS && IOS_URL) dest = IOS_URL;
+  else if (isAndroid && ANDROID_URL) dest = ANDROID_URL;
+
+  document.getElementById("manual").href = dest;
+  location.replace(dest);
+})();
+</script>
+</body>
+</html>
